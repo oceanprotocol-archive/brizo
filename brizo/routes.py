@@ -11,7 +11,7 @@ from squid_py.ocean import Ocean
 from brizo.filters import Filters
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.osmosis import generate_sasurl
+from brizo.osmosis import Osmosis
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -124,9 +124,9 @@ def consume_resource(asset_id):
             urls = dao.get(asset_id)['base']['contentUrls']
             url_list = []
             for url in urls:
-                url_list.append(generate_sasurl(url, config.get(ConfigSections.RESOURCES, 'azure.account.name'),
-                                                config.get(ConfigSections.RESOURCES, 'azure.account.key'),
-                                                config.get(ConfigSections.RESOURCES, 'azure.container')))
+                url_list.append(Osmosis.generate_sasurl(url, config.get(ConfigSections.RESOURCES, 'azure.account.name'),
+                                                        config.get(ConfigSections.RESOURCES, 'azure.account.key'),
+                                                        config.get(ConfigSections.RESOURCES, 'azure.container')))
             return jsonify(url_list), 200
         else:
             logging.error('resource server plugin is not supported: %s' % jwt['resource_server_plugin'])
@@ -175,4 +175,8 @@ def exec(consumer_wallet, asset_did, algorithm_did):
               example: '0x0234242345'
 
     """
+    osm=Osmosis()
+    osm.exec_container(asset_did, algorithm_did, config.get(ConfigSections.RESOURCES, 'azure.account.name'),
+                           config.get(ConfigSections.RESOURCES, 'azure.account.key'),
+                           config.get(ConfigSections.RESOURCES, 'azure.container'))
     return "Hello", 200

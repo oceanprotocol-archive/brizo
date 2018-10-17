@@ -1,11 +1,11 @@
-import os, sys, time
+import os
 from datetime import datetime, timedelta
 
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
 from azure.mgmt.containerinstance.models import (ContainerGroup, Container, ContainerPort, Port, IpAddress,
-                                                 ResourceRequirements, ResourceRequests, ContainerGroupNetworkProtocol, OperatingSystemTypes)
-
+                                                 ResourceRequirements, ResourceRequests, ContainerGroupNetworkProtocol,
+                                                 OperatingSystemTypes, EnvironmentVariable)
 from azure.mgmt.resource import ResourceManagementClient
 from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
@@ -52,41 +52,39 @@ class Osmosis(object):
                                            sas_token=sas_token)
         return source_blob_url
 
-    def prepare_container(self, asset_url, algorithm_url, docker_image, account_name, account_key):
+    def exec_container(self, asset_url, algorithm_url, account_name, account_key, container):
         """Prepare a docker image that will run in the cloud, mounting the asset and executing the algorithm.
         :param asset_url
         :param algorithm_url
         :param docker_image
         """
-        # self.copy('testfiles', 'https://testocnfiles.blob.core.windows.net/testfiles/boston.txt', 'boston', 'boston.txt',
-        #      'testocnfiles', 'k2Vk4yfb88WNlWW+W54a8ytJm8MYO1GW9IgiV7TNGKSdmKyVNXzyhiRZ3U1OHRotj/vTYdhJj+ho30HPyJpuYQ==')
+        self.create_container_group(resource_group_name='OceanProtocol',
+                                    name='mycontainer',
+                                    image='oceanprotol/ubuntu-blobfuse-python3',
+                                    location='westeurope',
+                                    memory=1,
+                                    cpu=1,
+                                    algorithm=algorithm_url,
+                                    asset=asset_url,
+                                    mount_point='/tmp/compute',
+                                    account_name=account_name,
+                                    account_key=account_key,
+                                    container=container
+                                    )
 
-        container = self.create_container_group(resource_group_name='OceanProtocol',
-                                                name='mycontainer',
-                                                image='python:3.6-alpine',
-                                                location='eastus',
-                                                memory=1,
-                                                cpu=1
-                                                # azure_file='https://testocnfiles.file.core.windows.net/boston/boston.txt',
-                                                # command=None)
-                                                )
+        return True
 
-        return 'gell'
-
-    def copy(self, blob_container, blob_url, file_share, file_name, account_name, account_key):
-        fs = FileService(account_name=account_name, account_key=account_key)
-
-        fs.copy_file(file_share,
-                     '',
-                     file_name,
-                     self.generate_sasurl(blob_url, account_name, account_key, blob_container))
-
-    def create_container_group(self,resource_group_name, name, location, image, memory, cpu):
+    def create_container_group(self, resource_group_name, name, location, image, memory, cpu, algorithm, asset,
+                               mount_point, account_name, account_key, container):
         # setup default values
         port = 80
-        container_resource_requirements = None
-        command = None
-        environment_variables = None
+        command = ['python %s/%s %s/%s' % (mount_point, algorithm, mount_point, asset)]
+        env_var_1 = EnvironmentVariable(name='AZURE_STORAGE_ACCOUNT', value=account_name)
+        env_var_2 = EnvironmentVariable(name='AZURE_STORAGE_ACCESS_KEY', value=account_key)
+        env_var_3 = EnvironmentVariable(name='AZURE_STORAGE_ACCOUNT_CONTAINER', value=container)
+        env_var_4 = EnvironmentVariable(name='AZURE_MOUNT_POINT', value=mount_point)
+        environment_variables = [env_var_1, env_var_2, env_var_3, env_var_4]
+        # volume_mount = [VolumeMount(name='config', mount_path='/mnt/test')]
 
         # set memory and cpu
         container_resource_requests = ResourceRequests(memory_in_gb=memory, cpu=cpu)
@@ -97,7 +95,8 @@ class Osmosis(object):
                               resources=container_resource_requirements,
                               command=command,
                               ports=[ContainerPort(port=port)],
-                              environment_variables=environment_variables)
+                              environment_variables=environment_variables
+                              )
 
         # defaults for container group
         cgroup_os_type = OperatingSystemTypes.linux
@@ -109,7 +108,8 @@ class Osmosis(object):
                                 containers=[container],
                                 os_type=cgroup_os_type,
                                 ip_address=cgroup_ip_address,
-                                image_registry_credentials=image_registry_credentials)
+                                image_registry_credentials=image_registry_credentials,
+                                )
 
         self.client.container_groups.create_or_update(resource_group_name, name, cgroup)
 
@@ -124,7 +124,35 @@ class Osmosis(object):
         self.client.container_groups.delete(resource_group_name, container_group_name)
         self.resource_client.resource_groups.delete(resource_group_name)
 
+    def list_container_groups(self, aci_client, resource_group_name):
+        """Lists the container groups in the specified resource group.
 
-osm = Osmosis()
-# osm.show_container_group('OceanProtocol','myapp')
-osm.prepare_container('https://testocnfiles.file.core.windows.net/boston/boston.txt', '', '', '', '')
+        Arguments:
+           aci_client {azure.mgmt.containerinstance.ContainerInstanceManagementClient}
+                       -- An authenticated container instance management client.
+           resource_group {azure.mgmt.resource.resources.models.ResourceGroup}
+                       -- The resource group containing the container group(s).
+        """
+        print("Listing container groups in resource group '{0}'...".format(resource_group_name))
+
+        container_groups = aci_client.container_groups.list_by_resource_group(resource_group_name)
+
+        for container_group in container_groups:
+            print("  {0}".format(container_group.name))
+
+    def copy(self, blob_container, blob_url, file_share, file_name, account_name, account_key):
+        # self.copy('testfiles', 'https://testocnfiles.blob.core.windows.net/testfiles/boston.txt', 'boston', 'boston.txt',
+        #      'testocnfiles', 'k2Vk4yfb88WNlWW+W54a8ytJm8MYO1GW9IgiV7TNGKSdmKyVNXzyhiRZ3U1OHRotj/vTYdhJj+ho30HPyJpuYQ==')
+        fs = FileService(account_name=account_name, account_key=account_key)
+
+        fs.copy_file(file_share,
+                     '',
+                     file_name,
+                     self.generate_sasurl(blob_url, account_name, account_key, blob_container))
+
+
+# osm = Osmosis()
+# osm.list_container_groups(osm.client, 'OceanProtocol')
+# osm.
+# ('OceanProtocol','myapp')
+# osm.exec_container('data.txt', 'algo.py')
