@@ -2,17 +2,16 @@ import traceback
 from secrets import token_hex
 from squid_py.acl import encrypt, encode, generate_encoding_pair
 import time
-from provider.app.dao import Dao
 from werkzeug.contrib.cache import SimpleCache
 import logging
 
 
 class Filters(object):
 
-    def __init__(self, ocean_contracts_wrapper, config_file, api_url):
-        self.contracts = ocean_contracts_wrapper.contracts
-        self.web3 = ocean_contracts_wrapper.web3
-        self.dao = Dao(config_file)
+    def __init__(self, squid, api_url):
+        self.contracts = squid.contracts
+        self.web3 = squid.web3
+        self.dao = squid.metadata
         self.cache = SimpleCache()
         self.encoding_key_pair = generate_encoding_pair()
         self.api_url = api_url
@@ -35,7 +34,7 @@ class Filters(object):
                           '\nprovider: %s' % (
                               res_id, request_id, event['args']['_consumer'], event['args']['_provider']))
             try:
-                resource = self.dao.get(res_id)
+                resource = self.dao.get_asset_metadata(res_id)
             except Exception as e:
                 logging.info('res id: %s' % res_id)
                 logging.info(str(e))
@@ -95,7 +94,7 @@ class Filters(object):
                 "timeout": event['args']['_expire'],
                 "response_type": "Signed_URL",
                 "resource_server_plugin": "Azure",
-                "service_endpoint": "%s/metadata/consume" % self.api_url,
+                "service_endpoint": "%s/consume" % self.api_url,
                 "nonce": token_hex(32),
             }
             jwt = encode(plain_jwt, self.encoding_key_pair.private_key)

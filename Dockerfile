@@ -21,7 +21,7 @@ WORKDIR /brizo
 
 RUN pip install -r requirements_dev.txt
 
-# oceandb.ini configuration file variables
+# config.ini configuration file variables
 ENV DB_ENABLED='true'
 ENV DB_MODULE='mongodb'
 ENV DB_SECRET=''

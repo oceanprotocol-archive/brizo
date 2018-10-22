@@ -1,8 +1,11 @@
 #!/bin/bash -x
 #PROVIDERDIR=.
-CONF_FILE=oceandb.ini
+CONF_TEMPLATE=config.ini
+CONF_FILE=config_local.ini
 #KEEPERDIR=~/Projects/keeper-contracts
 #cd $KEEPERDIR
+cp $CONF_TEMPLATE $CONF_FILE
+
 
 market=$(docker exec -it docker_keeper-contracts_1 python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanMarket.development.json', 'r'))['address'])")
 token=$(docker exec -it docker_keeper-contracts_1 python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanToken.development.json', 'r'))['address'])")

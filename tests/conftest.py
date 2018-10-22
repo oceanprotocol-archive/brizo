@@ -1,6 +1,6 @@
 import pytest
 
-from provider.run import app
+from brizo.run import app
 
 app = app
 
@@ -51,4 +51,13 @@ json_request_consume = {
     'consumerId': "",
     'fixed_msg': "",
     'sigEncJWT': ""
+}
+
+json_brizo = {
+    "consumer_wallet": "",
+    "algorithm_did": "algo.py",
+    "asset_did": "data.txt",
+    "docker_image": "python:3.6-alpine",
+    "memory": 1.5,
+    "cpu": 1
 }

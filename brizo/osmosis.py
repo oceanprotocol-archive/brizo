@@ -1,28 +1,27 @@
+import logging
 import os
+import time
 from datetime import datetime, timedelta
 
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
-from azure.mgmt.containerinstance.models import (ContainerGroup, Container, ContainerPort, Port, IpAddress,
-                                                 ResourceRequirements, ResourceRequests, ContainerGroupNetworkProtocol,
-                                                 OperatingSystemTypes, EnvironmentVariable)
+from azure.mgmt.containerinstance.models import (ContainerGroup, Container, ResourceRequirements, ResourceRequests,
+                                                 OperatingSystemTypes, Volume, VolumeMount, AzureFileVolume,
+                                                 ContainerGroupRestartPolicy)
 from azure.mgmt.resource import ResourceManagementClient
 from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
 from azure.storage.file import FileService
+from squid_py.config import Config
 
 
 class Osmosis(object):
-    os.environ["AZURE_CLIENT_ID"] = "8c92f07f-7030-430f-9abb-f5a1b1fe5da3"
-    os.environ["AZURE_CLIENT_SECRET"] = "RBO5+eignW7ar5er7WgUCr0UJxdjsOw/8zyPmR2Y8Uk="
-    os.environ["AZURE_TENANT_ID"] = "4a4a3787-4e2e-4a32-8006-6e2b5877640e"
-    os.environ["AZURE_SUBSCRIPTION_ID"] = "369284be-0104-421a-8488-1aeac0caecaa"
-
-    def __init__(self):
+    def __init__(self, config_file=None):
         self.credentials = self._login_azure_app_token()
         self.subscription_id = os.environ.get('AZURE_SUBSCRIPTION_ID')
         self.resource_client = ResourceManagementClient(self.credentials, self.subscription_id)
         self.client = ContainerInstanceManagementClient(self.credentials, self.subscription_id)
+        self.config = Config(config_file)
 
     def _login_azure_app_token(self, client_id=None, client_secret=None, tenant_id=None):
         """
@@ -52,39 +51,79 @@ class Osmosis(object):
                                            sas_token=sas_token)
         return source_blob_url
 
-    def exec_container(self, asset_url, algorithm_url, account_name, account_key, container):
+    def exec_container(self,
+                       asset_url,
+                       algorithm_url,
+                       resource_group_name,
+                       account_name,
+                       account_key,
+                       location,
+                       share_name_input='compute',
+                       share_name_output='output',
+                       docker_image='python:3.6-alpine',
+                       memory=1.5,
+                       cpu=1):
         """Prepare a docker image that will run in the cloud, mounting the asset and executing the algorithm.
         :param asset_url
         :param algorithm_url
-        :param docker_image
+        :param resource_group_name:
+        :param account_name:
+        :param account_key:
+        :param share_name_input:
+        :param share_name_output:
+        :param location:
         """
-        self.create_container_group(resource_group_name='OceanProtocol',
-                                    name='mycontainer',
-                                    image='oceanprotol/ubuntu-blobfuse-python3',
-                                    location='westeurope',
-                                    memory=1,
-                                    cpu=1,
-                                    algorithm=algorithm_url,
-                                    asset=asset_url,
-                                    mount_point='/tmp/compute',
-                                    account_name=account_name,
-                                    account_key=account_key,
-                                    container=container
-                                    )
+        try:
+            container_group_name = 'compute' + str(int(time.time()))
+            result_file = self._create_container_group(resource_group_name=resource_group_name,
+                                                       name=container_group_name,
+                                                       image=docker_image,
+                                                       location=location,
+                                                       memory=memory,
+                                                       cpu=cpu,
+                                                       algorithm=algorithm_url,
+                                                       asset=asset_url,
+                                                       input_mount_point='/input',
+                                                       output_moint_point='/output',
+                                                       account_name=account_name,
+                                                       account_key=account_key,
+                                                       share_name_input=share_name_input,
+                                                       share_name_output=share_name_output
+                                                       )
+            while self.client.container_groups.get(resource_group_name,
+                                                   container_group_name).provisioning_state != 'Succeeded':
+                logging.info("Waiting to resources ")
+            while self.client.container_groups.get(resource_group_name, container_group_name). \
+                    containers[0].instance_view.current_state.state != 'Terminated':
+                logging.info("Waiting to terminate")
+            self.delete_resources(resource_group_name, container_group_name)
+            return result_file
+        except Exception:
+            logging.error("There was a problem executing your container")
+            raise Exception
 
-        return True
-
-    def create_container_group(self, resource_group_name, name, location, image, memory, cpu, algorithm, asset,
-                               mount_point, account_name, account_key, container):
+    def _create_container_group(self, resource_group_name, name, location, image, memory, cpu, algorithm, asset,
+                                input_mount_point, output_moint_point, account_name, account_key, share_name_input,
+                                share_name_output):
         # setup default values
-        port = 80
-        command = ['python %s/%s %s/%s' % (mount_point, algorithm, mount_point, asset)]
-        env_var_1 = EnvironmentVariable(name='AZURE_STORAGE_ACCOUNT', value=account_name)
-        env_var_2 = EnvironmentVariable(name='AZURE_STORAGE_ACCESS_KEY', value=account_key)
-        env_var_3 = EnvironmentVariable(name='AZURE_STORAGE_ACCOUNT_CONTAINER', value=container)
-        env_var_4 = EnvironmentVariable(name='AZURE_MOUNT_POINT', value=mount_point)
-        environment_variables = [env_var_1, env_var_2, env_var_3, env_var_4]
-        # volume_mount = [VolumeMount(name='config', mount_path='/mnt/test')]
+        result_file = 'result-' + str(int(time.time()))
+        command = ['python', input_mount_point + '/' + algorithm, input_mount_point + '/' + asset,
+                   output_moint_point + '/' + result_file]
+        environment_variables = None
+        az_file_input = AzureFileVolume(share_name=share_name_input,
+                                        storage_account_name=account_name,
+                                        storage_account_key=account_key,
+                                        )
+
+        az_file_output = AzureFileVolume(share_name=share_name_output,
+                                         storage_account_name=account_name,
+                                         storage_account_key=account_key,
+                                         )
+
+        volume = [Volume(name=share_name_input, azure_file=az_file_input),
+                  Volume(name=share_name_output, azure_file=az_file_output)]
+        volume_mount = [VolumeMount(name=share_name_input, mount_path=input_mount_point),
+                        VolumeMount(name=share_name_output, mount_path=output_moint_point)]
 
         # set memory and cpu
         container_resource_requests = ResourceRequests(memory_in_gb=memory, cpu=cpu)
@@ -94,37 +133,27 @@ class Osmosis(object):
                               image=image,
                               resources=container_resource_requirements,
                               command=command,
-                              ports=[ContainerPort(port=port)],
-                              environment_variables=environment_variables
+                              environment_variables=environment_variables,
+                              volume_mounts=volume_mount,
                               )
 
         # defaults for container group
         cgroup_os_type = OperatingSystemTypes.linux
-        cgroup_ip_address = IpAddress(type='public',
-                                      ports=[Port(protocol=ContainerGroupNetworkProtocol.tcp, port=port)])
-        image_registry_credentials = None
 
         cgroup = ContainerGroup(location=location,
                                 containers=[container],
                                 os_type=cgroup_os_type,
-                                ip_address=cgroup_ip_address,
-                                image_registry_credentials=image_registry_credentials,
+                                restart_policy=ContainerGroupRestartPolicy.never,
+                                volumes=volume,
                                 )
 
         self.client.container_groups.create_or_update(resource_group_name, name, cgroup)
-
-    def show_container_group(self, resource_group_name, name):
-        cgroup = self.client.container_groups.get(resource_group_name, name)
-
-        print('\n{0}\t\t\t{1}\t{2}'.format('name', 'location', 'provisioning state'))
-        print('---------------------------------------------------')
-        print('{0}\t\t{1}\t\t{2}'.format(cgroup.name, cgroup.location, cgroup.provisioning_state))
+        return result_file
 
     def delete_resources(self, resource_group_name, container_group_name):
         self.client.container_groups.delete(resource_group_name, container_group_name)
-        self.resource_client.resource_groups.delete(resource_group_name)
 
-    def list_container_groups(self, aci_client, resource_group_name):
+    def list_container_groups(self, resource_group_name):
         """Lists the container groups in the specified resource group.
 
         Arguments:
@@ -135,14 +164,17 @@ class Osmosis(object):
         """
         print("Listing container groups in resource group '{0}'...".format(resource_group_name))
 
-        container_groups = aci_client.container_groups.list_by_resource_group(resource_group_name)
+        container_groups = self.client.container_groups.list_by_resource_group(resource_group_name)
 
         for container_group in container_groups:
             print("  {0}".format(container_group.name))
 
+    def create_file_share(self, share_name, file_name, account_name, local_file, account_key,
+                          directory_name='output', ):
+        fs = FileService(account_name=account_name, account_key=account_key)
+        fs.create_file_from_path(share_name, directory_name, file_name, local_file_path=local_file)
+
     def copy(self, blob_container, blob_url, file_share, file_name, account_name, account_key):
-        # self.copy('testfiles', 'https://testocnfiles.blob.core.windows.net/testfiles/boston.txt', 'boston', 'boston.txt',
-        #      'testocnfiles', 'k2Vk4yfb88WNlWW+W54a8ytJm8MYO1GW9IgiV7TNGKSdmKyVNXzyhiRZ3U1OHRotj/vTYdhJj+ho30HPyJpuYQ==')
         fs = FileService(account_name=account_name, account_key=account_key)
 
         fs.copy_file(file_share,
@@ -150,9 +182,10 @@ class Osmosis(object):
                      file_name,
                      self.generate_sasurl(blob_url, account_name, account_key, blob_container))
 
+    def list_file_shares(self, account_name, account_key, share_name):
+        fs = FileService(account_name=account_name, account_key=account_key)
+        return fs.list_directories_and_files(share_name).items
 
-# osm = Osmosis()
-# osm.list_container_groups(osm.client, 'OceanProtocol')
-# osm.
-# ('OceanProtocol','myapp')
-# osm.exec_container('data.txt', 'algo.py')
+    def delete_file_share(self, account_name, account_key, share_name, file_name, directory_name=''):
+        fs = FileService(account_name=account_name, account_key=account_key)
+        return fs.delete_file(share_name, directory_name, file_name)

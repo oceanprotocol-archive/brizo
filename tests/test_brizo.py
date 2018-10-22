@@ -8,7 +8,7 @@ from squid_py.ocean import Ocean
 from provider.constants import BaseURLs
 from tests.conftest import json_dict, json_request_consume
 
-ocean = Ocean()
+ocean = Ocean(config_file='config_local.ini')
 
 acl_concise = ocean.contracts.auth.contract_concise
 acl = ocean.contracts.auth.contract
@@ -47,9 +47,7 @@ def test_commit_access_requested(client):
     print("recource_id: %s" % asset_id)
     resource_price = 10
     json_dict['assetId'] = ocean.web3.toHex(asset_id)
-    client.post(BaseURLs.BASE_PROVIDER_URL + '/assets/metadata',
-                data=json.dumps(json_dict),
-                content_type='application/json')
+    ocean.metadata.publish_asset_metadata(data=json_dict)
 
     pubprivkey = generate_encryption_keys()
     pubkey = pubprivkey.public_key
@@ -132,7 +130,7 @@ def test_commit_access_requested(client):
     json_request_consume['jwt'] = ocean.web3.toBytes(hexstr=ocean.web3.toHex(decrypted_token)).decode('utf-8')
 
     post = client.post(
-        access_token['service_endpoint'].split('5000')[1] + '/%s' % ocean.web3.toHex(asset_id),
+        access_token['service_endpoint'].split('8030')[1] + '/%s' % ocean.web3.toHex(asset_id),
         data=json.dumps(json_request_consume),
         content_type='application/json')
     print(post.data.decode('utf-8'))
