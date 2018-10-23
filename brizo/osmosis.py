@@ -23,7 +23,8 @@ class Osmosis(object):
         self.client = ContainerInstanceManagementClient(self.credentials, self.subscription_id)
         self.config = Config(config_file)
 
-    def _login_azure_app_token(self, client_id=None, client_secret=None, tenant_id=None):
+    @staticmethod
+    def _login_azure_app_token(client_id=None, client_secret=None, tenant_id=None):
         """
         Authenticate APP using token credentials:
         https://docs.microsoft.com/en-us/python/azure/python-sdk-azure-authenticate?view=azure-python
@@ -39,7 +40,8 @@ class Osmosis(object):
         )
         return credentials
 
-    def generate_sasurl(self, url, account_name, account_key, container):
+    @staticmethod
+    def generate_sasurl(url, account_name, account_key, container):
         bs = BlockBlobService(account_name=account_name,
                               account_key=account_key)
         sas_token = bs.generate_blob_shared_access_signature(container,

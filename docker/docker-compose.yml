@@ -27,7 +27,8 @@ services:
     - artifacts:/keeper-contracts/artifacts/
 
   provider:
-    image: oceanprotocol/provider:develop
+    image: oceanprotocol/provider:feature_move-functionalities-brizo
+
     ports:
     - 5000:5000
     networks:

@@ -5,8 +5,8 @@ from squid_py.acl import decode
 from squid_py.config import Config
 from squid_py.ocean import Ocean
 
-from brizo.constants import ConfigSections
 from brizo.constants import BaseURLs
+from brizo.constants import ConfigSections
 from brizo.filters import Filters
 from brizo.log import setup_logging
 from brizo.myapp import app
@@ -125,9 +125,9 @@ def consume_resource(asset_id):
             url_list = []
             for url in urls:
                 url_list.append(
-                    Osmosis().generate_sasurl(url, config.get(ConfigSections.RESOURCES, 'azure.account.name'),
-                                              config.get(ConfigSections.RESOURCES, 'azure.account.key'),
-                                              config.get(ConfigSections.RESOURCES, 'azure.container')))
+                    Osmosis.generate_sasurl(url, config.get(ConfigSections.RESOURCES, 'azure.account.name'),
+                                            config.get(ConfigSections.RESOURCES, 'azure.account.key'),
+                                            config.get(ConfigSections.RESOURCES, 'azure.container')))
             return jsonify(url_list), 200
         else:
             logging.error('resource server plugin is not supported: %s' % jwt['resource_server_plugin'])
