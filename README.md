@@ -10,7 +10,7 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 
 [![Docker Build Status](https://img.shields.io/docker/build/oceanprotocol/brizo.svg)](https://hub.docker.com/r/oceanprotocol/brizo/) 
 [![Travis (.com)](https://img.shields.io/travis/com/oceanprotocol/brizo.svg)](https://travis-ci.com/oceanprotocol/brizo)
-[![Codacy coverage](https://img.shields.io/codacy/coverage/0fa4c47049434406ad80932712f7ee6f.svg)](https://app.codacy.com/project/ocean-protocol/brizo/dashboard) 
+[![Codacy coverage](https://img.shields.io/codacy/coverage/40dd4c27169a4db4865f72317172bd9e.svg)](https://app.codacy.com/project/ocean-protocol/brizo/dashboard) 
 [![PyPI](https://img.shields.io/pypi/v/ocean-brizo.svg)](https://pypi.org/project/ocean-brizo/) 
 [![GitHub contributors](https://img.shields.io/github/contributors/oceanprotocol/brizo.svg)](https://github.com/oceanprotocol/brizo/graphs/contributors)
 
