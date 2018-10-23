@@ -16,8 +16,16 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 
 ---
 
+**🐲🦑 THERE BE DRAGONS AND SQUIDS. This is in alpha state and you can expect running into problems. If you run into them, please open up [a new issue](https://github.com/oceanprotocol/brizo/issues). 🦑🐲**
+
+---
+
 ## Table of Contents
 
+  - [Features](#features)
+  - [Running Locally, for Dev and Test](#running-locally-for-dev-and-test)
+  - [API documentation](#api-documentation)
+  - [Configuration](#configuration)
   - [Code style](#code-style)
   - [Testing](#testing)
   - [New Version](#new-version)
@@ -113,7 +121,7 @@ In the configuration there are now two sections:
     provider.address =
     provider.account =
     ```
-- resources: In this section we are showing the url in wich the provider is going to be deployed.
+- resources: In this section we are showing the url in wich the provider is going to be deployed. We are assuming that the algorithm and the data are in the same folder for this first approach.
 
     ```yaml
     [resources]

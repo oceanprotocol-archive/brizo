@@ -2,10 +2,10 @@ import json
 import time
 
 from eth_account.messages import defunct_hash_message
+from provider.constants import BaseURLs
 from squid_py.acl import generate_encryption_keys, decode, decrypt
 from squid_py.ocean import Ocean
 
-from provider.constants import BaseURLs
 from tests.conftest import json_dict, json_request_consume
 
 ocean = Ocean(config_file='config_local.ini')
@@ -99,11 +99,11 @@ def test_commit_access_requested(client):
     print('starting buyer balance = ', buyer_balance_start)
     print('starting seller balance = ', seller_balance_start)
 
-    send_payment = market_concise.sendPayment(request_id,
-                                              provider_account,
-                                              resource_price,
-                                              expiry,
-                                              transact={'from': consumer_account, 'gas': 400000})
+    market_concise.sendPayment(request_id,
+                               provider_account,
+                               resource_price,
+                               expiry,
+                               transact={'from': consumer_account, 'gas': 400000})
 
     print('buyer balance = ', token.balanceOf(consumer_account))
     print('seller balance = ', token.balanceOf(provider_account))
@@ -123,7 +123,7 @@ def test_commit_access_requested(client):
 
     fixed_msg = defunct_hash_message(hexstr=ocean.web3.toHex(on_chain_enc_token))
 
-    sig = ocean.helper.split_signature(signature)
+    ocean.helper.split_signature(signature)
     json_request_consume['fixed_msg'] = ocean.web3.toHex(fixed_msg)
     json_request_consume['consumerId'] = consumer_account
     json_request_consume['sigEncJWT'] = ocean.web3.toHex(signature)

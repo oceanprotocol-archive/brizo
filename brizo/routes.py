@@ -1,6 +1,6 @@
 import logging
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, redirect
 from squid_py.acl import decode
 from squid_py.config import Config
 from squid_py.ocean import Ocean
@@ -78,12 +78,27 @@ def consume_resource(asset_id):
         schema:
           type: object
           required:
-            - challenge_id
+            - consumerId
+            - fixed_msg
+            - sigEncJWT
+            - jwt
           properties:
-            challenge_id:
+            consumerId:
               description:
               type: string
               example: '0x0234242345'
+            fixed_msg:
+              description:
+              type: string
+              example: 'fixedmsg'
+            sigEncJWT:
+              description:
+              type: string
+              example: '34tgsdfgv43hr34psdf5bvtqcw45'
+            jwt:
+              description:
+              type: string
+              example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
 
     """
     # Get asset metadata record
