@@ -1,9 +1,10 @@
 import logging
 
-from flask import Blueprint, jsonify, request, redirect
+from flask import Blueprint, jsonify, request
 from squid_py.acl import decode
 from squid_py.config import Config
 from squid_py.ocean import Ocean
+from squid_py.utils.utilities import watch_event, split_signature
 
 from brizo.constants import BaseURLs
 from brizo.constants import ConfigSections
@@ -22,39 +23,39 @@ config = Config(filename=config_file)
 brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
 brizo_url += BaseURLs.ASSETS_URL
 
-provider_address = None if not config.get(ConfigSections.KEEPER_CONTRACTS, 'provider.address') else config.get(
+aquarius_address = None if not config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address') else config.get(
     ConfigSections.KEEPER_CONTRACTS,
-    'provider.address')
+    'aquarius.address')
 ocn = Ocean(config_file=config_file)
 
 
-def get_provider_address_filter():
-    account = ocn.web3.eth.accounts[0] if not config.get(ConfigSections.KEEPER_CONTRACTS, 'provider.address') \
-        else config.get(ConfigSections.KEEPER_CONTRACTS, 'provider.address')
+def get_aquarius_address_filter():
+    account = ocn._web3.eth.accounts[0] if not config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address') \
+        else config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address')
     return {"address": account}
 
 
 filters = Filters(squid=ocn, api_url=brizo_url)
-filter_access_consent = ocn.helper.watch_event(ocn.contracts.auth.contract,
-                                               'AccessConsentRequested',
-                                               filters.commit_access_request,
-                                               0.2,
-                                               fromBlock='latest',
-                                               filters=get_provider_address_filter())
+filter_access_consent = watch_event(ocn.keeper.auth.contract,
+                                    'AccessConsentRequested',
+                                    filters.commit_access_request,
+                                    0.2,
+                                    fromBlock='latest',
+                                    filters=get_aquarius_address_filter())
 
-filter_payment = ocn.helper.watch_event(ocn.contracts.market.contract,
-                                        'PaymentReceived',
-                                        filters.publish_encrypted_token,
-                                        0.2,
-                                        fromBlock='latest',
-                                        filters=get_provider_address_filter())
+filter_payment = watch_event(ocn.keeper.market.contract,
+                             'PaymentReceived',
+                             filters.publish_encrypted_token,
+                             0.2,
+                             fromBlock='latest',
+                             filters=get_aquarius_address_filter())
 
 
 @services.route('/consume/<asset_id>', methods=['POST'])
 def consume_resource(asset_id):
-    """Allows download of asset data file from this provider.
+    """Allows download of asset data file from this aquarius.
 
-    Data file can be stored locally at the provider end or at some cloud storage.
+    Data file can be stored locally at the aquarius end or at some cloud storage.
     It is assumed that the asset is already purchased by the consumer (even for
     free/commons assets, the consumer must still go through the purchase contract
     transaction).
@@ -117,25 +118,25 @@ def consume_resource(asset_id):
             logging.error('Consume failed: required attr %s missing.' % attr)
             return '"%s" is required for registering an asset.' % attr, 400
 
-    contract_instance = ocn.contracts.auth.contract_concise
-    sig = ocn.helper.split_signature(ocn.web3.toBytes(hexstr=data['sigEncJWT']))
+    contract_instance = ocn.keeper.auth.contract_concise
+    sig = split_signature(ocn._web3, ocn._web3.toBytes(hexstr=data['sigEncJWT']))
     jwt = decode(data['jwt'])
 
     if contract_instance.verifyAccessTokenDelivery(jwt['request_id'],  # requestId
-                                                   ocn.web3.toChecksumAddress(data['consumerId']),
+                                                   ocn._web3.toChecksumAddress(data['consumerId']),
                                                    # consumerId
                                                    data['fixed_msg'],
                                                    sig.v,  # sig.v
                                                    sig.r,  # sig.r
                                                    sig.s,  # sig.s
-                                                   transact={'from': ocn.web3.eth.accounts[0] if config.get(
+                                                   transact={'from': ocn._web3.eth.accounts[0] if config.get(
                                                        ConfigSections.KEEPER_CONTRACTS,
-                                                       'provider.account') is '' else config.get(
-                                                       ConfigSections.KEEPER_CONTRACTS, 'provider.account'),
+                                                       'aquarius.account') is '' else config.get(
+                                                       ConfigSections.KEEPER_CONTRACTS, 'aquarius.account'),
                                                              'gas': 4000000}):
         if jwt['resource_server_plugin'] == 'Azure':
             logging.info('reading asset from oceandb: %s' % asset_id)
-            urls = ocn.metadata.get_asset_metadata(asset_id)['base']['contentUrls']
+            urls = get_metadata(ocn.metadata.get_asset_metadata(asset_id))['base']['contentUrls']
             # urls = dao.get(asset_id)['base']['contentUrls']
             url_list = []
             for url in urls:
@@ -153,7 +154,7 @@ def consume_resource(asset_id):
 
 @services.route('/exec', methods=['POST'])
 def exec():
-    """Allows to execute an algorithm inside in a docker instance in the cloud provider.
+    """Allows to execute an algorithm inside in a docker instance in the cloud aquarius.
 
 
     If the publisher of the assets
@@ -231,3 +232,12 @@ def exec():
                               docker_image=data.get('docker_image'),
                               memory=data.get('memory'),
                               cpu=data.get('cpu')), 200
+
+
+def get_metadata(ddo):
+    try:
+        for service in ddo['service']:
+            if service['type'] == 'Metadata':
+                return service['metadata']
+    except Exception as e:
+        logging.error("Error getting the metatada: %s" % e)

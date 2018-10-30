@@ -56,7 +56,7 @@ docker-compose up
 ```
 
 You can see what that runs by reading [docker/docker-compose.yml](docker/docker-compose.yml).
-Note that it runs a Provider instance and MongoDB but the Provider can also work with BigchainDB or Elasticsearch.
+Note that it runs a Aquarius instance and MongoDB but the Aquarius can also work with BigchainDB or Elasticsearch.
 It also runs [Ganache](https://github.com/trufflesuite/ganache) with all [Ocean Protocol Keeper Contracts](https://github.com/oceanprotocol/keeper-contracts) and [Ganache CLI](https://github.com/trufflesuite/ganache-cli).
 
 The most simple way to start is:
@@ -118,10 +118,10 @@ In the configuration there are now two sections:
     market.address =
     auth.address =
     token.address =
-    provider.address =
-    provider.account =
+    aquarius.address =
+    aquarius.account =
     ```
-- resources: In this section we are showing the url in wich the provider is going to be deployed. We are assuming that the algorithm and the data are in the same folder for this first approach.
+- resources: In this section we are showing the url in wich the aquarius is going to be deployed. We are assuming that the algorithm and the data are in the same folder for this first approach.
 
     ```yaml
     [resources]
@@ -133,8 +133,8 @@ In the configuration there are now two sections:
     azure.share.output = output
     azure.location = westus
     
-    ;; These consitute part of the provider url which is used in setting the `api_url` in the `OceanContractsWrapper`
-    provider.url = http://localhost:5000
+    ;; These consitute part of the aquarius url which is used in setting the `api_url` in the `OceanContractsWrapper`
+    aquarius.url = http://localhost:5000
     brizo.url = http://localhost:8030
     ```
 

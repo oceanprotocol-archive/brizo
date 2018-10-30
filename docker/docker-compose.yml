@@ -26,9 +26,8 @@ services:
     volumes:
     - artifacts:/keeper-contracts/artifacts/
 
-  provider:
-    image: oceanprotocol/provider:feature_move-functionalities-brizo
-
+  aquarius:
+    image: oceanprotocol/aquarius:develop
     ports:
     - 5000:5000
     networks:

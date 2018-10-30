@@ -9,8 +9,8 @@ import logging
 class Filters(object):
 
     def __init__(self, squid, api_url):
-        self.contracts = squid.contracts
-        self.web3 = squid.web3
+        self.contracts = squid.keeper
+        self.web3 = squid._web3
         self.dao = squid.metadata
         self.cache = SimpleCache()
         self.encoding_key_pair = generate_encoding_pair()
@@ -77,12 +77,13 @@ class Filters(object):
                 return
             logging.debug('payment id: %s' % request_id)
             c = self.cache.get(request_id)
-            asset_id = c['resource_metadata']['assetId']
+            asset_id = c['resource_metadata']['id']
             iat = time.time()
+            metadata = get_metadata(c['resource_metadata'])
             # TODO Validate that all the values are good.
             plain_jwt = {
                 "iss": c['access_request']['_provider'],
-                "sub": c['resource_metadata']['base']['name'],  # Resource Name
+                "sub": metadata['base']['name'],  # Resource Name
                 "iat": iat,
                 "exp": iat + event['args']['_expire'],
                 "consumer_pubkey": "Consumer Public Key",  # Consumer Public Key
@@ -112,3 +113,11 @@ class Filters(object):
             logging.error('error processing payment event (trying to publish JWT)')
             logging.error(traceback.print_exc())
             return e
+
+def get_metadata(ddo):
+    try:
+        for service in ddo['service']:
+            if service['type'] == 'Metadata':
+                return service['metadata']
+    except Exception as e:
+        logging.error("Error getting the metatada: %s" % e)
