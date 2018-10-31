@@ -153,7 +153,7 @@ def consume_resource(asset_id):
 
 
 @services.route('/exec', methods=['POST'])
-def exec():
+def compute():
     """Allows to execute an algorithm inside in a docker instance in the cloud aquarius.
 
 

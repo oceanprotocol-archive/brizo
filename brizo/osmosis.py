@@ -171,11 +171,6 @@ class Osmosis(object):
         for container_group in container_groups:
             print("  {0}".format(container_group.name))
 
-    def create_file_share(self, share_name, file_name, account_name, local_file, account_key,
-                          directory_name='output', ):
-        fs = FileService(account_name=account_name, account_key=account_key)
-        fs.create_file_from_path(share_name, directory_name, file_name, local_file_path=local_file)
-
     def copy(self, blob_container, blob_url, file_share, file_name, account_name, account_key):
         fs = FileService(account_name=account_name, account_key=account_key)
 
@@ -184,10 +179,18 @@ class Osmosis(object):
                      file_name,
                      self.generate_sasurl(blob_url, account_name, account_key, blob_container))
 
-    def list_file_shares(self, account_name, account_key, share_name):
+    @classmethod
+    def create_file_share(cls, share_name, file_name, account_name, local_file, account_key,
+                          directory_name='output'):
+        fs = FileService(account_name=account_name, account_key=account_key)
+        fs.create_file_from_path(share_name, directory_name, file_name, local_file_path=local_file)
+
+    @classmethod
+    def list_file_shares(cls, account_name, account_key, share_name):
         fs = FileService(account_name=account_name, account_key=account_key)
         return fs.list_directories_and_files(share_name).items
 
-    def delete_file_share(self, account_name, account_key, share_name, file_name, directory_name=''):
+    @classmethod
+    def delete_file_share(cls, account_name, account_key, share_name, file_name, directory_name=''):
         fs = FileService(account_name=account_name, account_key=account_key)
         return fs.delete_file(share_name, directory_name, file_name)
