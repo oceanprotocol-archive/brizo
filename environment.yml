@@ -147,7 +147,7 @@ dependencies:
     - itsdangerous==0.24
     - jinja2==2.10
     - jsonschema==2.5.1
-    - keeper-contracts==0.1.1
+    - keeper-contracts==0.3.12
     - logstats==0.2.1
     - lru-dict==1.1.6
     - markupsafe==1.0
