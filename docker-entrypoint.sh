@@ -14,5 +14,5 @@ auth=$(python -c "import sys, json; print(json.load(open('/usr/local/keeper-cont
 sed -i -e "/token.address =/c token.address = ${token}" /brizo/config.ini
 sed -i -e "/market.address =/c market.address = ${market}" /brizo/config.ini
 sed -i -e "/auth.address =/c auth.address = ${auth}" /brizo/config.ini
-gunicorn -b ${BRIZO_HOST}:${BRIZO_PORT} -w ${BRIZO_WORKERS} brizo.run:app
+gunicorn -b ${BRIZO_URL#*://} -w ${BRIZO_WORKERS} brizo.run:app
 tail -f /dev/null
