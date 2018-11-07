@@ -40,7 +40,7 @@ ENV AQUARIUS_URL='http://0.0.0.0:5000'
 ENV BRIZO_URL='http://0.0.0.0:8030'
 
 # docker-entrypoint.sh configuration file variables
-ENV AQUARIUS_WORKERS='1'
+ENV BRIZO_WORKERS='1'
 
 ENTRYPOINT ["/brizo/docker-entrypoint.sh"]
 
