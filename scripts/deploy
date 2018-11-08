@@ -6,11 +6,11 @@ CONF_FILE=config_local.ini
 #cd $KEEPERDIR
 cp $CONF_TEMPLATE $CONF_FILE
 
-
-market=$(docker exec -it docker_keeper-contracts_1 python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanMarket.development.json', 'r'))['address'])")
-token=$(docker exec -it docker_keeper-contracts_1 python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanToken.development.json', 'r'))['address'])")
-auth=$(docker exec -it docker_keeper-contracts_1 python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanAuth.development.json', 'r'))['address'])")
-didregistry=$(docker exec -it docker_keeper-contracts_1 python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/DIDRegistry.development.json', 'r'))['address'])")
+keeper_container=$(docker ps | grep keeper-contracts | cut -f1 -d' ')
+market=$(docker exec -it $keeper_container python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanMarket.development.json', 'r'))['address'])")
+token=$(docker exec -it $keeper_container python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanToken.development.json', 'r'))['address'])")
+auth=$(docker exec -it $keeper_container python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/OceanAuth.development.json', 'r'))['address'])")
+didregistry=$(docker exec -it $keeper_container python -c "import sys, json; print(json.load(open('/keeper-contracts/artifacts/DIDRegistry.development.json', 'r'))['address'])")
 
 #result=$(docker exec -it docker_keeper-contracts_1 truffle migrate --reset | grep -P 'OceanMarket:|OceanToken:|OceanAuth:')
 #values=$(echo $result | sed 's/OceanToken: /token.address=/' | sed 's/OceanMarket: /\nmarket.address=/' | sed 's/OceanAuth: /\nauth.address=/')
