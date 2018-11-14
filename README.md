@@ -5,7 +5,7 @@
 > Helping to Publishers to expose their services.
 > [oceanprotocol.com](https://oceanprotocol.com)
 
-___"Brizo is an ancient Greek goddess who was known as the protector of mariners, sailors, and fishermen. 
+___"🏄‍♀️🌊 Brizo is an ancient Greek goddess who was known as the protector of mariners, sailors, and fishermen. 
 She was worshipped primarily by the women of Delos, who set out food offerings in small boats. Brizo was also known as a prophet specializing in the interpretation of dreams."___
 
 [![Docker Build Status](https://img.shields.io/docker/build/oceanprotocol/brizo.svg)](https://hub.docker.com/r/oceanprotocol/brizo/) 

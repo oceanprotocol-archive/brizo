@@ -1,6 +1,7 @@
 class ConfigSections:
     KEEPER_CONTRACTS = 'keeper-contracts'
     RESOURCES = 'resources'
+    OSMOSIS = 'osmosis'
 
 
 class BaseURLs:
