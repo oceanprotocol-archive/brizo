@@ -129,7 +129,7 @@ def consume():
     consumes:
       - application/json
     parameters:
-      - name: address
+      - name: consumerAddress
         in: query
         description: The consumer address.
         required: true
@@ -156,16 +156,12 @@ def consume():
     """
     data = request.args
     assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
-    # TODO Generation of the url
-    try:
-        did = ocn.get_did(data.get('serviceAgreementId'))
-    except:
-        return 404
-
-    if ocn.check_permissions(data.get('serviceAgreementId'), data.get('')):
+    # TODO check attributes
+    if ocn.check_permissions(data.get('serviceAgreementId'), cache.get(data.get('serviceAgreementId')),
+                             data.get('consumerAddress')):
         # generate_sasl_url
         osm = Osmosis(config)
-        osm.data_plugin
+        osm.data_plugin.generate_url(data.get('url'))
         return 200
     else:
         return 404
