@@ -1,13 +1,14 @@
 import logging
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request
 from squid_py.config import Config
 from squid_py.ocean.ocean import Ocean
-from squid_py.utils.utilities import watch_event, split_signature
+from squid_py.utils.utilities import split_signature
 from brizo.constants import BaseURLs
 from brizo.constants import ConfigSections
 from brizo.log import setup_logging
 from brizo.myapp import app
 from osmosis_driver_interface.osmosis import Osmosis
+from werkzeug.contrib.cache import SimpleCache
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -18,43 +19,13 @@ config = Config(filename=config_file)
 # Prepare OceanDB
 brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
 brizo_url += BaseURLs.ASSETS_URL
-
-# aquarius_address = None if not config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address') else config.get(
-#     ConfigSections.KEEPER_CONTRACTS,
-#     'aquarius.address')
 ocn = Ocean(config_file=config_file)
+cache = SimpleCache()
 
-
-# def get_aquarius_address_filter():
-#     account = ocn._web3.eth.accounts[0] if not config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address') \
-#         else config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address')
-#     return {"address": account}
-
-#
-# filters = Filters(squid=ocn, api_url=brizo_url)
-# filter_access_consent = watch_event(ocn.keeper.auth.contract,
-#                                     'AccessConsentRequested',
-#                                     filters.commit_access_request,
-#                                     0.2,
-#                                     fromBlock='latest',
-#                                     filters=get_aquarius_address_filter())
-#
-# filter_payment = watch_event(ocn.keeper.market.contract,
-#                              'PaymentReceived',
-#                              filters.publish_encrypted_token,
-#                              0.2,
-#                              fromBlock='latest',
-#                              filters=get_aquarius_address_filter())
-#
-# # filter_locked_payment = watch_event(ocn.keeper.service_agreement.contract,
-# #                                     'PaymentLocked',
-# #                                     filters.grant_access,
-# #                                     0.2,
-# #                                     fromBlock='latest',
-# #                                     filters={"serviceAgreementId": said})
 
 # TODO run in cases of brizo crash or you restart
-ocn.execute_pending_service_agreements()
+# ocn.execute_pending_service_agreements()
+
 
 @services.route('/access/initialize', methods=['POST'])
 def initialize():
@@ -77,7 +48,7 @@ def initialize():
             - serviceAgreementId
             - serviceDefinitionId
             - signature
-            - consumerPublicKey:
+            - consumerAddress:
           properties:
             did:
               description: Identifier of the asset registered in ocean.
@@ -95,8 +66,8 @@ def initialize():
               description: Signature
               type: string
               example: 'cade376598342cdae231321a0097876aeda656a567a67c6767fd8710129a9dc1'
-            consumerPublicKey:
-              description: Consumer public key.
+            consumerAddress:
+              description: Consumer address.
               type: string
               example: '0x00a329c0648769A73afAc7F9381E08FB43dBEA72'
     responses:
@@ -105,11 +76,11 @@ def initialize():
       400:
         description: One of the required attributes is missed.
       404:
-        description: Invalid asset data.
+        description: Invalid signature.
       500:
         description: Error
     """
-    required_attributes = ['did', 'serviceAgreementId', 'serviceDefinitionId', 'signature', 'consumerPublicKey']
+    required_attributes = ['did', 'serviceAgreementId', 'serviceDefinitionId', 'signature', 'consumerAddress']
     assert isinstance(request.json, dict), 'invalid payload format.'
     logging.info('got "consume" request: %s' % request.json)
     data = request.json
@@ -124,26 +95,29 @@ def initialize():
             logging.error('Consume failed: required attr %s missing.' % attr)
             return '"%s" is required for registering an asset.' % attr, 400
 
-    # Check signature
     try:
-        if ocn.check_signature(data.get('signature')):
-            # TODO Retrieve the ddo an update the serviceAgreementId.
-            ocn.metadata.get_asset_metadata(data.get('did'))
-            ocn.execute_service_agreement(sa_id=data.get('serviceAgreementId'),
-                                          signature=data.get('signature'),
-                                          sa_message_hash=,
-                                          consumer_address=,
-                                          ddo=,
-                                          price=,
-                                          timeout=)
-            # TODO Listening for the publisher events from the events section of the service definition.
-
-            return 201
+        # Check signature
+        if ocn.verify_service_agreement_signature(data.get('did'), data.get('serviceAgreementId'),
+                                                  data.get('serviceDefinitionId'),
+                                                  data.get('consumerAddress'), data.get('signature')):
+            cache.add(data.get('serviceAgreementId'), data.get('did'))
+            # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
+            ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
+                                          service_definition_id=data.get('serviceDefinitionId'),
+                                          service_agreement_signature=data.get('signature'),
+                                          did=data.get('did'),
+                                          consumer_address=data.get('consumerAddress'),
+                                          publisher_address=config.get(ConfigSections.RESOURCES,
+                                                                       'publisher.address') if config.get(
+                                              ConfigSections.RESOURCES, 'publisher.address') is not None else
+                                          ocn.get_accounts()[0]
+                                          )
+            return "Service agreement initialize successfully", 201
         else:
-            return 404
+            return "Invalid signature", 404
     except Exception as e:
         logging.error(e)
-        return 500
+        return "Error", 500
 
 
 @services.route('/consume', methods=['POST'])
@@ -188,13 +162,14 @@ def consume():
     except:
         return 404
 
-    if ocn.checkPermissions(data.get('address', did)):
+    if ocn.check_permissions(data.get('serviceAgreementId'), data.get('')):
         # generate_sasl_url
         osm = Osmosis(config)
         osm.data_plugin
         return 200
     else:
         return 404
+
 
 @services.route('/compute', methods=['POST'])
 def compute():
