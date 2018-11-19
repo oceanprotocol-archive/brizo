@@ -46,19 +46,19 @@ def test_brizo(client):
     service_descriptors = [
         ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
-    # ddo = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
-    #
-    # print("did: %s" % asset.did)
-    #
-    # market_concise.requestTokens(2000, transact={'from': consumer_account})
-    #
-    # json_request_initialize = dict()
-    # json_request_initialize['consumerAddress'] = consumer_account
-    # json_request_initialize['did'] = asset.did
-    # json_request_initialize['serviceAgreementId'] =ddo.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
-    # json_request_initialize['serviceDefinitionId'] = ddo.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['serviceDefinitionId']
-    # # json_request_initialize['signature'] = ''  # sa.get_signed_agreement_hash(self._web3, did_to_id(did), service_agreement_id, consumer)[0]
-    # intialize = client.post(BaseURLs.BASE_BRIZO_URL,
-    #                         data=json.dumps(json_request_initialize),
-    #                         content_type='application/json')
+    asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
+
+    print("did: %s" % asset_registered.did)
+
+    market_concise.requestTokens(2000, transact={'from': consumer_account})
+
+    json_request_initialize = dict()
+    json_request_initialize['consumerAddress'] = consumer_account
+    json_request_initialize['did'] = asset_registered.did
+    json_request_initialize['serviceAgreementId'] =asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
+    json_request_initialize['serviceDefinitionId'] = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['serviceDefinitionId']
+    json_request_initialize['signature'] = ''  # sa.get_signed_agreement_hash(self._web3, did_to_id(did), service_agreement_id, consumer)[0]
+    intialize = client.post(BaseURLs.BASE_BRIZO_URL + '/services/access/initialize',
+                            data=json.dumps(json_request_initialize),
+                            content_type='application/json')
 

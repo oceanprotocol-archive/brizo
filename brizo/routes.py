@@ -161,8 +161,7 @@ def consume():
                              data.get('consumerAddress')):
         # generate_sasl_url
         osm = Osmosis(config)
-        osm.data_plugin.generate_url(data.get('url'))
-        return 200
+        return osm.data_plugin.generate_url(data.get('url')), 200
     else:
         return 404
 
