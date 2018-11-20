@@ -44,11 +44,11 @@ def test_brizo(client):
     service_descriptors = [
         ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
-    asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
-
-    print("did: %s" % asset_registered.did)
-
-    market_concise.requestTokens(2000, transact={'from': consumer_account})
+    # asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
+    #
+    # print("did: %s" % asset_registered.did)
+    #
+    # market_concise.requestTokens(2000, transact={'from': consumer_account})
 
     # sa = ServiceAgreement()
     #
