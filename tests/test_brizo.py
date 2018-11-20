@@ -6,12 +6,10 @@ from eth_account.messages import defunct_hash_message
 from squid_py.ocean.asset import Asset
 from squid_py.ocean.ocean import Ocean
 from squid_py.service_agreement.service_factory import ServiceDescriptor
-from squid_py.utils.utilities import watch_event
 from squid_py.service_agreement.service_types import ServiceTypes
 from squid_py.service_agreement.service_agreement import ServiceAgreement
 
 ocean = Ocean(config_file='config_local.ini')
-
 acl_concise = ocean.keeper.auth.contract_concise
 acl = ocean.keeper.auth.contract
 market_concise = ocean.keeper.market.contract_concise
@@ -39,8 +37,8 @@ def process_enc_token(event):
 
 def test_brizo(client):
     expire_seconds = 9999999999
-    consumer_account = ocean._web3.eth.accounts[1]
-    publisher_address = ocean._web3.eth.accounts[0]
+    consumer_account = ocean._web3.eth.accounts[0]
+    publisher_address = ocean._web3.eth.accounts[1]
     asset_price = 10
     # Register asset
     service_descriptors = [
@@ -52,13 +50,25 @@ def test_brizo(client):
 
     market_concise.requestTokens(2000, transact={'from': consumer_account})
 
-    json_request_initialize = dict()
-    json_request_initialize['consumerAddress'] = consumer_account
-    json_request_initialize['did'] = asset_registered.did
-    json_request_initialize['serviceAgreementId'] =asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
-    json_request_initialize['serviceDefinitionId'] = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['serviceDefinitionId']
-    json_request_initialize['signature'] = ''  # sa.get_signed_agreement_hash(self._web3, did_to_id(did), service_agreement_id, consumer)[0]
-    intialize = client.post(BaseURLs.BASE_BRIZO_URL + '/services/access/initialize',
-                            data=json.dumps(json_request_initialize),
-                            content_type='application/json')
+    # sa = ServiceAgreement()
+    #
+    # json_request_initialize = dict()
+    # json_request_initialize['consumerAddress'] = consumer_account
+    # json_request_initialize['did'] = asset_registered.did
+    # json_request_initialize['serviceAgreementId'] = \
+    #     asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
+    # json_request_initialize['serviceDefinitionId'] = \
+    #     asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['serviceDefinitionId']
+    # json_request_initialize['signature'] = \
+    # sa.get_signed_agreement_hash(ocean._web3, asset_registered.did, asset_registered.get_service(
+    #     service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId'], consumer_account)[0]
+    # intialize = client.post(BaseURLs.BASE_BRIZO_URL + '/services/access/initialize',
+    #                         data=json.dumps(json_request_initialize),
+    #                         content_type='application/json')
 
+
+# def test_comsume_url(client):
+#     result = client.get(
+#         BaseURLs.BASE_BRIZO_URL + '/services/consume?url=https://testocnfiles.blob.core.windows.net/testfiles/testzkp.pdf&serviceAgreementId=2&consumerAddress=231', )
+#     print(result.data)
+#     assert result.status_code == 200

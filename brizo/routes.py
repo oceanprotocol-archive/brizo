@@ -120,7 +120,7 @@ def initialize():
         return "Error", 500
 
 
-@services.route('/consume', methods=['POST'])
+@services.route('/consume', methods=['GET'])
 def consume():
     """Allows download of asset data file.
     ---
@@ -160,7 +160,8 @@ def consume():
     if ocn.check_permissions(data.get('serviceAgreementId'), cache.get(data.get('serviceAgreementId')),
                              data.get('consumerAddress')):
         # generate_sasl_url
-        osm = Osmosis(config)
+        cache.delete()
+        osm = Osmosis(config_file)
         return osm.data_plugin.generate_url(data.get('url')), 200
     else:
         return 404
