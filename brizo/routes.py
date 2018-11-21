@@ -101,17 +101,19 @@ def initialize():
                                                   data.get('serviceDefinitionId'),
                                                   data.get('consumerAddress'), data.get('signature')):
             cache.add(data.get('serviceAgreementId'), data.get('did'))
-            logging.info(list(ocn.get_accounts())[1])
             # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
+
+            pub_address = config.get(ConfigSections.RESOURCES, 'publisher.address')
+            if not pub_address:
+                pub_address = list(ocn.get_accounts())[1]
+
             ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
                                           service_definition_id=data.get('serviceDefinitionId'),
                                           service_agreement_signature=data.get('signature'),
                                           did=data.get('did'),
                                           consumer_address=data.get('consumerAddress'),
-                                          publisher_address=config.get(ConfigSections.RESOURCES,
-                                                                       'publisher.address') if config.get(
-                                              ConfigSections.RESOURCES, 'publisher.address') is not None else
-                                          list(ocn.get_accounts())[1]
+                                          publisher_address=pub_address
+
                                           )
             logging.info('executed SA ==========')
             return "Service agreement initialize successfully", 201

@@ -77,17 +77,22 @@ def test_brizo(client):
 def test_consume_url(client):
 
     publisher_address = ocean._web3.eth.accounts[1]
-    consumer_account = ocean._web3.eth.accounts[0] #ocean._web3.toChecksumAddress('0x00bd138abd70e2f00903268f3db08f2d25677c9e')
+    consumer_account = ocean._web3.eth.accounts[0]
     asset_price = 10
     service_descriptors = [
-        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)]
-   
+        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)
+    ]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
     asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
-    slaTemplateId = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
-    
-
-    result = client.get(
-        BaseURLs.BASE_BRIZO_URL + '/services/consume?url=https://testocnfiles.blob.core.windows.net/testfiles/testzkp.pdf&serviceAgreementId='+ slaTemplateId +'&consumerAddress='+ consumer_account, )
+    sla_template_id = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
+    azure_url = (
+        BaseURLs.BASE_BRIZO_URL +
+        '/services/consume?url=https://testocnfiles.blob.core.windows.net/testfiles/testzkp.pdf&serviceAgreementId=' +
+        sla_template_id +
+        '&consumerAddress=' +
+        consumer_account
+    )
+    print('azure url: ', azure_url)
+    result = client.get(azure_url)
     print(result.data)
     assert result.status_code == 200
