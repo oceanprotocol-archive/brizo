@@ -101,6 +101,7 @@ def initialize():
                                                   data.get('serviceDefinitionId'),
                                                   data.get('consumerAddress'), data.get('signature')):
             cache.add(data.get('serviceAgreementId'), data.get('did'))
+            logging.info(list(ocn.get_accounts())[1])
             # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
             ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
                                           service_definition_id=data.get('serviceDefinitionId'),
@@ -110,8 +111,9 @@ def initialize():
                                           publisher_address=config.get(ConfigSections.RESOURCES,
                                                                        'publisher.address') if config.get(
                                               ConfigSections.RESOURCES, 'publisher.address') is not None else
-                                          ocn.get_accounts()[0]
+                                          list(ocn.get_accounts())[1]
                                           )
+            logging.info('executed SA ==========')
             return "Service agreement initialize successfully", 201
         else:
             return "Invalid signature", 404
@@ -160,7 +162,7 @@ def consume():
     if ocn.check_permissions(data.get('serviceAgreementId'), cache.get(data.get('serviceAgreementId')),
                              data.get('consumerAddress')):
         # generate_sasl_url
-        cache.delete()
+        cache.delete(data.get('serviceAgreementId'))
         osm = Osmosis(config_file)
         return osm.data_plugin.generate_url(data.get('url')), 200
     else:
