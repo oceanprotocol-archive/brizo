@@ -7,13 +7,28 @@ from brizo.constants import BaseURLs
 from brizo.constants import ConfigSections
 from brizo.myapp import app
 from brizo.routes import services
+import configparser
+
+
+def get_version():
+    conf = configparser.ConfigParser()
+    conf.read('.bumpversion.cfg')
+    return conf['bumpversion']['current_version']
+
+
+@app.route("/")
+def version():
+    info = dict()
+    info['software'] = "Brizo"
+    info['version'] = get_version()
+    return jsonify(info)
 
 
 @app.route("/spec")
 def spec():
     swag = swagger(app)
     swag['info']['version'] = "1.0"
-    swag['info']['title'] = "Ocean-brizo"
+    swag['info']['title'] = get_version()
     return jsonify(swag)
 
 

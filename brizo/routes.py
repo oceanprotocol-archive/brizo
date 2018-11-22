@@ -1,17 +1,14 @@
 import logging
-
-from flask import Blueprint, jsonify, request
-from squid_py.acl import decode
+from flask import Blueprint, request
 from squid_py.config import Config
-from squid_py.ocean import Ocean
-from squid_py.utils.utilities import watch_event, split_signature
-
+from squid_py.ocean.ocean import Ocean
+from squid_py.utils.utilities import split_signature
 from brizo.constants import BaseURLs
 from brizo.constants import ConfigSections
-from brizo.filters import Filters
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.osmosis import Osmosis
+from osmosis_driver_interface.osmosis import Osmosis
+from werkzeug.contrib.cache import SimpleCache
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -22,88 +19,68 @@ config = Config(filename=config_file)
 # Prepare OceanDB
 brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
 brizo_url += BaseURLs.ASSETS_URL
-
-aquarius_address = None if not config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address') else config.get(
-    ConfigSections.KEEPER_CONTRACTS,
-    'aquarius.address')
 ocn = Ocean(config_file=config_file)
+cache = SimpleCache()
 
 
-def get_aquarius_address_filter():
-    account = ocn._web3.eth.accounts[0] if not config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address') \
-        else config.get(ConfigSections.KEEPER_CONTRACTS, 'aquarius.address')
-    return {"address": account}
+# TODO run in cases of brizo crash or you restart
+# ocn.execute_pending_service_agreements()
 
 
-filters = Filters(squid=ocn, api_url=brizo_url)
-filter_access_consent = watch_event(ocn.keeper.auth.contract,
-                                    'AccessConsentRequested',
-                                    filters.commit_access_request,
-                                    0.2,
-                                    fromBlock='latest',
-                                    filters=get_aquarius_address_filter())
-
-filter_payment = watch_event(ocn.keeper.market.contract,
-                             'PaymentReceived',
-                             filters.publish_encrypted_token,
-                             0.2,
-                             fromBlock='latest',
-                             filters=get_aquarius_address_filter())
-
-
-@services.route('/consume/<asset_id>', methods=['POST'])
-def consume_resource(asset_id):
-    """Allows download of asset data file from this aquarius.
-
-    Data file can be stored locally at the aquarius end or at some cloud storage.
-    It is assumed that the asset is already purchased by the consumer (even for
-    free/commons assets, the consumer must still go through the purchase contract
-    transaction).
+@services.route('/access/initialize', methods=['POST'])
+def initialize():
+    """Initialize the SLA between the puvblisher and the consumer.
 
     ---
     tags:
       - services
-
     consumes:
       - application/json
     parameters:
-      - name: asset_id
-        in: path
-        description: ID of the asset.
-        required: true
-        type: string
       - in: body
         name: body
         required: true
-        description: Asset metadata.
+        description: Service agreement initialization.
         schema:
           type: object
           required:
-            - consumerId
-            - fixed_msg
-            - sigEncJWT
-            - jwt
+            - did
+            - serviceAgreementId
+            - serviceDefinitionId
+            - signature
+            - consumerAddress:
           properties:
-            consumerId:
-              description:
+            did:
+              description: Identifier of the asset registered in ocean.
               type: string
-              example: '0x0234242345'
-            fixed_msg:
-              description:
+              example: 'did:op:08a429b8529856d59867503f8056903a680935a76950bb9649785cc97869a43d'
+            serviceAgreementId:
+              description: Identifier of the service agreement.
               type: string
-              example: 'fixedmsg'
-            sigEncJWT:
-              description:
+              example: 'bb23s87856d59867503f80a690357406857698570b964ac8dcc9d86da4ada010'
+            serviceDefinitionId:
+              description: Identifier of the service definition.
               type: string
-              example: '34tgsdfgv43hr34psdf5bvtqcw45'
-            jwt:
-              description:
+              example: '0'
+            signature:
+              description: Signature
               type: string
-              example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
-
+              example: 'cade376598342cdae231321a0097876aeda656a567a67c6767fd8710129a9dc1'
+            consumerAddress:
+              description: Consumer address.
+              type: string
+              example: '0x00a329c0648769A73afAc7F9381E08FB43dBEA72'
+    responses:
+      201:
+        description: Service agreement initialize successfully.
+      400:
+        description: One of the required attributes is missed.
+      404:
+        description: Invalid signature.
+      500:
+        description: Error
     """
-    # Get asset metadata record
-    required_attributes = ['consumerId', 'fixed_msg', 'sigEncJWT', 'jwt']
+    required_attributes = ['did', 'serviceAgreementId', 'serviceDefinitionId', 'signature', 'consumerAddress']
     assert isinstance(request.json, dict), 'invalid payload format.'
     logging.info('got "consume" request: %s' % request.json)
     data = request.json
@@ -118,41 +95,83 @@ def consume_resource(asset_id):
             logging.error('Consume failed: required attr %s missing.' % attr)
             return '"%s" is required for registering an asset.' % attr, 400
 
-    contract_instance = ocn.keeper.auth.contract_concise
-    sig = split_signature(ocn._web3, ocn._web3.toBytes(hexstr=data['sigEncJWT']))
-    jwt = decode(data['jwt'])
+    try:
+        # Check signature
+        if ocn.verify_service_agreement_signature(data.get('did'), data.get('serviceAgreementId'),
+                                                  data.get('serviceDefinitionId'),
+                                                  data.get('consumerAddress'), data.get('signature')):
+            cache.add(data.get('serviceAgreementId'), data.get('did'))
+            # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
 
-    if contract_instance.verifyAccessTokenDelivery(jwt['request_id'],  # requestId
-                                                   ocn._web3.toChecksumAddress(data['consumerId']),
-                                                   # consumerId
-                                                   data['fixed_msg'],
-                                                   sig.v,  # sig.v
-                                                   sig.r,  # sig.r
-                                                   sig.s,  # sig.s
-                                                   transact={'from': ocn._web3.eth.accounts[0] if config.get(
-                                                       ConfigSections.KEEPER_CONTRACTS,
-                                                       'aquarius.account') is '' else config.get(
-                                                       ConfigSections.KEEPER_CONTRACTS, 'aquarius.account'),
-                                                             'gas': 4000000}):
-        if jwt['resource_server_plugin'] == 'Azure':
-            logging.info('reading asset from oceandb: %s' % asset_id)
-            urls = get_metadata(ocn.metadata.get_asset_metadata(asset_id))['base']['contentUrls']
-            # urls = dao.get(asset_id)['base']['contentUrls']
-            url_list = []
-            for url in urls:
-                url_list.append(
-                    Osmosis.generate_sasurl(url, config.get(ConfigSections.RESOURCES, 'azure.account.name'),
-                                            config.get(ConfigSections.RESOURCES, 'azure.account.key'),
-                                            config.get(ConfigSections.RESOURCES, 'azure.container')))
-            return jsonify(url_list), 200
+            pub_address = config.get(ConfigSections.RESOURCES, 'publisher.address')
+            if not pub_address:
+                pub_address = list(ocn.get_accounts())[1]
+
+            ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
+                                          service_definition_id=data.get('serviceDefinitionId'),
+                                          service_agreement_signature=data.get('signature'),
+                                          did=data.get('did'),
+                                          consumer_address=data.get('consumerAddress'),
+                                          publisher_address=pub_address
+
+                                          )
+            logging.info('executed SA ==========')
+            return "Service agreement initialize successfully", 201
         else:
-            logging.error('resource server plugin is not supported: %s' % jwt['resource_server_plugin'])
-            return '"%s error generating the sasurl.' % asset_id, 404
+            return "Invalid signature", 404
+    except Exception as e:
+        logging.error(e)
+        return "Error", 500
+
+
+@services.route('/consume', methods=['GET'])
+def consume():
+    """Allows download of asset data file.
+    ---
+    tags:
+      - services
+    consumes:
+      - application/json
+    parameters:
+      - name: consumerAddress
+        in: query
+        description: The consumer address.
+        required: true
+        type: string
+      - name: serviceAgreementId
+        in: query
+        description: The service agreement id.
+        required: true
+        type: string
+      - name: url
+        in: query
+        description: This URL is only valid if BRIZO acts as a proxy. Consumer can't download using the URL if it's not through Brizo.
+        required: true
+        type: string
+    responses:
+      200:
+        description: Download valid url.
+      400:
+        description: One of the required attributes is missed.
+      404:
+        description: Invalid asset data.
+      500:
+        description: Error
+    """
+    data = request.args
+    assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
+    # TODO check attributes
+    if ocn.check_permissions(data.get('serviceAgreementId'), cache.get(data.get('serviceAgreementId')),
+                             data.get('consumerAddress')):
+        # generate_sasl_url
+        cache.delete(data.get('serviceAgreementId'))
+        osm = Osmosis(config_file)
+        return osm.data_plugin.generate_url(data.get('url')), 200
     else:
-        return '"%s error generating the sasurl.' % asset_id, 404
+        return 404
 
 
-@services.route('/exec', methods=['POST'])
+@services.route('/compute', methods=['POST'])
 def compute():
     """Allows to execute an algorithm inside in a docker instance in the cloud aquarius.
 
@@ -218,20 +237,29 @@ def compute():
             logging.error('Consume failed: required attr %s missing.' % attr)
             return '"%s" is required for registering an asset.' % attr, 400
 
-    osm = Osmosis()
-    return osm.exec_container(asset_url=data.get('asset_did'),
-                              algorithm_url=data.get('algorithm_did'),
-                              resource_group_name=config.get(ConfigSections.RESOURCES, 'azure.resource_group'),
-                              account_name=config.get(ConfigSections.RESOURCES, 'azure.account.name'),
-                              account_key=config.get(ConfigSections.RESOURCES, 'azure.account.key'),
-                              share_name_input=config.get(ConfigSections.RESOURCES, 'azure.share.input'),
-                              share_name_output=config.get(ConfigSections.RESOURCES, 'azure.share.output'),
-                              location=config.get(ConfigSections.RESOURCES, 'azure.location'),
-                              # input_mount_point=data.get('input_mount_point'),
-                              # output_mount_point=data.get('output_mount_point'),
-                              docker_image=data.get('docker_image'),
-                              memory=data.get('memory'),
-                              cpu=data.get('cpu')), 200
+    osm = Osmosis(config_file)
+    # TODO use this two asigment in the exec_container to use directly did instead of the name
+    # asset_url = _parse_url(get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base']['contentUrls'][0]).file
+    # algorithm_url = _parse_url(
+    #     get_metadata(ocn.assets.get_ddo(data.get('algorithm_url')))['base']['contentUrls'][0]).file
+    # share_name_input = _parse_url(
+    #     get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base']['contentUrls'][0]).file_share
+    return osm.computing_plugin.exec_container(asset_url=data.get('asset_did'),
+                                               algorithm_url=data.get('algorithm_did'),
+                                               resource_group_name=config.get(ConfigSections.OSMOSIS,
+                                                                              'azure.resource_group'),
+                                               account_name=config.get(ConfigSections.OSMOSIS, 'azure.account.name'),
+                                               account_key=config.get(ConfigSections.OSMOSIS, 'azure.account.key'),
+                                               share_name_input=config.get(ConfigSections.OSMOSIS,
+                                                                           'azure.share.input'),
+                                               share_name_output=config.get(ConfigSections.OSMOSIS,
+                                                                            'azure.share.output'),
+                                               location=config.get(ConfigSections.OSMOSIS, 'azure.location'),
+                                               # input_mount_point=data.get('input_mount_point'),
+                                               # output_mount_point=data.get('output_mount_point'),
+                                               docker_image=data.get('docker_image'),
+                                               memory=data.get('memory'),
+                                               cpu=data.get('cpu')), 200
 
 
 def get_metadata(ddo):
