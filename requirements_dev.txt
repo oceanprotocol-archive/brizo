@@ -130,7 +130,7 @@ isodate==0.6.0
 itsdangerous==0.24
 Jinja2==2.10
 jsonschema==2.5.1
-keeper-contracts==0.3.12
+keeper-contracts==0.3.25
 logstats==0.2.1
 lru-dict==1.1.6
 MarkupSafe==1.0
