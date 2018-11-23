@@ -30,6 +30,13 @@ if [ -z "${DIDREGISTRY_ADDRESS}" ]; then
   sed -i -e "/didregistry.address =/c didregistry.address = ${did}" /brizo/config.ini
 fi
 
+cat <<EOF
+  MARKET_ADDRESS: ${MARKET_ADDRESS:-$market}
+  AUTH_ADDRESS: ${AUTH_ADDRESS:-$auth}
+  TOKEN_ADDRESS: ${TOKEN_ADDRESS:-$token}
+  DIDREGISTRY_ADDRESS: ${DIDREGISTRY_ADDRESS:-$did}
+EOF
+
 /bin/cp -rp /usr/local/keeper-contracts/* /usr/local/artifacts/
 
 gunicorn -b ${BRIZO_URL#*://} -w ${BRIZO_WORKERS} brizo.run:app
