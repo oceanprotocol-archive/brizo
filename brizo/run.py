@@ -27,8 +27,8 @@ def version():
 @app.route("/spec")
 def spec():
     swag = swagger(app)
-    swag['info']['version'] = "1.0"
-    swag['info']['title'] = get_version()
+    swag['info']['version'] = get_version()
+    swag['info']['title'] = "Brizo"
     return jsonify(swag)
 
 
