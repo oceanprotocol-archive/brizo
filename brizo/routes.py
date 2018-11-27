@@ -155,17 +155,20 @@ def consume():
         description: Error
     """
     try:
-      data = request.args
-      assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
-      # TODO check attributes
-      if ocn.check_permissions(data.get('serviceAgreementId'), cache.get(data.get('serviceAgreementId')),
-                              data.get('consumerAddress')):
-          # generate_sasl_url
-          cache.delete(data.get('serviceAgreementId'))
-          osm = Osmosis(config_file)
-          return osm.data_plugin.generate_url(data.get('url')), 200
-      else:
-          return "Invalid consumer address and/or service agreement id", 404
+        data = request.args
+        assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
+        # TODO check attributes
+        if ocn.check_permissions(
+                data.get('serviceAgreementId'),
+                cache.get(data.get('serviceAgreementId')),
+                data.get('consumerAddress')):
+            # generate_sasl_url
+            cache.delete(data.get('serviceAgreementId'))
+            osm = Osmosis(config_file)
+            result = osm.data_plugin.generate_url(data.get('url'))
+            return result, 200
+        else:
+            return "Invalid consumer address and/or service agreement id", 404
     except Exception as e:
         logging.error("Error- " + str(e))
         return "Error : " + str(e), 500
