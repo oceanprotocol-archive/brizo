@@ -272,6 +272,7 @@ def get_metadata(ddo):
     except Exception as e:
         logging.error("Error getting the metatada: %s" % e)
 
+
 def get_env_property(env_variable, property_name):
-  return os.getenv(env_variable,
-                   config.get(ConfigSections.OSMOSIS, property_name))
+    return getenv(env_variable,
+                  config.get(ConfigSections.OSMOSIS, property_name))
