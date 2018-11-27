@@ -1,4 +1,5 @@
 import logging
+from os import getenv
 from flask import Blueprint, request
 from squid_py.config import Config
 from squid_py.ocean.ocean import Ocean
@@ -250,15 +251,12 @@ def compute():
     #     get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base']['contentUrls'][0]).file_share
     return osm.computing_plugin.exec_container(asset_url=data.get('asset_did'),
                                                algorithm_url=data.get('algorithm_did'),
-                                               resource_group_name=config.get(ConfigSections.OSMOSIS,
-                                                                              'azure.resource_group'),
-                                               account_name=config.get(ConfigSections.OSMOSIS, 'azure.account.name'),
-                                               account_key=config.get(ConfigSections.OSMOSIS, 'azure.account.key'),
-                                               share_name_input=config.get(ConfigSections.OSMOSIS,
-                                                                           'azure.share.input'),
-                                               share_name_output=config.get(ConfigSections.OSMOSIS,
-                                                                            'azure.share.output'),
-                                               location=config.get(ConfigSections.OSMOSIS, 'azure.location'),
+                                               resource_group_name=get_env_property('AZURE_RESOURCE_GROUP', 'azure.resource_group'),
+                                               account_name=get_env_property('AZURE_ACCOUNT_NAME', 'azure.account.name'),
+                                               account_key=get_env_property('AZURE_ACCOUNT_KEY', 'azure.account.key'),
+                                               share_name_input=get_env_property('AZURE_SHARE_INPUT', 'azure.share.input'),
+                                               share_name_output=get_env_property('AZURE_SHARE_OUTPUT', 'azure.share.output'),
+                                               location=get_env_property('AZURE_LOCATION', 'azure.location'),
                                                # input_mount_point=data.get('input_mount_point'),
                                                # output_mount_point=data.get('output_mount_point'),
                                                docker_image=data.get('docker_image'),
@@ -273,3 +271,7 @@ def get_metadata(ddo):
                 return service['metadata']
     except Exception as e:
         logging.error("Error getting the metatada: %s" % e)
+
+def get_env_property(env_variable, property_name):
+  return os.getenv(env_variable,
+                   config.get(ConfigSections.OSMOSIS, property_name))
