@@ -1,3 +1,4 @@
+import os
 import time
 
 from squid_py.service_agreement.register_service_agreement import register_service_agreement
@@ -89,6 +90,7 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     print(initialize.status_code)
     assert initialize.status_code == 201
     assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is False, ''
+    # wait a bit until all service agreement events are processed
     time.sleep(15)
     assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is True, ''
     print('Service agreement executed and fulfilled, all good.')

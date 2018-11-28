@@ -157,7 +157,17 @@ def consume():
     try:
         data = request.args
         assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
-        # TODO check attributes
+
+        required_attributes = ['serviceAgreementId', 'consumerAddress', 'url']
+        if not data:
+            logging.error('Consume failed: data is empty.')
+            return 'No query arguments found.', 400
+
+        for attr in required_attributes:
+            if attr not in data:
+                logging.error('Consume failed: required attr "%s" missing.' % attr)
+                return '"%s" is required for consuming an asset.' % attr, 400
+
         if ocn.check_permissions(
                 data.get('serviceAgreementId'),
                 cache.get(data.get('serviceAgreementId')),

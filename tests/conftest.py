@@ -39,6 +39,7 @@ def consumer_ocean_instance():
 
 
 def init_ocn_tokens(ocn, amount=100):
+    ocn.keeper.market.unlock_account(ocn.main_account)
     ocn.keeper.market.contract_concise.requestTokens(amount, transact={'from': ocn.main_account.address})
     ocn.keeper.market.unlock_account(ocn.main_account)
     ocn.keeper.token.contract_concise.approve(
