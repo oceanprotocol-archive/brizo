@@ -80,45 +80,47 @@ def initialize():
       500:
         description: Error
     """
-    required_attributes = ['did', 'serviceAgreementId', 'serviceDefinitionId', 'signature', 'consumerAddress']
-    assert isinstance(request.json, dict), 'invalid payload format.'
-    logging.info('got "consume" request: %s' % request.json)
-    data = request.json
-    if not data:
-        logging.error('Consume failed: data is empty.')
-        return 'payload seems empty.', 400
-
-    assert isinstance(data, dict), 'invalid `body` type, should already formatted into a dict.'
-
-    for attr in required_attributes:
-        if attr not in data:
-            logging.error('Consume failed: required attr %s missing.' % attr)
-            return '"%s" is required for registering an asset.' % attr, 400
-
     try:
-        # Check signature
-        if ocn.verify_service_agreement_signature(data.get('did'), data.get('serviceAgreementId'),
-                                                  data.get('serviceDefinitionId'),
-                                                  data.get('consumerAddress'), data.get('signature')):
-            cache.add(data.get('serviceAgreementId'), data.get('did'))
-            # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
+      required_attributes = ['did', 'serviceAgreementId', 'serviceDefinitionId', 'signature', 'consumerAddress']
+      assert isinstance(request.json, dict), 'invalid payload format.'
+      logging.info('got "consume" request: %s' % request.json)
+      data = request.json
+      if not data:
+          logging.error('Consume failed: data is empty.')
+          return 'payload seems empty.', 400
 
-            pub_address = config.get(ConfigSections.RESOURCES, 'publisher.address')
-            if not pub_address:
-                pub_address = list(ocn.get_accounts())[1]
+      assert isinstance(data, dict), 'invalid `body` type, should already formatted into a dict.'
+      logging.info('going to check required attributes')
+      for attr in required_attributes:
+          if attr not in data:
+              logging.error('Consume failed: required attr %s missing.' % attr)
+              return '"%s" is required for registering an asset.' % attr, 400   # Check signature
+      if ocn.verify_service_agreement_signature(data.get('did'), data.get('serviceAgreementId'),
+                                                data.get('serviceDefinitionId'),
+                                                data.get('consumerAddress'), data.get('signature')):
+        logging.info('SA signature is verified successfully')                                        
+        cache.add(data.get('serviceAgreementId'), data.get('did'))
+        # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
 
-            ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
-                                          service_definition_id=data.get('serviceDefinitionId'),
-                                          service_agreement_signature=data.get('signature'),
-                                          did=data.get('did'),
-                                          consumer_address=data.get('consumerAddress'),
-                                          publisher_address=pub_address
+        logging.info('getting publisher address')
+        pub_address = config.get(ConfigSections.RESOURCES, 'publisher.address')
+        if not pub_address:
+            pub_address = list(ocn.get_accounts())[1]
 
-                                          )
-            logging.info('executed SA ==========')
-            return "Service agreement initialize successfully", 201
-        else:
-            return "Invalid signature", 404
+        logging.info('going to execute SA')
+        ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
+                                      service_definition_id=data.get('serviceDefinitionId'),
+                                      service_agreement_signature=data.get('signature'),
+                                      did=data.get('did'),
+                                      consumer_address=data.get('consumerAddress'),
+                                      publisher_address=pub_address
+
+                                      )
+        logging.info('executed SA')
+        return "Service agreement initialize successfully", 201
+      else:
+        logging.info('invalid signature')
+        return "Invalid signature", 404
     except Exception as e:
         logging.error(e)
         return "Error : " + str(e), 500

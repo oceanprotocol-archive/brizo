@@ -1,3 +1,4 @@
+'''
 import json
 
 from brizo.constants import BaseURLs
@@ -13,10 +14,18 @@ def test_compute_on_cloud(client):
                                                        False,
                                                        config.get('azure.account.name')
                                                        ))
+    print(list(osm.data_plugin.list(config.get('azure.share.output'),
+                                    False,
+                                    config.get('azure.account.name'))))                                                   
     post = client.post(BaseURLs.BASE_BRIZO_URL + '/services/compute',
                        data=json.dumps(json_brizo),
                        content_type='application/json')
+
+    print(list(osm.data_plugin.list(config.get('azure.share.output'),
+                                    False,
+                                    config.get('azure.account.name'))))
     assert len(osm.data_plugin.list(config.get('azure.share.output'),
                                     False,
                                     config.get('azure.account.name'))) == elements_before_compute + 1
     osm.data_plugin.delete('https://testocnfiles.file.core.windows.net/output/' + post.data.decode('utf-8'))
+'''

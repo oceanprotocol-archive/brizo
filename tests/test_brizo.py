@@ -41,9 +41,10 @@ def test_brizo(client):
     consumer_account = ocean._web3.eth.accounts[1] #ocean._web3.toChecksumAddress('0x00bd138abd70e2f00903268f3db08f2d25677c9e')
     publisher_address = ocean._web3.eth.accounts[1]
     asset_price = 10
+    templateId = '0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a11'
     # Register asset
     service_descriptors = [
-        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)]
+        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600, templateId)]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
     asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
     
@@ -79,8 +80,9 @@ def test_consume_url(client):
     publisher_address = ocean._web3.eth.accounts[1]
     consumer_account = ocean._web3.eth.accounts[0]
     asset_price = 10
+    templateId = '0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a11'
     service_descriptors = [
-        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)
+        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600, templateId)
     ]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
     asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
