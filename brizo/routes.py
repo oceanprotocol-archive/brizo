@@ -1,6 +1,6 @@
 import logging
 from os import getenv
-from flask import Blueprint, request
+from flask import Blueprint, request, redirect
 from squid_py.config import Config
 from squid_py.ocean.ocean import Ocean
 from brizo.constants import BaseURLs
@@ -146,8 +146,8 @@ def consume():
         required: true
         type: string
     responses:
-      200:
-        description: Download valid url.
+      302:
+        description: Redirect to valid asset url.
       400:
         description: One of the required attributes is missed.
       404:
@@ -177,7 +177,7 @@ def consume():
             cache.delete(data.get('serviceAgreementId'))
             osm = Osmosis(config_file)
             result = osm.data_plugin.generate_url(data.get('url'))
-            return result, 200
+            return redirect(result, code=302)
         else:
             return "Invalid consumer address and/or service agreement id", 404
     except Exception as e:
