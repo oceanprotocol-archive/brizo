@@ -3,7 +3,6 @@ from os import getenv
 from flask import Blueprint, request
 from squid_py.config import Config
 from squid_py.ocean.ocean import Ocean
-from squid_py.utils.utilities import split_signature
 from brizo.constants import BaseURLs
 from brizo.constants import ConfigSections
 from brizo.log import setup_logging
@@ -21,6 +20,7 @@ config = Config(filename=config_file)
 brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
 brizo_url += BaseURLs.ASSETS_URL
 ocn = Ocean(config_file=config_file)
+
 cache = SimpleCache()
 
 
@@ -104,16 +104,12 @@ def initialize():
             cache.add(data.get('serviceAgreementId'), data.get('did'))
             # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
 
-            pub_address = config.get(ConfigSections.RESOURCES, 'publisher.address')
-            if not pub_address:
-                pub_address = list(ocn.get_accounts())[1]
-
             ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
-                                          service_definition_id=data.get('serviceDefinitionId'),
+                                          service_index=data.get('serviceDefinitionId'),
                                           service_agreement_signature=data.get('signature'),
                                           did=data.get('did'),
                                           consumer_address=data.get('consumerAddress'),
-                                          publisher_address=pub_address
+                                          publisher_address=ocn.main_account.address
 
                                           )
             logging.info('executed SA ==========')
@@ -160,17 +156,30 @@ def consume():
         description: Error
     """
     try:
-      data = request.args
-      assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
-      # TODO check attributes
-      if ocn.check_permissions(data.get('serviceAgreementId'), cache.get(data.get('serviceAgreementId')),
-                              data.get('consumerAddress')):
-          # generate_sasl_url
-          cache.delete(data.get('serviceAgreementId'))
-          osm = Osmosis(config_file)
-          return osm.data_plugin.generate_url(data.get('url')), 200
-      else:
-          return "Invalid consumer address and/or service agreement id", 404
+        data = request.args
+        assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
+
+        required_attributes = ['serviceAgreementId', 'consumerAddress', 'url']
+        if not data:
+            logging.error('Consume failed: data is empty.')
+            return 'No query arguments found.', 400
+
+        for attr in required_attributes:
+            if attr not in data:
+                logging.error('Consume failed: required attr "%s" missing.' % attr)
+                return '"%s" is required for consuming an asset.' % attr, 400
+
+        if ocn.check_permissions(
+                data.get('serviceAgreementId'),
+                cache.get(data.get('serviceAgreementId')),
+                data.get('consumerAddress')):
+            # generate_sasl_url
+            cache.delete(data.get('serviceAgreementId'))
+            osm = Osmosis(config_file)
+            result = osm.data_plugin.generate_url(data.get('url'))
+            return result, 200
+        else:
+            return "Invalid consumer address and/or service agreement id", 404
     except Exception as e:
         logging.error("Error- " + str(e))
         return "Error : " + str(e), 500

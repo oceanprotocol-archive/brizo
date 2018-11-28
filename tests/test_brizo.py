@@ -1,20 +1,36 @@
-import json
+import os
 import time
 
-from brizo.constants import BaseURLs
-from eth_account.messages import defunct_hash_message
+from squid_py.service_agreement.register_service_agreement import register_service_agreement
+from squid_py.service_agreement.service_agreement_template import ServiceAgreementTemplate
+from squid_py.service_agreement.utils import get_sla_template_path, register_service_agreement_template
+from squid_py.utils.utilities import prepare_purchase_payload, get_metadata_url
 from squid_py.ocean.asset import Asset
-from squid_py.ocean.ocean import Ocean
 from squid_py.service_agreement.service_factory import ServiceDescriptor
 from squid_py.service_agreement.service_types import ServiceTypes
-from squid_py.service_agreement.service_agreement import ServiceAgreement
 
-ocean = Ocean(config_file='config_local.ini')
-acl_concise = ocean.keeper.auth.contract_concise
-acl = ocean.keeper.auth.contract
-market_concise = ocean.keeper.market.contract_concise
-market = ocean.keeper.market.contract
-token = ocean.keeper.token.contract_concise
+from brizo.constants import BaseURLs
+
+PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
+SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
+
+
+def get_registered_ddo(ocean_instance, price):
+    # register an AssetAccess service agreement template
+    sla_template = ServiceAgreementTemplate.from_json_file(get_sla_template_path())
+    template_id = register_service_agreement_template(
+        ocean_instance.keeper.service_agreement, ocean_instance.keeper.contract_path,
+        ocean_instance.main_account, sla_template
+    )
+    assert template_id == sla_template.template_id
+
+    service_descriptors = [ServiceDescriptor.access_service_descriptor(
+        price, PURCHASE_ENDPOINT, SERVICE_ENDPOINT, 600, sla_template.template_id
+    )]
+    asset = Asset.from_ddo_json_file('./tests/json_sample.json')
+    ddo = ocean_instance.register_asset(asset.metadata, ocean_instance.main_account.address, service_descriptors)
+
+    return ddo
 
 
 def get_events(event_filter, max_iterations=100, pause_duration=0.1):
@@ -35,64 +51,47 @@ def process_enc_token(event):
     print("token published event: %s" % event)
 
 
-def test_brizo(client):
-    expire_seconds = 9999999999
-    print(ocean._web3.eth.accounts)
-    consumer_account = ocean._web3.eth.accounts[1] #ocean._web3.toChecksumAddress('0x00bd138abd70e2f00903268f3db08f2d25677c9e')
-    publisher_address = ocean._web3.eth.accounts[1]
+def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean_instance):
+    print(publisher_ocean_instance._web3.eth.accounts)
+    pub_ocn, cons_ocn = publisher_ocean_instance, consumer_ocean_instance
+    web3 = pub_ocn.keeper.web3
+    consumer_account = cons_ocn.main_account
+    # publisher_account = pub_ocn.main_account
     asset_price = 10
+
     # Register asset
-    service_descriptors = [
-        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)]
-    asset = Asset.from_ddo_json_file('./tests/json_sample.json')
-    asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
-    
+    asset_registered = get_registered_ddo(pub_ocn, asset_price)
+
     print("did: %s" % asset_registered.did)
 
-    market_concise.requestTokens(2000, transact={'from': consumer_account})
+    service_def_id = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS).get_values()['serviceDefinitionId']
+    agreement_tuple = cons_ocn._get_service_agreement_to_sign(asset_registered.did, service_def_id)
+    agreement_id, service_agreement, service_def, ddo = agreement_tuple
+    sa = service_agreement
 
-    slaTemplateId = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
-    serviceDefinitionId = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['serviceDefinitionId']
-    serviceAgreementContract = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['serviceAgreementContract']
-    conditions = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['conditions']
-    
-    sa = ServiceAgreement(serviceDefinitionId, slaTemplateId, conditions, serviceAgreementContract)
+    cons_ocn.keeper.service_agreement.unlock_account(cons_ocn.main_account)
+    signature = service_agreement.get_signed_agreement_hash(
+        web3, cons_ocn.keeper.contract_path, agreement_id, consumer_account.address
+    )[0]
 
-    json_request_initialize = dict()
-    json_request_initialize['consumerAddress'] = consumer_account
-    json_request_initialize['did'] = asset_registered.did
-    json_request_initialize['serviceAgreementId'] = \
-        asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
-    json_request_initialize['serviceDefinitionId'] = \
-        asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['serviceDefinitionId']
-    json_request_initialize['signature'] = \
-    sa.get_signed_agreement_hash(ocean._web3, asset_registered.did, asset_registered.get_service(
-        service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId'], consumer_account)[0]
-    initialize = client.post(BaseURLs.BASE_BRIZO_URL + '/services/access/initialize',
-                            data=json.dumps(json_request_initialize),
-                            content_type='application/json')
+    cons_ocn._approve_token_transfer(service_agreement.get_price())
+    cons_ocn._http_client = client
+    # subscribe to events
+    register_service_agreement(web3, cons_ocn.keeper.contract_path, cons_ocn.config.storage_path, cons_ocn.main_account,
+                               agreement_id, ddo.did, service_def, 'consumer', service_def_id,
+                               service_agreement.get_price(), get_metadata_url(ddo), cons_ocn.consume_service, 0)
+
+    request_payload = prepare_purchase_payload(ddo.did, agreement_id, service_def_id, signature, consumer_account.address)
+    initialize = client.post(
+        sa.purchase_endpoint,
+        data=request_payload,
+        content_type='application/json'
+    )
     print(initialize.status_code)
     assert initialize.status_code == 201
-
-def test_consume_url(client):
-
-    publisher_address = ocean._web3.eth.accounts[1]
-    consumer_account = ocean._web3.eth.accounts[0]
-    asset_price = 10
-    service_descriptors = [
-        ServiceDescriptor.access_service_descriptor(asset_price, '/purchaseEndpoint', '/serviceEndpoint', 600)
-    ]
-    asset = Asset.from_ddo_json_file('./tests/json_sample.json')
-    asset_registered = ocean.register_asset(asset.metadata, publisher_address, service_descriptors)
-    sla_template_id = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS)._values['slaTemplateId']
-    azure_url = (
-        BaseURLs.BASE_BRIZO_URL +
-        '/services/consume?url=https://testocnfiles.blob.core.windows.net/testfiles/testzkp.pdf&serviceAgreementId=' +
-        sla_template_id +
-        '&consumerAddress=' +
-        consumer_account
-    )
-    print('azure url: ', azure_url)
-    result = client.get(azure_url)
-    print(result.data)
-    assert result.status_code == 200
+    assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is False, ''
+    # wait a bit until all service agreement events are processed
+    time.sleep(15)
+    assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is True, ''
+    print('Service agreement executed and fulfilled, all good.')
+    # print('consumed : ', cons_ocn.get_consumed_results())
