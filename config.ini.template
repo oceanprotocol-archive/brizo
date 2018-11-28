@@ -12,7 +12,6 @@ aquarius.address = ${AQUARIUS_ADDRESS}
 [resources]
 azure.account.name = ${AZURE_ACCOUNT_NAME}
 azure.account.key = ${AZURE_ACCOUNT_KEY}
-azure.container = ${AZURE_CONTAINER}
 azure.resource_group = ${AZURE_RESOURCE_GROUP}
 azure.share.input = ${AZURE_SHARE_INPUT}
 azure.share.output = ${AZURE_SHARE_OUTPUT}

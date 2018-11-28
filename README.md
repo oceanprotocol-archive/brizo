@@ -125,19 +125,29 @@ In the configuration there are now two sections:
 
     ```yaml
     [resources]
-    azure.account.name = testocnfiles
-    azure.account.key = DCNmb542DWbtkPf1lKz+WXii6Z50vScBvVJQMOy4XtG+bVIjHymbKm8iUZnSdlQlLRsrxlWaOwvAzbQmSm/oBw==
-    azure.container = testfiles
-    azure.resource_group = OceanProtocol
+    azure.account.name = <your_storage_account_name>
+    azure.account.key = <your_account_key>
+    azure.resource_group = <resource_group>
     azure.share.input = compute
     azure.share.output = output
     azure.location = westus
-    
+
     ;; These consitute part of the aquarius url which is used in setting the `api_url` in the `OceanContractsWrapper`
     aquarius.url = http://localhost:5000
     brizo.url = http://localhost:8030
     ```
 
+Also, when running in container or locally, environment variables can be used to configure the azure credentials. These are the variables needed to export:
+```
+AZURE_ACCOUNT_NAME: Azure Storage Account Name (for storing files)
+AZURE_ACCOUNT_KEY: Azure Storage Account key
+AZURE_RESOURCE_GROUP: Azure resource group
+AZURE_LOCATION: Azure Region
+AZURE_CLIENT_ID: Azure Application ID
+AZURE_CLIENT_SECRET: Azure Application Secret
+AZURE_TENANT_ID: Azure Tentant ID
+AZURE_SUBSCRIPTION_ID: Azure Subscription
+```
 
 ## Code style
 
@@ -169,5 +179,4 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
 
