@@ -29,7 +29,7 @@ def spec():
     swag = swagger(app)
     swag['info']['version'] = get_version()
     swag['info']['title'] = "Brizo"
-    swag['basePath'] = "/v2"
+    swag['basePath'] = BaseUrls.BASE_BRIZO_URL
     return jsonify(swag)
 
 
