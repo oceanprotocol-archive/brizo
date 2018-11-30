@@ -22,15 +22,15 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 
 ## Table of Contents
 
-  - [Features](#features)
-  - [Running Locally, for Dev and Test](#running-locally-for-dev-and-test)
-  - [API documentation](#api-documentation)
-  - [Configuration](#configuration)
-  - [Dependencies](#dependencies)
-  - [Code style](#code-style)
-  - [Testing](#testing)
-  - [New Version](#new-version)
-  - [License](#license)
+- [Features](#features)
+- [Running Locally, for Dev and Test](#running-locally-for-dev-and-test)
+- [API documentation](#api-documentation)
+- [Configuration](#configuration)
+- [Dependencies](#dependencies)
+- [Code style](#code-style)
+- [Testing](#testing)
+- [New Version](#new-version)
+- [License](#license)
 
 ---
 
@@ -110,11 +110,12 @@ You can pass the configuration using the CONFIG_FILE environment variable (recom
 In the configuration there are now three sections:
 
 - keeper-contracts: This section help you to connect with the network where you have deployed the contracts. You can find more information of how to configure [here](https://github.com/oceanprotocol/squid-py#quick-start).
+
     ```yaml
     [keeper-contracts]
     keeper.url = http://127.0.0.1:8545
-    
     ```
+
 - resources: This section is necessary for the squid-py library.
 
     ```yaml
@@ -125,8 +126,8 @@ In the configuration there are now three sections:
     brizo.url = http://localhost:8030
     ;; path to database file where all access requests are stored
     storage.path = squid_py.db
-
     ```
+
 - osmosis: Specify the cloud storage and compute account credentials to allow generating signed urls and enable executing algorithms. We are assuming that the algorithm and the data are in the same folder for this first approach.
 
     ```yaml
@@ -141,32 +142,33 @@ In the configuration there are now three sections:
     azure.subscription.id = <Azure Subscription>
     azure.share.input = compute
     azure.share.output = output
-
     ```
 
-
 Also, when running in container or locally, environment variables can be used to configure the azure credentials. These are the variables needed to export:
-```
+
+```text
 AZURE_ACCOUNT_NAME: Azure Storage Account Name (for storing files)
 AZURE_ACCOUNT_KEY: Azure Storage Account key
 AZURE_RESOURCE_GROUP: Azure resource group
 AZURE_LOCATION: Azure Region
 AZURE_CLIENT_ID: Azure Application ID
 AZURE_CLIENT_SECRET: Azure Application Secret
-AZURE_TENANT_ID: Azure Tentant ID
+AZURE_TENANT_ID: Azure Tenant ID
 AZURE_SUBSCRIPTION_ID: Azure Subscription
 ```
 
 ## Dependencies
+
 Brizo relies on the following `Ocean` libraries:
-* squid-py: `https://github.com/oceanprotocol/squid-py` -- handles all of the `keeper` interactions
-* osmosis-azure-driver: `https://github.com/oceanprotocol/osmosis-azure-driver` -- simplifies access to azure cloud services
+
+- squid-py: `https://github.com/oceanprotocol/squid-py` -- handles all of the `keeper` interactions
+- osmosis-azure-driver: `https://github.com/oceanprotocol/osmosis-azure-driver` -- simplifies access to azure cloud services
 
 ## Code style
 
 The information about code style in python is documented in this two links [python-developer-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-developer-guide.md)
 and [python-style-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-style-guide.md).
-    
+
 ## Testing
 
 Automatic tests are setup via Travis, executing `tox`.
@@ -178,7 +180,7 @@ The `bumpversion.sh` script helps to bump the project version. You can execute t
 
 ## License
 
-```
+```text
 Copyright 2018 Ocean Protocol Foundation Ltd.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -192,4 +194,4 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
+```
