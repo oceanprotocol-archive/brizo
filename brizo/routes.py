@@ -137,7 +137,7 @@ def consume():
         type: string
       - name: serviceAgreementId
         in: query
-        description: The service agreement id.
+        description: The ID of the service agreement.
         required: true
         type: string
       - name: url
@@ -187,7 +187,7 @@ def consume():
 
 @services.route('/compute', methods=['POST'])
 def compute():
-    """Allows to execute an algorithm inside a Docker instance in the cloud aquarius. If the publisher of the assets provides this service in the service agreement related with the asset_did requested.
+    """Allows to execute an algorithm inside a Docker instance in the cloud. Requires the publisher of the assets to provide this service in the service agreement related with the requested `asset_did`.
     ---
     tags:
       - services
