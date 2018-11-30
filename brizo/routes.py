@@ -27,7 +27,7 @@ cache = SimpleCache()
 
 @services.route('/access/initialize', methods=['POST'])
 def initialize():
-    """Initialize the SLA between the puvblisher and the consumer.
+    """Initialize the SLA between the publisher and the consumer.
 
     ---
     tags:
@@ -70,9 +70,9 @@ def initialize():
               example: '0x00a329c0648769A73afAc7F9381E08FB43dBEA72'
     responses:
       201:
-        description: Service agreement initialize successfully.
+        description: Service agreement successfully initialized.
       400:
-        description: One of the required attributes is missed.
+        description: One of the required attributes is missing.
       404:
         description: Invalid signature.
       500:
@@ -110,7 +110,7 @@ def initialize():
 
                                           )
             logging.info('executed SA ==========')
-            return "Service agreement initialize successfully", 201
+            return "Service agreement successfully initialized", 201
         else:
             return "Invalid signature", 404
     except Exception as e:
@@ -134,19 +134,19 @@ def consume():
         type: string
       - name: serviceAgreementId
         in: query
-        description: The service agreement id.
+        description: The ID of the service agreement.
         required: true
         type: string
       - name: url
         in: query
-        description: This URL is only valid if BRIZO acts as a proxy. Consumer can't download using the URL if it's not through Brizo.
+        description: This URL is only valid if Brizo acts as a proxy. Consumer can't download using the URL if it's not through Brizo.
         required: true
         type: string
     responses:
       302:
         description: Redirect to valid asset url.
       400:
-        description: One of the required attributes is missed.
+        description: One of the required attributes is missing.
       404:
         description: Invalid asset data.
       500:
@@ -154,7 +154,7 @@ def consume():
     """
     try:
         data = request.args
-        assert isinstance(data, dict), 'invalid `args` type, should already formatted into a dict.'
+        assert isinstance(data, dict), 'invalid `args` type, should be formatted into a dict.'
 
         required_attributes = ['serviceAgreementId', 'consumerAddress', 'url']
         if not data:
@@ -184,12 +184,7 @@ def consume():
 
 @services.route('/compute', methods=['POST'])
 def compute():
-    """Allows to execute an algorithm inside in a docker instance in the cloud aquarius.
-
-
-    If the publisher of the assets
-    provide this service in the Service agreement related with the asset_did requested.
-
+    """Allows to execute an algorithm inside a Docker instance in the cloud. Requires the publisher of the assets to provide this service in the service agreement related with the requested `asset_did`.
     ---
     tags:
       - services
@@ -209,7 +204,7 @@ def compute():
             - consumer_wallet
           properties:
             asset_did:
-              description: Identifier of the asset registered in ocean
+              description: Identifier of the asset registered in Ocean
               type: string
               example: '0x0234242345'
             algorithm_did:
@@ -217,19 +212,19 @@ def compute():
               type: string
               example: '0x0234242345'
             consumer_wallet:
-              description: Address of the wallet of the consumer of the asset. Ex. data-science...
+              description: Address of the wallet of the asset consumer. Ex. data-science...
               type: string
               example: '0x0234242345'
             docker_image:
-              description: Docker image where the algorithm is going to be executed. It must include all the libraries needs to run it.
+              description: Docker image where the algorithm is going to be executed. Docker image must include all the libraries needed to run it.
               type: string
               example: python:3.6-alpine
             memory:
-              description: Ammout of memory in Gb to run the algorithm
+              description: Ammout of memory in GB to run the algorithm
               type: number
               example: 1.5
             cpu:
-              description: Number of cpus to execute the algorithm.
+              description: Number of CPUs to execute the algorithm.
               type: integer
               example: 1
     """
@@ -241,7 +236,7 @@ def compute():
         logging.error('Consume failed: data is empty.')
         return 'payload seems empty.', 400
 
-    assert isinstance(data, dict), 'invalid `body` type, should already formatted into a dict.'
+    assert isinstance(data, dict), 'invalid `body` type, should be formatted into a dict.'
 
     for attr in required_attributes:
         if attr not in data:
