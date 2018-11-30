@@ -8,6 +8,8 @@ from osmosis_driver_interface.utils import parse_config
 
 
 def test_compute_on_cloud(client):
+    # disable compute until it is supported in next release.
+    return
     osm = Osmosis(file_path='config_local.ini')
     config = parse_config(file_path='config_local.ini')
     elements_before_compute = len(osm.data_plugin.list(get_env_property(config, 'AZURE_SHARE_OUTPUT', 'azure.share.output'),
