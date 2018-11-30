@@ -26,3 +26,6 @@ deploy:
     tags: true
     repo: oceanprotocol/brizo
     python: 3.6
+
+notifications:
+  email: false
