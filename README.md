@@ -161,8 +161,8 @@ AZURE_SUBSCRIPTION_ID: Azure Subscription
 
 Brizo relies on the following `Ocean` libraries:
 
-* squid-py: `https://github.com/oceanprotocol/squid-py` -- handles all of the `keeper` interactions
-* osmosis-azure-driver: `https://github.com/oceanprotocol/osmosis-azure-driver` -- simplifies access to azure cloud services
+- squid-py: `https://github.com/oceanprotocol/squid-py` -- handles all of the `keeper` interactions
+- osmosis-azure-driver: `https://github.com/oceanprotocol/osmosis-azure-driver` -- simplifies access to azure cloud services
 
 ## Code style
 
