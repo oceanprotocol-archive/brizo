@@ -3,7 +3,6 @@ from os import getenv
 from flask import Blueprint, request, redirect
 from squid_py.config import Config
 from squid_py.ocean.ocean import Ocean
-from brizo.constants import BaseURLs
 from brizo.constants import ConfigSections
 from brizo.log import setup_logging
 from brizo.myapp import app
@@ -17,8 +16,6 @@ config_file = app.config['CONFIG_FILE']
 config = Config(filename=config_file)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
-brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
-brizo_url += BaseURLs.ASSETS_URL
 ocn = Ocean(config_file=config_file)
 
 cache = SimpleCache()
