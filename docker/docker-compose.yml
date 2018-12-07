@@ -59,7 +59,7 @@ services:
         ipv4_address: 172.15.0.13
 
   keeper-contracts:
-    image: oceanprotocol/keeper-contracts:v0.4.0
+    image: oceanprotocol/keeper-contracts:feature_docker
     networks:
       backend:
         ipv4_address: 172.15.0.14
@@ -68,8 +68,13 @@ services:
       DEPLOY_CONTRACTS: "true"
       DATABASE_PATH: "/ganache-db"
       REUSE_DATABASE: "false"
-      NETWORK_NAME: "ocean_poa_net_local"
+      NETWORK_NAME: "spree"
+      KEEPER_RPC_HOST: "parity-node"
+      KEEPER_RPC_PORT: "8545"
+      KEEPER_RPC_URL: "http://parity-node:8545"
       POA_HOST: "parity-node"
+    depends_on:
+      - parity-node
     volumes:
     - ~/parity/keeper-contracts/artifacts/:/keeper-contracts/artifacts/
     - ~/parity/ganache-db:/ganache-db
