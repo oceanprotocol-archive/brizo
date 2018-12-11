@@ -5,13 +5,13 @@
 > Helping to Publishers to expose their services.
 > [oceanprotocol.com](https://oceanprotocol.com)
 
-___"🏄‍♀️🌊 Brizo is an ancient Greek goddess who was known as the protector of mariners, sailors, and fishermen. 
+___"🏄‍♀️🌊 Brizo is an ancient Greek goddess who was known as the protector of mariners, sailors, and fishermen.
 She was worshipped primarily by the women of Delos, who set out food offerings in small boats. Brizo was also known as a prophet specializing in the interpretation of dreams."___
 
-[![Docker Build Status](https://img.shields.io/docker/build/oceanprotocol/brizo.svg)](https://hub.docker.com/r/oceanprotocol/brizo/) 
+[![Docker Build Status](https://img.shields.io/docker/build/oceanprotocol/brizo.svg)](https://hub.docker.com/r/oceanprotocol/brizo/)
 [![Travis (.com)](https://img.shields.io/travis/com/oceanprotocol/brizo.svg)](https://travis-ci.com/oceanprotocol/brizo)
-[![Codacy coverage](https://img.shields.io/codacy/coverage/40dd4c27169a4db4865f72317172bd9e.svg)](https://app.codacy.com/project/ocean-protocol/brizo/dashboard) 
-[![PyPI](https://img.shields.io/pypi/v/ocean-brizo.svg)](https://pypi.org/project/ocean-brizo/) 
+[![Codacy coverage](https://img.shields.io/codacy/coverage/40dd4c27169a4db4865f72317172bd9e.svg)](https://app.codacy.com/project/ocean-protocol/brizo/dashboard)
+[![PyPI](https://img.shields.io/pypi/v/ocean-brizo.svg)](https://pypi.org/project/ocean-brizo/)
 [![GitHub contributors](https://img.shields.io/github/contributors/oceanprotocol/brizo.svg)](https://github.com/oceanprotocol/brizo/graphs/contributors)
 
 ---
@@ -29,6 +29,7 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 - [Dependencies](#dependencies)
 - [Code style](#code-style)
 - [Testing](#testing)
+- [Debugging](#debugging)
 - [New Version](#new-version)
 - [License](#license)
 
@@ -122,7 +123,7 @@ In the configuration there are now three sections:
     [resources]
     ;; aquarius url is required for squid-py to be able to find registered assets DDO documents
     aquarius.url = http://localhost:5000
-    ;; brizo url (optional) is used mainly in development and testing 
+    ;; brizo url (optional) is used mainly in development and testing
     brizo.url = http://localhost:8030
     ;; path to database file where all access requests are stored
     storage.path = squid_py.db
@@ -173,6 +174,34 @@ and [python-style-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/
 
 Automatic tests are setup via Travis, executing `tox`.
 Our test use pytest framework.
+
+## Debugging
+
+To debug Brizo using PyCharm, follow the next instructions:
+
+1. Clone [docker-images](https://github.com/oceanprotocol/docker-images) repository
+2. Run docker-images omitting `brizo`. (i.e.:`bash start_ocean.sh --no-brizo --no-pleuston --local-nile-node`)
+3. In PyCharm, go to _Settings > Project Settings > Python Debugger_, and select the option _Gevent Compatible_
+4. Configure a new debugger configuration: _Run > Edit Configurations..._, there click on _Add New Configuration_
+5. Configure as shown in the next image:
+![Pycharm Debugger configuration](imgs/debugger_configuration.png)
+6. Setup the next environment variables:
+```
+PYTHONUNBUFFERED=1
+CONFIG_FILE=config_dev.ini
+AZURE_ACCOUNT_NAME=<COMPLETE_WITH_YOUR_DATA>
+AZURE_TENANT_ID=<COMPLETE_WITH_YOUR_DATA>
+AZURE_SUBSCRIPTION_ID=<COMPLETE_WITH_YOUR_DATA>
+AZURE_LOCATION=<COMPLETE_WITH_YOUR_DATA>
+AZURE_CLIENT_SECRET=<COMPLETE_WITH_YOUR_DATA>
+AZURE_CLIENT_ID=<COMPLETE_WITH_YOUR_DATA>
+AZURE_ACCOUNT_KEY=<COMPLETE_WITH_YOUR_DATA>
+AZURE_RESOURCE_GROUP=<COMPLETE_WITH_YOUR_DATA>
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+```
+The option `OBJC_DISABLE_INITIALIZE_FORK_SAFETY` is needed if you run in last versions of MacOS.
+7. Now you can configure your breakpoints and debug brizo or squid-py.
+
 
 ## New Version
 
