@@ -74,7 +74,7 @@ def initialize():
         description: Service agreement successfully initialized.
       400:
         description: One of the required attributes is missing.
-      404:
+      401:
         description: Invalid signature.
       500:
         description: Error
@@ -164,7 +164,7 @@ def consume():
         description: Redirect to valid asset url.
       400:
         description: One of the required attributes is missing.
-      404:
+      401:
         description: Invalid asset data.
       500:
         description: Error
