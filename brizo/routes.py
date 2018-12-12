@@ -21,7 +21,7 @@ ocn = Ocean(config_file=config_file)
 
 cache = SimpleCache()
 
-
+logger = logging.getLogger('brizo')
 # TODO run in cases of brizo crash or you restart
 # ocn.execute_pending_service_agreements()
 
@@ -81,22 +81,22 @@ def initialize():
     """
     required_attributes = ['did', 'serviceAgreementId', 'serviceDefinitionId', 'signature', 'consumerAddress']
     assert isinstance(request.json, dict), 'invalid payload format.'
-    logging.info('got "consume" request: %s' % request.json)
+    logger.info('got "initialize" request: %s', request.json)
     data = request.json
     if not data:
-        logging.error('Consume failed: data is empty.')
+        logger.error('Consume failed: data is empty.')
         return 'payload seems empty.', 400
 
     assert isinstance(data, dict), 'invalid `body` type, should already formatted into a dict.'
 
     for attr in required_attributes:
         if attr not in data:
-            logging.error('Consume failed: required attr %s missing.' % attr)
+            logger.error('Consume failed: required attr %s missing.', attr)
             return '"%s" is required for registering an asset.' % attr, 400
 
     try:
         ddo = ocn.resolve_did(data.get('did'))
-        logging.debug('Found ddo of did {}', data.get('did'))
+        logger.debug('Found ddo of did %s', data.get('did'))
         # Check signature
         if ocn.verify_service_agreement_signature(data.get('did'),
                                                   data.get('serviceAgreementId'),
@@ -115,8 +115,8 @@ def initialize():
                 consumer_address=data.get('consumerAddress'),
                 publisher_address=ocn.main_account.address
             )
-            logging.info('executed ServiceAgreement, request payload was {}', data)
-            logging.debug('executeServiceAgreement receipt {}', receipt)
+            logger.info('executed ServiceAgreement, request payload was %s', data)
+            logger.debug('executeServiceAgreement receipt %s', receipt)
             if receipt and isinstance(receipt, dict) and receipt.get('status'):
                 if receipt['status'] == 0:
                     return 'executeAgreement on-chain failed, check the definition of the ' \
@@ -124,14 +124,16 @@ def initialize():
                            'service agreement template. `executeAgreement` receipt {}'.format(receipt), 400
             return "Service agreement successfully initialized", 201
         else:
-            return "Verifying consumer signature failed: signature {}, consumerAddress {}"\
-                   .format(data.get('signature'), data.get('consumerAddress')), 401
+            msg = "Verifying consumer signature failed: signature {}, consumerAddress {}"\
+                   .format(data.get('signature'), data.get('consumerAddress'))
+            logger.error(msg)
+            return msg, 401
 
     except OceanDIDNotFound as e:
-        logging.error(e, exc_info=1)
+        logger.error(e, exc_info=1)
         return "Requested did is not found in the keeper network: {}".format(str(e)), 422
     except Exception as e:
-        logging.error(e, exc_info=1)
+        logger.error(e, exc_info=1)
         return "Error: " + str(e), 500
 
 
@@ -172,15 +174,15 @@ def consume():
     try:
         data = request.args
         assert isinstance(data, dict), 'invalid `args` type, should be formatted into a dict.'
-
+        logger.info('got "consume" request: %s', data)
         required_attributes = ['serviceAgreementId', 'consumerAddress', 'url']
         if not data:
-            logging.error('Consume failed: data is empty.')
+            logger.error('Consume failed: data is empty.')
             return 'No query arguments found.', 400
 
         for attr in required_attributes:
             if attr not in data:
-                logging.error('Consume failed: required attr "%s" missing.' % attr)
+                logger.error('Consume failed: required attr "%s" missing.', attr)
                 return '"%s" is required for consuming an asset.' % attr, 400
 
         if ocn.check_permissions(
@@ -193,9 +195,12 @@ def consume():
             result = osm.data_plugin.generate_url(data.get('url'))
             return redirect(result, code=302)
         else:
-            return "Invalid consumer address and/or service agreement id", 401
+            msg = "Invalid consumer address and/or service agreement id, " \
+                  "or consumer address does not have permission to consume this asset."
+            logger.warning(msg)
+            return msg, 401
     except Exception as e:
-        logging.error("Error- " + str(e))
+        logger.error("Error- " + str(e))
         return "Error : " + str(e), 500
 
 
@@ -247,17 +252,17 @@ def compute():
     """
     required_attributes = ['asset_did', 'algorithm_did', 'consumer_wallet']
     assert isinstance(request.json, dict), 'invalid payload format.'
-    logging.info('got "exec" request: %s' % request.json)
+    logger.info('got "compute" request: %s', request.json)
     data = request.json
     if not data:
-        logging.error('Consume failed: data is empty.')
+        logger.error('Consume failed: data is empty.')
         return 'payload seems empty.', 400
 
     assert isinstance(data, dict), 'invalid `body` type, should be formatted into a dict.'
 
     for attr in required_attributes:
         if attr not in data:
-            logging.error('Consume failed: required attr %s missing.' % attr)
+            logger.error('Consume failed: required attr %s missing.', attr)
             return '"%s" is required for registering an asset.' % attr, 400
 
     osm = Osmosis(config_file)
@@ -288,7 +293,7 @@ def get_metadata(ddo):
             if service['type'] == 'Metadata':
                 return service['metadata']
     except Exception as e:
-        logging.error("Error getting the metatada: %s" % e)
+        logger.error("Error getting the metatada: %s" % e)
 
 
 def get_env_property(env_variable, property_name):
