@@ -2,6 +2,7 @@ import logging
 from os import getenv
 from flask import Blueprint, request, redirect
 from squid_py.config import Config
+from squid_py.exceptions import OceanDIDNotFound
 from squid_py.ocean.ocean import Ocean
 from brizo.constants import ConfigSections
 from brizo.log import setup_logging
@@ -73,7 +74,7 @@ def initialize():
         description: Service agreement successfully initialized.
       400:
         description: One of the required attributes is missing.
-      404:
+      401:
         description: Invalid signature.
       500:
         description: Error
@@ -94,28 +95,44 @@ def initialize():
             return '"%s" is required for registering an asset.' % attr, 400
 
     try:
+        ddo = ocn.resolve_did(data.get('did'))
+        logging.debug('Found ddo of did {}', data.get('did'))
         # Check signature
-        if ocn.verify_service_agreement_signature(data.get('did'), data.get('serviceAgreementId'),
+        if ocn.verify_service_agreement_signature(data.get('did'),
+                                                  data.get('serviceAgreementId'),
                                                   data.get('serviceDefinitionId'),
-                                                  data.get('consumerAddress'), data.get('signature')):
+                                                  data.get('consumerAddress'),
+                                                  data.get('signature'),
+                                                  ddo=ddo):
             cache.add(data.get('serviceAgreementId'), data.get('did'))
             # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
 
-            ocn.execute_service_agreement(service_agreement_id=data.get('serviceAgreementId'),
-                                          service_index=data.get('serviceDefinitionId'),
-                                          service_agreement_signature=data.get('signature'),
-                                          did=data.get('did'),
-                                          consumer_address=data.get('consumerAddress'),
-                                          publisher_address=ocn.main_account.address
-
-                                          )
-            logging.info('executed SA ==========')
+            receipt = ocn.execute_service_agreement(
+                service_agreement_id=data.get('serviceAgreementId'),
+                service_index=data.get('serviceDefinitionId'),
+                service_agreement_signature=data.get('signature'),
+                did=data.get('did'),
+                consumer_address=data.get('consumerAddress'),
+                publisher_address=ocn.main_account.address
+            )
+            logging.info('executed ServiceAgreement, request payload was {}', data)
+            logging.debug('executeServiceAgreement receipt {}', receipt)
+            if receipt and isinstance(receipt, dict) and receipt.get('status'):
+                if receipt['status'] == 0:
+                    return 'executeAgreement on-chain failed, check the definition of the ' \
+                           'service agreement and make sure the parameters match the registered ' \
+                           'service agreement template. `executeAgreement` receipt {}'.format(receipt), 400
             return "Service agreement successfully initialized", 201
         else:
-            return "Invalid signature", 404
+            return "Verifying consumer signature failed: signature {}, consumerAddress {}"\
+                   .format(data.get('signature'), data.get('consumerAddress')), 401
+
+    except OceanDIDNotFound as e:
+        logging.error(e, exc_info=1)
+        return "Requested did is not found in the keeper network: {}".format(str(e)), 422
     except Exception as e:
-        logging.error(e)
-        return "Error : " + str(e), 500
+        logging.error(e, exc_info=1)
+        return "Error: " + str(e), 500
 
 
 @services.route('/consume', methods=['GET'])
@@ -147,7 +164,7 @@ def consume():
         description: Redirect to valid asset url.
       400:
         description: One of the required attributes is missing.
-      404:
+      401:
         description: Invalid asset data.
       500:
         description: Error
@@ -176,7 +193,7 @@ def consume():
             result = osm.data_plugin.generate_url(data.get('url'))
             return redirect(result, code=302)
         else:
-            return "Invalid consumer address and/or service agreement id", 404
+            return "Invalid consumer address and/or service agreement id", 401
     except Exception as e:
         logging.error("Error- " + str(e))
         return "Error : " + str(e), 500
