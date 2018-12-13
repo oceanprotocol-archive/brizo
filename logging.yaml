@@ -30,11 +30,31 @@ handlers:
         encoding: utf8
 
 loggers:
-    my_module:
-        level: ERROR
+    service_agreement:
+        level: DEBUG
+        handlers: [console]
+        propagate: no
+    ddo:
+        level: DEBUG
+        handlers: [console]
+        propagate: no
+    ocean:
+        level: DEBUG
+        handlers: [console]
+        propagate: no
+    keeper:
+        level: DEBUG
+        handlers: [console]
+        propagate: no
+    keeper-events:
+        level: DEBUG
+        handlers: [console]
+        propagate: no
+    events:
+        level: DEBUG
         handlers: [console]
         propagate: no
 
 root:
     level: INFO
-    handlers: [console]
+    handlers: [console, info_file_handler, error_file_handler]
