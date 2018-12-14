@@ -120,8 +120,6 @@ In the configuration there are now three sections:
 
     ```yaml
     [resources]
-    ;; aquarius url is required for squid-py to be able to find registered assets DDO documents
-    aquarius.url = http://localhost:5000
     ;; brizo url (optional) is used mainly in development and testing 
     brizo.url = http://localhost:8030
     ;; path to database file where all access requests are stored
