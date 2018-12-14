@@ -7,7 +7,6 @@ parity.address = ${PARITY_ADDRESS}
 parity.password = ${PARITY_PASSWORD}
 
 [resources]
-aquarius.url = ${AQUARIUS_URL}
 brizo.url = ${BRIZO_URL}
 
 [osmosis]
