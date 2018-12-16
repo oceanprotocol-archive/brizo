@@ -109,11 +109,19 @@ def initialize():
         )
         logger.info('executed ServiceAgreement, request payload was %s', data)
         logger.debug('executeServiceAgreement receipt %s', receipt)
-        if receipt and isinstance(receipt, dict) and receipt.get('status'):
-            if receipt['status'] == 0:
-                return 'executeAgreement on-chain failed, check the definition of the ' \
-                       'service agreement and make sure the parameters match the registered ' \
-                       'service agreement template. `executeAgreement` receipt {}'.format(receipt), 400
+        if not receipt or not hasattr(receipt, 'status'):
+            msg = 'Got unrecognized transaction receipt from `execute_service_agreement`'
+            logger.error(msg)
+            return msg, 400
+
+        if receipt.status == 0:
+            msg = 'executeAgreement on-chain failed, check the definition of the ' \
+                  'service agreement and make sure the parameters match the registered ' \
+                  'service agreement template. `executeAgreement` receipt {}'.format(receipt)
+            logger.warning(msg)
+            return msg, 400
+
+        logger.debug('Success executing service agreement, got status %s', receipt.status)
         return "Service agreement successfully initialized", 201
 
     # except OceanInvalidServiceAgreementSignature as e:
