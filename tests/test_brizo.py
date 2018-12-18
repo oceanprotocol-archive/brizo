@@ -28,7 +28,7 @@ def get_registered_ddo(ocean_instance, price):
         price, PURCHASE_ENDPOINT, SERVICE_ENDPOINT, 600, sla_template.template_id
     )]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
-    ddo = ocean_instance.register_asset(asset.metadata, ocean_instance.main_account.address, service_descriptors)
+    ddo = ocean_instance.register_asset(asset.metadata, ocean_instance.main_account, service_descriptors)
 
     return ddo
 
