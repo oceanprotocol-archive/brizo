@@ -1,14 +1,18 @@
-import logging
 from os import getenv
+import logging
+
+from eth_utils import is_0x_prefixed, add_0x_prefix
 from flask import Blueprint, request, redirect
+from werkzeug.contrib.cache import SimpleCache
+
 from squid_py.config import Config
 from squid_py.exceptions import OceanDIDNotFound
 from squid_py.ocean.ocean import Ocean
+from osmosis_driver_interface.osmosis import Osmosis
+
 from brizo.constants import ConfigSections
 from brizo.log import setup_logging
 from brizo.myapp import app
-from osmosis_driver_interface.osmosis import Osmosis
-from werkzeug.contrib.cache import SimpleCache
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -95,12 +99,13 @@ def initialize():
             return '"%s" is required for registering an asset.' % attr, 400
 
     try:
+
         logger.debug('Found ddo of did %s', data.get('did'))
         cache.add(data.get('serviceAgreementId'), data.get('did'))
-
+        service_agreement_id = add_0x_prefix(data.get('serviceAgreementId'))
         # When you call execute agreement this start different listeners of the events to catch the paymentLocked.
         receipt = ocn.execute_service_agreement(
-            service_agreement_id=data.get('serviceAgreementId'),
+            service_agreement_id=service_agreement_id,
             service_index=data.get('serviceDefinitionId'),
             service_agreement_signature=data.get('signature'),
             did=data.get('did'),
@@ -124,9 +129,6 @@ def initialize():
         logger.debug('Success executing service agreement, got status %s', receipt.status)
         return "Service agreement successfully initialized", 201
 
-    # except OceanInvalidServiceAgreementSignature as e:
-    #     logger.error(e)
-    #     return e, 401
     except OceanDIDNotFound as e:
         logger.error(e, exc_info=1)
         return "Requested did is not found in the keeper network: {}".format(str(e)), 422
