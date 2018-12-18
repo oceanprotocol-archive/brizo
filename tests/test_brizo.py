@@ -69,7 +69,7 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     agreement_id, service_agreement, service_def, ddo = agreement_tuple
     sa = service_agreement
 
-    cons_ocn.keeper.service_agreement.unlock_account(cons_ocn.main_account)
+    cons_ocn.main_account.unlock()
     signature = service_agreement.get_signed_agreement_hash(
         web3, cons_ocn.keeper.contract_path, agreement_id, consumer_account.address
     )[0]
