@@ -28,7 +28,7 @@ def get_registered_ddo(ocean_instance, price):
         price, PURCHASE_ENDPOINT, SERVICE_ENDPOINT, 600, sla_template.template_id
     )]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
-    ddo = ocean_instance.register_asset(asset.metadata, ocean_instance.main_account.address, service_descriptors)
+    ddo = ocean_instance.register_asset(asset.metadata, ocean_instance.main_account, service_descriptors)
 
     return ddo
 
@@ -69,7 +69,7 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     agreement_id, service_agreement, service_def, ddo = agreement_tuple
     sa = service_agreement
 
-    cons_ocn.keeper.service_agreement.unlock_account(cons_ocn.main_account)
+    cons_ocn.main_account.unlock()
     signature = service_agreement.get_signed_agreement_hash(
         web3, cons_ocn.keeper.contract_path, agreement_id, consumer_account.address
     )[0]
