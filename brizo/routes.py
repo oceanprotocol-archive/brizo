@@ -1,7 +1,7 @@
 from os import getenv
 import logging
 
-from eth_utils import is_0x_prefixed, add_0x_prefix
+from eth_utils import add_0x_prefix
 from flask import Blueprint, request, redirect
 from werkzeug.contrib.cache import SimpleCache
 
