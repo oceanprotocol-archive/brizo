@@ -14,9 +14,9 @@ services:
 before_install:
   - git clone https://github.com/oceanprotocol/barge
   - cd barge
-  - bash -x start_ocean.sh --latest --no-brizo --no-pleuston --local-spree-node 2>&1 > start_ocean.log &
+  - KEEPER_VERSION=v0.5.1 bash -x start_ocean.sh --latest --no-brizo --no-pleuston --local-spree-node 2>&1 > start_ocean.log &
+  - sleep 15
 
-# Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install: pip install -U tox-travis
 script: tox
 deploy:
