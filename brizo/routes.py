@@ -89,8 +89,9 @@ def initialize():
     required_attributes = ['did', 'serviceAgreementId', 'serviceDefinitionId', 'signature',
                            'consumerAddress']
     data = request.json
-    if check_required_attributes(required_attributes, data, 'initialize') is not True:
-        return check_required_attributes(required_attributes, data, 'initialize')
+    msg, status = check_required_attributes(required_attributes, data, 'initialize')
+    if msg:
+        return msg, status
     try:
 
         logger.debug('Found ddo of did %s', data.get('did'))
@@ -167,8 +168,9 @@ def consume():
     """
     data = request.args
     required_attributes = ['serviceAgreementId', 'consumerAddress', 'url']
-    if check_required_attributes(required_attributes, data, 'consume') is not True:
-        return check_required_attributes(required_attributes, data, 'consume')
+    msg, status = check_required_attributes(required_attributes, data, 'consume')
+    if msg:
+        return msg, status
     try:
         if ocn.check_permissions(
                 data.get('serviceAgreementId'),
@@ -243,9 +245,9 @@ def compute():
     """
     required_attributes = ['asset_did', 'algorithm_did', 'consumer_wallet']
     data = request.json
-    if check_required_attributes(required_attributes, data, 'compute') is not True:
-        return check_required_attributes(required_attributes, data, 'compute')
-
+    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    if msg:
+        return msg, status
     osm = Osmosis(config_file)
     # TODO use this two asigment in the exec_container to use directly did instead of the name
     # asset_url = _parse_url(get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base']['contentUrls'][0]).file
@@ -284,7 +286,7 @@ def check_required_attributes(required_attributes, data, method):
         if attr not in data:
             logger.error('%s request failed: required attr %s missing.' % (method, attr))
             return '"%s" is required in the call to %s' % (attr, method), 400
-    return True
+    return None, None
 
 
 def get_metadata(ddo):
