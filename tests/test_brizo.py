@@ -1,13 +1,13 @@
-import os
 import time
 
+from squid_py.ocean.asset import Asset
 from squid_py.service_agreement.register_service_agreement import register_service_agreement
 from squid_py.service_agreement.service_agreement_template import ServiceAgreementTemplate
-from squid_py.service_agreement.utils import get_sla_template_path, register_service_agreement_template
-from squid_py.utils.utilities import prepare_purchase_payload, get_metadata_url
-from squid_py.ocean.asset import Asset
 from squid_py.service_agreement.service_factory import ServiceDescriptor
 from squid_py.service_agreement.service_types import ServiceTypes
+from squid_py.service_agreement.utils import get_sla_template_path, \
+    register_service_agreement_template
+from squid_py.utils.utilities import prepare_purchase_payload, get_metadata_url
 
 from brizo.constants import BaseURLs
 
@@ -28,7 +28,8 @@ def get_registered_ddo(ocean_instance, price):
         price, PURCHASE_ENDPOINT, SERVICE_ENDPOINT, 600, sla_template.template_id
     )]
     asset = Asset.from_ddo_json_file('./tests/json_sample.json')
-    ddo = ocean_instance.register_asset(asset.metadata, ocean_instance.main_account, service_descriptors)
+    ddo = ocean_instance.register_asset(asset.metadata, ocean_instance.main_account,
+                                        service_descriptors)
 
     return ddo
 
@@ -64,7 +65,9 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
 
     print("did: %s" % asset_registered.did)
 
-    service_def_id = asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS).get_values()['serviceDefinitionId']
+    service_def_id = \
+    asset_registered.get_service(service_type=ServiceTypes.ASSET_ACCESS).get_values()[
+        'serviceDefinitionId']
     agreement_tuple = cons_ocn._get_service_agreement_to_sign(asset_registered.did, service_def_id)
     agreement_id, service_agreement, service_def, ddo = agreement_tuple
     sa = service_agreement
@@ -77,11 +80,14 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     cons_ocn._approve_token_transfer(service_agreement.get_price())
     cons_ocn._http_client = client
     # subscribe to events
-    register_service_agreement(web3, cons_ocn.keeper.contract_path, cons_ocn.config.storage_path, cons_ocn.main_account,
+    register_service_agreement(web3, cons_ocn.keeper.contract_path, cons_ocn.config.storage_path,
+                               cons_ocn.main_account,
                                agreement_id, ddo.did, service_def, 'consumer', service_def_id,
-                               service_agreement.get_price(), get_metadata_url(ddo), cons_ocn.consume_service, 0)
+                               service_agreement.get_price(), get_metadata_url(ddo),
+                               cons_ocn.consume_service, 0)
 
-    request_payload = prepare_purchase_payload(ddo.did, agreement_id, service_def_id, signature, consumer_account.address)
+    request_payload = prepare_purchase_payload(ddo.did, agreement_id, service_def_id, signature,
+                                               consumer_account.address)
     initialize = client.post(
         sa.purchase_endpoint,
         data=request_payload,
@@ -95,3 +101,13 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is True, ''
     print('Service agreement executed and fulfilled, all good.')
     # print('consumed : ', cons_ocn.get_consumed_results())
+
+
+def test_empty_payload(client, publisher_ocean_instance, consumer_ocean_instance):
+    request_payload = None
+    initialize = client.post(
+        '/api/v1/brizo/services/access/initialize',
+        data=request_payload,
+        content_type='application/json'
+    )
+    assert initialize.status_code == 400
