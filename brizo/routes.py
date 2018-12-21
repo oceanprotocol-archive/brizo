@@ -280,13 +280,10 @@ def check_required_attributes(required_attributes, data, method):
     if not data:
         logger.error('%s request failed: data is empty.' % method)
         return 'payload seems empty.', 400
-
-    assert isinstance(data, dict), 'invalid `body` type, should be formatted into a dict.'
-
     for attr in required_attributes:
         if attr not in data:
             logger.error('%s request failed: required attr %s missing.' % (method, attr))
-            return '"%s" is required for registering an asset.' % attr, 400
+            return '"%s" is required in the call to %s' % (attr, method), 400
     return True
 
 
