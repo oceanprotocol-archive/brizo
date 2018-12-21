@@ -31,8 +31,6 @@ def spec():
     swag['info']['version'] = get_version()
     swag['info']['title'] = Metadata.TITLE
     swag['info']['description'] = Metadata.DESCRIPTION
-    swag['basePath'] = BaseURLs.BASE_BRIZO_URL
-    swag['host'] = Metadata.HOST
     return jsonify(swag)
 
 
