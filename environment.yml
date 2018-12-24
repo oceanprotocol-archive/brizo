@@ -131,7 +131,6 @@ dependencies:
     - eth-rlp==0.1.2
     - eth-typing==1.1.0
     - eth-utils==1.2.0
-    - flake8==3.5.0
     - flask==1.0.2
     - flask-cors==3.0.6
     - flask-restful==0.3.6
@@ -172,8 +171,8 @@ dependencies:
     - pycparser==2.18
     - pycryptodome==3.6.6
     - pycryptodomex==3.6.6
-    - pyflakes==1.6.0
     - pyjwt==1.6.4
+    - pylint==2.2.2
     - pymongo==3.7.1
     - pynacl==1.1.2
     - pyopenssl==18.0.0
