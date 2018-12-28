@@ -38,7 +38,6 @@ ENV AZURE_SUBSCRIPTION_ID=''
 ENV AZURE_SHARE_INPUT='compute'
 ENV AZURE_SHARE_OUTPUT='output'
 
-ENV AQUARIUS_URL='http://0.0.0.0:5000'
 ENV BRIZO_URL='http://0.0.0.0:8030'
 
 # docker-entrypoint.sh configuration file variables
