@@ -22,16 +22,16 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 
 ## Table of Contents
 
-- [Features](#features)
-- [Running Locally, for Dev and Test](#running-locally-for-dev-and-test)
-- [API documentation](#api-documentation)
-- [Configuration](#configuration)
-- [Dependencies](#dependencies)
-- [Code style](#code-style)
-- [Testing](#testing)
-- [Debugging](#debugging)
-- [New Version](#new-version)
-- [License](#license)
+  - [Features](#features)
+  - [Running Locally, for Dev and Test](#running-locally-for-dev-and-test)
+  - [API documentation](#api-documentation)
+  - [Configuration](#configuration)
+  - [Dependencies](#dependencies)
+  - [Code style](#code-style)
+  - [Testing](#testing)
+  - [Debugging](#debugging)
+  - [New Version](#new-version)
+  - [License](#license)
 
 ---
 
@@ -53,13 +53,17 @@ cd brizo/
 Then run some things that Brizo expects to be running:
 
 ```bash
-cd docker
-docker-compose up
+git clone git@github.com:oceanprotocol/barge.git
+cd barge
+bash start_ocean.sh --no-brizo --no-pleuston --local-spree-node
 ```
 
-You can see what that runs by reading [docker/docker-compose.yml](docker/docker-compose.yml).
+Barge is the repository where all the docker-compose are allocated. We are running the script start_ocean that is the easy way to have ocean projects up and running.
+We are selecting run without the brizo and pleuston instance. 
+
+To know more about visit [Barge](https://github.com/oceanprotocol/barge)
+
 Note that it runs a Aquarius instance and MongoDB but the Aquarius can also work with BigchainDB or Elasticsearch.
-It also runs [Ganache](https://github.com/trufflesuite/ganache) with all [Ocean Protocol Keeper Contracts](https://github.com/oceanprotocol/keeper-contracts) and [Ganache CLI](https://github.com/trufflesuite/ganache-cli).
 
 The most simple way to start is:
 
@@ -67,7 +71,7 @@ The most simple way to start is:
 pip install -r requirements_dev.txt # or requirements_conda.txt if using Conda
 export FLASK_APP=brizo/run.py
 export CONFIG_FILE=config.ini
-./scripts/deploy
+./scripts/wait_for_migration_and_extract_keeper_artifacts.sh
 flask run
 ```
 
@@ -177,8 +181,8 @@ Our test use pytest framework.
 
 To debug Brizo using PyCharm, follow the next instructions:
 
-1. Clone [docker-images](https://github.com/oceanprotocol/docker-images) repository
-2. Run docker-images omitting `brizo`. (i.e.:`bash start_ocean.sh --no-brizo --no-pleuston --local-nile-node`)
+1. Clone [barge](https://github.com/oceanprotocol/barge) repository.
+2. Run barge omitting `brizo`. (i.e.:`bash start_ocean.sh --no-brizo --no-pleuston --local-nile-node`)
 3. In PyCharm, go to _Settings > Project Settings > Python Debugger_, and select the option _Gevent Compatible_
 4. Configure a new debugger configuration: _Run > Edit Configurations..._, there click on _Add New Configuration_
 5. Configure as shown in the next image:
