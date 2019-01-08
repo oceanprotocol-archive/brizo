@@ -20,7 +20,7 @@ config_file = app.config['CONFIG_FILE']
 config = Config(filename=config_file)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
-ocn = Ocean(config_file=config_file)
+ocn = Ocean(config=config)
 
 cache = SimpleCache()
 
