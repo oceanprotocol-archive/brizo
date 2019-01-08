@@ -1,9 +1,9 @@
 import os
 
 import pytest
-from squid_py.ocean.account import Account
+from squid_py.keeper.web3_provider import Web3Provider
 from squid_py.ocean.ocean import Ocean
-
+from squid_py.config import Config
 from brizo.run import app
 
 app = app
@@ -49,20 +49,20 @@ def init_ocn_tokens(ocn, amount=100):
     )
 
 
-def make_ocean_instance(secret_store_client, account_index):
+def make_ocean_instance(account_index):
     path_config = 'config_local.ini'
     os.environ['CONFIG_FILE'] = path_config
-    ocn = Ocean(os.environ['CONFIG_FILE'], secret_store_client=secret_store_client)
-    ocn.main_account = Account(ocn.keeper, list(ocn.accounts)[account_index])
+    ocn = Ocean(Config(os.environ['CONFIG_FILE']))
+    # ocn.main_account = Account(ocn.keeper, list(ocn.accounts)[account_index])
     return ocn
 
 
 def get_publisher_ocean_instance():
-    ocn = make_ocean_instance(None, 0)
+    ocn = make_ocean_instance(0)
     address = None
     if ocn.config.has_option('keeper-contracts', 'parity.address'):
         address = ocn.config.get('keeper-contracts', 'parity.address')
-    address = ocn.keeper.web3.toChecksumAddress(address) if address else None
+    address = Web3Provider.get_web3().toChecksumAddress(address) if address else None
     if address and address in ocn.accounts:
         password = ocn.config.get('keeper-contracts', 'parity.password') \
             if ocn.config.has_option('keeper-contracts', 'parity.password') else None
@@ -72,12 +72,12 @@ def get_publisher_ocean_instance():
 
 
 def get_consumer_ocean_instance():
-    ocn = make_ocean_instance(None, 0)
+    ocn = make_ocean_instance(0)
     address = None
     if ocn.config.has_option('keeper-contracts', 'parity.address1'):
         address = ocn.config.get('keeper-contracts', 'parity.address1')
 
-    address = ocn.keeper.web3.toChecksumAddress(address) if address else None
+    address = Web3Provider.get_web3().toChecksumAddress(address) if address else None
     if address and address in ocn.accounts:
         password = ocn.config.get('keeper-contracts', 'parity.password1') \
             if ocn.config.has_option('keeper-contracts', 'parity.password1') else None
