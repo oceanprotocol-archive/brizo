@@ -1,18 +1,25 @@
 import os
 
 import pytest
+from squid_py import Account, ConfigProvider
+from squid_py.config import Config
+from squid_py.keeper import Keeper
 from squid_py.keeper.web3_provider import Web3Provider
 from squid_py.ocean.ocean import Ocean
-from squid_py.config import Config
+
 from brizo.run import app
 
 app = app
+
+PUBLISHER_INDEX = 1
+CONSUMER_INDEX = 0
 
 
 @pytest.fixture
 def client():
     client = app.test_client()
     yield client
+
 
 json_brizo = {
     "consumer_wallet": "",
@@ -28,6 +35,7 @@ json_brizo = {
 def sla_template():
     return
 
+
 @pytest.fixture
 def publisher_ocean_instance():
     return get_publisher_ocean_instance()
@@ -38,50 +46,60 @@ def consumer_ocean_instance():
     return get_consumer_ocean_instance()
 
 
-def init_ocn_tokens(ocn, amount=100):
-    ocn.main_account.unlock()
-    ocn.keeper.market.contract_concise.requestTokens(amount, transact={'from': ocn.main_account.address})
-    ocn.main_account.unlock()
-    ocn.keeper.token.contract_concise.approve(
+def init_ocn_tokens(ocn, account, amount=100):
+    account.request_tokens(amount)
+    ocn.keeper.token.token_approve(
         ocn.keeper.payment_conditions.address,
         amount,
-        transact={'from': ocn.main_account.address},
+        account
     )
 
 
 def make_ocean_instance(account_index):
     path_config = 'config_local.ini'
     os.environ['CONFIG_FILE'] = path_config
-    ocn = Ocean(Config(os.environ['CONFIG_FILE']))
-    # ocn.main_account = Account(ocn.keeper, list(ocn.accounts)[account_index])
+    ocn = Ocean(Config(path_config))
+    account = list(ocn.accounts)[account_index]
     return ocn
 
 
 def get_publisher_ocean_instance():
-    ocn = make_ocean_instance(0)
-    address = None
-    if ocn.config.has_option('keeper-contracts', 'parity.address'):
-        address = ocn.config.get('keeper-contracts', 'parity.address')
-    address = Web3Provider.get_web3().toChecksumAddress(address) if address else None
-    if address and address in ocn.accounts:
-        password = ocn.config.get('keeper-contracts', 'parity.password') \
-            if ocn.config.has_option('keeper-contracts', 'parity.password') else None
-        ocn.set_main_account(address, password)
-    init_ocn_tokens(ocn)
+    ocn = make_ocean_instance(PUBLISHER_INDEX)
+    account = get_publisher_account(ConfigProvider.get_config())
+    init_ocn_tokens(ocn, account)
+    ocn.main_account = account
     return ocn
 
 
 def get_consumer_ocean_instance():
-    ocn = make_ocean_instance(0)
-    address = None
-    if ocn.config.has_option('keeper-contracts', 'parity.address1'):
-        address = ocn.config.get('keeper-contracts', 'parity.address1')
-
-    address = Web3Provider.get_web3().toChecksumAddress(address) if address else None
-    if address and address in ocn.accounts:
-        password = ocn.config.get('keeper-contracts', 'parity.password1') \
-            if ocn.config.has_option('keeper-contracts', 'parity.password1') else None
-        ocn.set_main_account(address, password)
-    init_ocn_tokens(ocn)
+    ocn = make_ocean_instance(CONSUMER_INDEX)
+    account = get_consumer_account(ConfigProvider.get_config())
+    init_ocn_tokens(ocn, account)
+    ocn.main_account = account
     return ocn
 
+
+def get_publisher_account(config):
+    return get_account_from_config(config, 'parity.address', 'parity.password')
+
+
+def get_consumer_account(config):
+    return get_account_from_config(config, 'parity.address1', 'parity.password1')
+
+
+def get_account_from_config(config, config_account_key, config_account_password_key):
+    address = None
+    if config.has_option('keeper-contracts', config_account_key):
+        address = config.get('keeper-contracts', config_account_key)
+
+    if not address:
+        return None
+
+    password = None
+    address = Web3Provider.get_web3().toChecksumAddress(address) if address else None
+    if (address
+            and address in Keeper.get_instance().accounts
+            and config.has_option('keeper-contracts', config_account_password_key)):
+        password = config.get('keeper-contracts', config_account_password_key)
+
+    return Account(address, password)

@@ -6,6 +6,8 @@ from flask import Blueprint, request, redirect
 from osmosis_driver_interface.osmosis import Osmosis
 from squid_py.config import Config
 from squid_py.exceptions import OceanDIDNotFound
+from squid_py.keeper.web3_provider import Web3Provider
+from squid_py.ocean.account import Account
 from squid_py.ocean.ocean import Ocean
 from werkzeug.contrib.cache import SimpleCache
 
@@ -100,12 +102,14 @@ def initialize():
         # When you call execute agreement this start different listeners of the events to
         # catch the paymentLocked.
         receipt = ocn.execute_service_agreement(
-            service_agreement_id=service_agreement_id,
-            service_index=data.get('serviceDefinitionId'),
-            service_agreement_signature=data.get('signature'),
             did=data.get('did'),
+            service_definition_id=data.get('serviceDefinitionId'),
+            service_agreement_id=service_agreement_id,
+            service_agreement_signature=data.get('signature'),
             consumer_address=data.get('consumerAddress'),
-            publisher_address=ocn.main_account.address
+            publisher_account=Account(
+                Web3Provider.get_web3().toChecksumAddress(config.parity_address),
+                config.parity_password)
         )
         logger.info('executed ServiceAgreement, request payload was %s', data)
         logger.debug('executeServiceAgreement receipt %s', receipt)
@@ -172,7 +176,7 @@ def consume():
     if msg:
         return msg, status
     try:
-        if ocn.check_permissions(
+        if ocn.is_access_granted(
                 data.get('serviceAgreementId'),
                 cache.get(data.get('serviceAgreementId')),
                 data.get('consumerAddress')):
