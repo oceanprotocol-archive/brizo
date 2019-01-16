@@ -156,7 +156,7 @@ dependencies:
     - multidict==4.3.1
     - multipipes==0.1.0
     - oauthlib==2.1.0
-    - squid-py==0.2.21
+    - squid-py==0.2.22
     - oceandb-driver-interface==0.1.9
     - oceandb-mongodb-driver==0.1.2
     - oceandb-elasticsearch-driver==0.0.2
