@@ -9,7 +9,7 @@ if [ "${LOCAL_CONTRACTS}" = "true" ]; then
   done
 fi
 
-/bin/cp -up /usr/local/keeper-contracts/* /usr/local/artifacts/ || true
+/bin/cp -up /usr/local/keeper-contracts/* /usr/local/artifacts/ 2>/dev/null || true
 
 gunicorn -b ${BRIZO_URL#*://} -w ${BRIZO_WORKERS} brizo.run:app
 tail -f /dev/null
