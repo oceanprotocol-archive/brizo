@@ -8,6 +8,7 @@ parity.password = ${PARITY_PASSWORD}
 
 [resources]
 brizo.url = ${BRIZO_URL}
+aquarius.url = ${AQUARIUS_URL}
 
 [osmosis]
 azure.account.name = ${AZURE_ACCOUNT_NAME}
