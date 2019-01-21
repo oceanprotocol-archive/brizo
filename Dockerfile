@@ -23,6 +23,7 @@ RUN pip install -r requirements_dev.txt
 
 # config.ini configuration file variables
 ENV KEEPER_URL='http://127.0.0.1:8545'
+ENV AQUARIUS_URL='http://127.0.0.1:5000'
 ENV SECRET_STORE_URL='http://127.0.0.1:12001'
 ENV PARITY_ADDRESS=''
 ENV PARITY_PASSWORD=''
