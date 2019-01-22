@@ -68,7 +68,7 @@ Note that it runs a Aquarius instance and MongoDB but the Aquarius can also work
 The most simple way to start is:
 
 ```bash
-pip install -r requirements_dev.txt # or requirements_conda.txt if using Conda
+pip install -r requirements_dev.txt
 export FLASK_APP=brizo/run.py
 export CONFIG_FILE=config.ini
 ./scripts/wait_for_migration_and_extract_keeper_artifacts.sh

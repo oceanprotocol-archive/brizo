@@ -11,11 +11,41 @@ with open('README.md') as readme_file:
 with open('HISTORY.md') as history_file:
     history = history_file.read()
 
-requirements = []
+# Installed by pip install ocean-brizo
+# or pip install -e .
+install_requirements = [
+    'Flask==1.0.2',
+    'Flask-Cors==3.0.6',
+    'Flask-RESTful==0.3.6',
+    'flask-swagger==0.2.13',
+    'flask-swagger-ui==3.6.0',
+    'osmosis-azure-driver==0.0.2'
+    'osmosis-driver-interface==0.0.4',
+    'squid-py==0.2.24',  # gets PyYAML, coloredlogs, web3
+    'Werkzeug==0.14.1',
+]
 
+# Required to run setup.py:
 setup_requirements = ['pytest-runner', ]
 
-test_requirements = ['pytest', ]
+test_requirements = [
+    'codacy-coverage',
+    'coverage',
+    'docker',
+    'mccabe',
+    'pylint',
+    'pytest',
+    'pytest-watch',
+    'tox',
+]
+
+# Possibly required by developers of ocean-brizo:
+dev_requirements = [
+    'bumpversion',
+    'pkginfo',
+    'twine',
+    'watchdog',
+]
 
 setup(
     author="leucothia",
@@ -29,7 +59,11 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     description="🐳 Ocean Brizo.",
-    install_requires=requirements,
+    extras_require={
+        'test': test_requirements,
+        'dev': dev_requirements + test_requirements,
+    },
+    install_requires=install_requirements,
     license="Apache Software License 2.0",
     long_description=readme,
     long_description_content_type="text/markdown",
