@@ -19,7 +19,7 @@ install_requirements = [
     'Flask-RESTful==0.3.6',
     'flask-swagger==0.2.13',
     'flask-swagger-ui==3.6.0',
-    'osmosis-azure-driver==0.0.2'
+    'osmosis-azure-driver==0.0.2',
     'osmosis-driver-interface==0.0.4',
     'squid-py==0.2.24',  # gets PyYAML, coloredlogs, web3
     'Werkzeug==0.14.1',
