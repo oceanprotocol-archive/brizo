@@ -19,7 +19,7 @@ RUN apk add --no-cache --update\
 COPY . /brizo
 WORKDIR /brizo
 
-RUN pip install -r requirements_dev.txt
+RUN pip install .
 
 # config.ini configuration file variables
 ENV KEEPER_URL='http://127.0.0.1:8545'
