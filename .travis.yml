@@ -1,20 +1,23 @@
 language: python
 
-matrix:
-  include:
-    - python: 3.6
-    - python: 3.7
-      dist: xenial
-      sudo: true
+python:
+  - "3.6"
+  - "3.7"
 
-sudo: required
+dist: xenial
+
+sudo: false
+
 services:
-- docker
+  - docker
 
 before_install:
-- docker-compose -f docker/docker-compose.yml up -d
+  - git clone https://github.com/oceanprotocol/barge
+  - cd barge
+  - KEEPER_VERSION=v0.5.3 bash -x start_ocean.sh --latest --no-brizo --no-pleuston --local-spree-node 2>&1 > start_ocean.log &
+  - cd ..
+  - sleep 15
 
-# Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install: pip install -U tox-travis
 script: tox
 deploy:
@@ -26,3 +29,6 @@ deploy:
     tags: true
     repo: oceanprotocol/brizo
     python: 3.6
+
+notifications:
+  email: false

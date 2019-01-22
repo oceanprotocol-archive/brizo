@@ -1,22 +1,42 @@
-import json
 import time
 
-from aquarius.constants import BaseURLs
-from eth_account.messages import defunct_hash_message
-from squid_py.acl import generate_encryption_keys, decode, decrypt
-from squid_py.asset import Asset
-from squid_py.ocean import Ocean
-from squid_py.utils.utilities import watch_event
+from squid_py.brizo.brizo_provider import BrizoProvider
+from squid_py.ddo.metadata import Metadata
+from squid_py.service_agreement.service_agreement import ServiceAgreement
+from squid_py.service_agreement.register_service_agreement import register_service_agreement
+from squid_py.service_agreement.service_agreement_template import ServiceAgreementTemplate
+from squid_py.service_agreement.service_types import ServiceTypes
+from squid_py.service_agreement.utils import get_sla_template_path, \
+    register_service_agreement_template
+from squid_py.utils.utilities import get_metadata_url
+from squid_py import ACCESS_SERVICE_TEMPLATE_ID
 
-from tests.conftest import json_dict, json_request_consume
+from brizo.constants import BaseURLs
 
-ocean = Ocean(config_file='config_local.ini')
+PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
+SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
 
-acl_concise = ocean.keeper.auth.contract_concise
-acl = ocean.keeper.auth.contract
-market_concise = ocean.keeper.market.contract_concise
-market = ocean.keeper.market.contract
-token = ocean.keeper.token.contract_concise
+
+def get_registered_access_service_template(ocean_instance, account):
+    # register an asset Access service agreement template
+    template = ServiceAgreementTemplate.from_json_file(get_sla_template_path())
+    template_id = ACCESS_SERVICE_TEMPLATE_ID
+    template_owner = ocean_instance.keeper.service_agreement.get_template_owner(template_id)
+    if not template_owner:
+        template = register_service_agreement_template(
+            ocean_instance.keeper.service_agreement,
+            account, template,
+            ocean_instance.keeper.network_name
+        )
+
+    return template
+
+
+def get_registered_ddo(ocean_instance, account):
+    get_registered_access_service_template(ocean_instance, account)
+    ddo = ocean_instance.register_asset(Metadata.get_example(), account)
+    return ddo
+
 
 
 def get_events(event_filter, max_iterations=100, pause_duration=0.1):
@@ -37,122 +57,74 @@ def process_enc_token(event):
     print("token published event: %s" % event)
 
 
-def test_commit_access_requested(client):
-    expire_seconds = 9999999999
-    consumer_account = ocean._web3.eth.accounts[1]
-    aquarius_account = ocean._web3.eth.accounts[0]
-    print("Starting test_commit_access_requested")
-    print("buyer: %s" % consumer_account)
-    print("seller: %s" % aquarius_account)
+def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean_instance):
+    print(publisher_ocean_instance.accounts)
+    pub_ocn, cons_ocn = publisher_ocean_instance, consumer_ocean_instance
+    consumer_account = cons_ocn.main_account
+    publisher_account = pub_ocn.main_account
+    asset_price = 10
 
-    asset_id = market_concise.generateId('resource', transact={'from': aquarius_account})
-    print("recource_id: %s" % asset_id)
-    resource_price = 10
-    json_dict['id'] = ocean._web3.toHex(asset_id)
-    asset = Asset(asset_id, None, resource_price, json_dict)
-    ocean.metadata.publish_asset_metadata(asset)
+    # Register asset
+    ddo = get_registered_ddo(pub_ocn, publisher_account)
 
-    pubprivkey = generate_encryption_keys()
-    pubkey = pubprivkey.public_key
-    privkey = pubprivkey.private_key
+    print("did: %s" % ddo.did)
 
-    market_concise.requestTokens(2000, transact={'from': aquarius_account})
-    market_concise.requestTokens(2000, transact={'from': consumer_account})
+    service_definition_id = \
+        ddo.get_service(service_type=ServiceTypes.ASSET_ACCESS).get_values()[
+            'serviceDefinitionId']
 
-    # 1. Aquarius register an asset
-    market_concise.register(asset_id,
-                            resource_price,
-                            transact={'from': aquarius_account})
-    # 2. Consumer initiate an access request
-    expiry = int(time.time() + expire_seconds)
-    req = acl_concise.initiateAccessRequest(asset_id,
-                                            aquarius_account,
-                                            pubkey,
-                                            expiry,
-                                            transact={'from': consumer_account})
-    ocean.keeper.web3.eth.waitForTransactionReceipt(req)
-    receipt = ocean.keeper.web3.eth.getTransactionReceipt(req)
-    send_event = acl.events.AccessConsentRequested().processReceipt(receipt)
-    request_id = send_event[0]['args']['_id']
+    agreement_id = ServiceAgreement.create_new_agreement_id()
+    service_def = ddo.find_service_by_id(service_definition_id).as_dictionary()
 
-    # events = get_events(filter_access_consent)
+    service_agreement = ServiceAgreement.from_ddo(service_definition_id, ddo)
+    service_agreement.validate_conditions()
+    agreement_hash = service_agreement.get_service_agreement_hash(agreement_id)
+    cons_ocn.main_account.unlock()
 
-    # assert send_event[0] in events
-    assert acl_concise.statusOfAccessRequest(request_id) == 0 or acl_concise.statusOfAccessRequest(request_id) == 1
+    signature = consumer_account.sign_hash(agreement_hash)
 
-    filter_token_published = watch_event(acl, 'EncryptedTokenPublished', process_enc_token, 0.25,
-                                                   fromBlock='latest')  # , filters={"id": request_id})
+    sa = service_agreement
 
-    # 3. Aquarius commit the request in commit_access_request
+    cons_ocn.main_account.unlock()
+    cons_ocn._approve_token_transfer(service_agreement.get_price(), consumer_account)
+    cons_ocn._http_client = client
+    # subscribe to events
+    register_service_agreement(cons_ocn.config.storage_path,
+                               cons_ocn.main_account,
+                               agreement_id,
+                               ddo.did,
+                               service_def,
+                               'consumer',
+                               service_definition_id,
+                               service_agreement.get_price(),
+                               get_metadata_url(ddo),
+                               cons_ocn.consume_service,
+                               0)
 
-    # Verify consent has been emited
-    i = 0
-    while (acl_concise.statusOfAccessRequest(request_id) == 1) is False and i < 100:
-        i += 1
-        time.sleep(0.1)
-
-    assert acl_concise.statusOfAccessRequest(request_id) == 1
-
-    # 4. consumer make payment after approve spend token
-    token.approve(ocean._web3.toChecksumAddress(market_concise.address),
-                  resource_price,
-                  transact={'from': consumer_account})
-
-    buyer_balance_start = token.balanceOf(consumer_account)
-    seller_balance_start = token.balanceOf(aquarius_account)
-    print('starting buyer balance = ', buyer_balance_start)
-    print('starting seller balance = ', seller_balance_start)
-
-    market_concise.sendPayment(request_id,
-                               aquarius_account,
-                               resource_price,
-                               expiry,
-                               transact={'from': consumer_account, 'gas': 400000})
-
-    print('buyer balance = ', token.balanceOf(consumer_account))
-    print('seller balance = ', token.balanceOf(aquarius_account))
-
-    events = get_events(filter_token_published)
-    assert events
-    assert events[0].args['_id'] == request_id
-    on_chain_enc_token = events[0].args["_encryptedAccessToken"]
-    # on_chain_enc_token2 = acl_concise.getEncryptedAccessToken(request_id, call={'from': consumer_account})
-
-    decrypted_token = decrypt(on_chain_enc_token, privkey)
-    # pub_key = ocean.encoding_key_pair.public_key
-    access_token = decode(decrypted_token)
-
-    assert pubkey == access_token['temp_pubkey']
-    signature = ocean._web3.eth.sign(consumer_account, data=on_chain_enc_token)
-
-    fixed_msg = defunct_hash_message(hexstr=ocean._web3.toHex(on_chain_enc_token))
-
-    # helper.split_signature(signature)
-    json_request_consume['fixed_msg'] = ocean._web3.toHex(fixed_msg)
-    json_request_consume['consumerId'] = consumer_account
-    json_request_consume['sigEncJWT'] = ocean._web3.toHex(signature)
-    json_request_consume['jwt'] = ocean._web3.toBytes(hexstr=ocean._web3.toHex(decrypted_token)).decode('utf-8')
-
-    post = client.post(
-        access_token['service_endpoint'].split('8030')[1] + '/%s' % ocean._web3.toHex(asset_id),
-        data=json.dumps(json_request_consume),
-        content_type='application/json')
-    print(post.data.decode('utf-8'))
-    assert post.status_code == 200
-    while (acl_concise.statusOfAccessRequest(request_id) == 3) is False and i < 1000:
-        i += 1
-        time.sleep(0.1)
-    assert acl_concise.statusOfAccessRequest(request_id) == 3
-
-    buyer_balance = token.balanceOf(consumer_account)
-    seller_balance = token.balanceOf(aquarius_account)
-    print('end: buyer balance -- current %s, starting %s, diff %s' % (
-        buyer_balance, buyer_balance_start, (buyer_balance - buyer_balance_start)))
-    print('end: seller balance -- current %s, starting %s, diff %s' % (
-        seller_balance, seller_balance_start, (seller_balance - seller_balance_start)))
-    assert token.balanceOf(consumer_account) == buyer_balance_start - resource_price
-    assert token.balanceOf(aquarius_account) == seller_balance_start + resource_price
-    client.delete(
-        BaseURLs.BASE_AQUARIUS_URL + '/assets/ddo/%s' % ocean._web3.toHex(asset_id)
+    request_payload = BrizoProvider.get_brizo().prepare_purchase_payload(ddo.did, agreement_id,
+                                                                         service_definition_id,
+                                                                         signature,
+                                                                         consumer_account.address)
+    initialize = client.post(
+        sa.purchase_endpoint,
+        data=request_payload,
+        content_type='application/json'
     )
-    print('All good \/')
+    print(initialize.status_code)
+    assert initialize.status_code == 201
+    assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is False, ''
+    # wait a bit until all service agreement events are processed
+    time.sleep(15)
+    assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is True, ''
+    print('Service agreement executed and fulfilled, all good.')
+    # print('consumed : ', cons_ocn.get_consumed_results())
+
+
+def test_empty_payload(client, publisher_ocean_instance, consumer_ocean_instance):
+    request_payload = None
+    initialize = client.post(
+        '/api/v1/brizo/services/access/initialize',
+        data=request_payload,
+        content_type='application/json'
+    )
+    assert initialize.status_code == 400

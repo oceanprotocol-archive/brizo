@@ -5,15 +5,32 @@ from squid_py.config import Config
 
 from brizo.constants import BaseURLs
 from brizo.constants import ConfigSections
+from brizo.constants import Metadata
 from brizo.myapp import app
 from brizo.routes import services
+import configparser
+
+
+def get_version():
+    conf = configparser.ConfigParser()
+    conf.read('.bumpversion.cfg')
+    return conf['bumpversion']['current_version']
+
+
+@app.route("/")
+def version():
+    info = dict()
+    info['software'] = Metadata.TITLE
+    info['version'] = get_version()
+    return jsonify(info)
 
 
 @app.route("/spec")
 def spec():
     swag = swagger(app)
-    swag['info']['version'] = "1.0"
-    swag['info']['title'] = "Ocean-brizo"
+    swag['info']['version'] = get_version()
+    swag['info']['title'] = Metadata.TITLE
+    swag['info']['description'] = Metadata.DESCRIPTION
     return jsonify(swag)
 
 
