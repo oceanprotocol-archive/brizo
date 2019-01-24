@@ -184,7 +184,7 @@ def consume():
             cache.delete(data.get('serviceAgreementId'))
             logging.info('Connecting through Osmosis to generate the sign url.')
             try:
-                osm = Osmosis(config_file)
+                osm = Osmosis(data.get('url'), config_file)
                 result = osm.data_plugin.generate_url(data.get('url'))
             except Exception as e:
                 logging.error(e)
