@@ -1,8 +1,10 @@
+import io
 import logging
 from os import getenv
 
+import requests
 from eth_utils import add_0x_prefix
-from flask import Blueprint, request, redirect
+from flask import Blueprint, request
 from osmosis_driver_interface.osmosis import Osmosis
 from squid_py.config import Config
 from squid_py.exceptions import OceanDIDNotFound
@@ -161,7 +163,7 @@ def consume():
         required: true
         type: string
     responses:
-      302:
+      200:
         description: Redirect to valid asset url.
       400:
         description: One of the required attributes is missing.
@@ -186,11 +188,18 @@ def consume():
             try:
                 osm = Osmosis(data.get('url'), config_file)
                 result = osm.data_plugin.generate_url(data.get('url'))
+                logging.debug("Osmosis generate the url: %s", result)
+                download_url = result.split('?')[0]
+                try:
+                    response = requests.get(download_url)
+                    file = io.BytesIO(response.content)
+                    return file.read(), 200
+                except Exception as e:
+                    logging.error(e)
+                    return "Error getting the url content: %s" % e, 401
             except Exception as e:
                 logging.error(e)
                 return "Error generating url: %s" % e, 401
-            logging.debug("Osmosis generate the url: %s", result)
-            return redirect(result, code=302)
         else:
             msg = "Invalid consumer address and/or service agreement id, " \
                   "or consumer address does not have permission to consume this asset."
