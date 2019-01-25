@@ -22,6 +22,7 @@ install_requirements = [
     'flask-swagger==0.2.13',
     'flask-swagger-ui==3.6.0',
     'osmosis-azure-driver==0.0.4',
+    'osmosis-aws-driver==0.0.2',
     'osmosis-driver-interface==0.0.6',
     'osmosis-on-premise-driver==0.0.5',
     'Werkzeug==0.14.1',
