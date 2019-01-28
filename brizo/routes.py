@@ -187,9 +187,8 @@ def consume():
             logging.info('Connecting through Osmosis to generate the sign url.')
             try:
                 osm = Osmosis(data.get('url'), config_file)
-                result = osm.data_plugin.generate_url(data.get('url'))
-                logging.debug("Osmosis generate the url: %s", result)
-                download_url = result.split('?')[0]
+                download_url = osm.data_plugin.generate_url(data.get('url'))
+                logging.debug("Osmosis generate the url: %s", download_url)
                 try:
                     response = requests.get(download_url)
                     file = io.BytesIO(response.content)
