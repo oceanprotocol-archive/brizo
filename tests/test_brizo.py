@@ -38,7 +38,6 @@ def get_registered_ddo(ocean_instance, account):
     return ddo
 
 
-
 def get_events(event_filter, max_iterations=100, pause_duration=0.1):
     events = event_filter.get_new_entries()
     i = 0
@@ -62,7 +61,6 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     pub_ocn, cons_ocn = publisher_ocean_instance, consumer_ocean_instance
     consumer_account = cons_ocn.main_account
     publisher_account = pub_ocn.main_account
-    asset_price = 10
 
     # Register asset
     ddo = get_registered_ddo(pub_ocn, publisher_account)
@@ -112,10 +110,10 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     )
     print(initialize.status_code)
     assert initialize.status_code == 201
-    assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is False, ''
+    assert pub_ocn.keeper.service_agreement.is_agreement_existing(agreement_id) is False, ''
     # wait a bit until all service agreement events are processed
     time.sleep(15)
-    assert pub_ocn.keeper.service_agreement.get_agreement_status(agreement_id) is True, ''
+    assert pub_ocn.keeper.service_agreement.is_agreement_existing(agreement_id) is True, ''
     print('Service agreement executed and fulfilled, all good.')
     # print('consumed : ', cons_ocn.get_consumed_results())
 
