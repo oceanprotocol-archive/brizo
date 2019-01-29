@@ -103,6 +103,8 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
                                                                          service_definition_id,
                                                                          signature,
                                                                          consumer_account.address)
+
+    assert pub_ocn.keeper.service_agreement.is_agreement_existing(agreement_id) is False, ''
     initialize = client.post(
         sa.purchase_endpoint,
         data=request_payload,
@@ -110,9 +112,8 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     )
     print(initialize.status_code)
     assert initialize.status_code == 201
-    assert pub_ocn.keeper.service_agreement.is_agreement_existing(agreement_id) is False, ''
     # wait a bit until all service agreement events are processed
-    time.sleep(15)
+    time.sleep(7)
     assert pub_ocn.keeper.service_agreement.is_agreement_existing(agreement_id) is True, ''
     print('Service agreement executed and fulfilled, all good.')
     # print('consumed : ', cons_ocn.get_consumed_results())
