@@ -1,15 +1,15 @@
 import time
 
+from squid_py import ACCESS_SERVICE_TEMPLATE_ID
 from squid_py.brizo.brizo_provider import BrizoProvider
 from squid_py.ddo.metadata import Metadata
-from squid_py.service_agreement.service_agreement import ServiceAgreement
 from squid_py.service_agreement.register_service_agreement import register_service_agreement
+from squid_py.service_agreement.service_agreement import ServiceAgreement
 from squid_py.service_agreement.service_agreement_template import ServiceAgreementTemplate
 from squid_py.service_agreement.service_types import ServiceTypes
-from squid_py.service_agreement.utils import get_sla_template_path, \
-    register_service_agreement_template
-from squid_py.utils.utilities import get_metadata_url
-from squid_py import ACCESS_SERVICE_TEMPLATE_ID
+from squid_py.service_agreement.utils import (get_sla_template_path,
+                                              register_service_agreement_template)
+from squid_py.utils.utilities import get_metadata_files
 
 from brizo.constants import BaseURLs
 
@@ -95,7 +95,7 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
                                'consumer',
                                service_definition_id,
                                service_agreement.get_price(),
-                               get_metadata_url(ddo),
+                               get_metadata_files(ddo),
                                cons_ocn.consume_service,
                                0)
 

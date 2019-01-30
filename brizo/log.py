@@ -1,8 +1,9 @@
-import yaml
-import os
-import logging.config
 import logging
+import logging.config
+import os
+
 import coloredlogs
+import yaml
 
 
 def setup_logging(default_path='logging.yaml', default_level=logging.INFO, env_key='LOG_CFG'):

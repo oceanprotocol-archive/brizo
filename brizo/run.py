@@ -1,14 +1,13 @@
+import configparser
+
 from flask import jsonify
 from flask_swagger import swagger
 from flask_swagger_ui import get_swaggerui_blueprint
 from squid_py.config import Config
 
-from brizo.constants import BaseURLs
-from brizo.constants import ConfigSections
-from brizo.constants import Metadata
+from brizo.constants import BaseURLs, ConfigSections, Metadata
 from brizo.myapp import app
 from brizo.routes import services
-import configparser
 
 
 def get_version():

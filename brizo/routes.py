@@ -159,7 +159,8 @@ def consume():
         type: string
       - name: url
         in: query
-        description: This URL is only valid if Brizo acts as a proxy. Consumer can't download using the URL if it's not through Brizo.
+        description: This URL is only valid if Brizo acts as a proxy. Consumer can't download
+        using the URL if it's not through Brizo.
         required: true
         type: string
     responses:
@@ -183,7 +184,9 @@ def consume():
                 cache.get(data.get('serviceAgreementId')),
                 data.get('consumerAddress')):
             # Delete cached serviceAgreementId.
-            cache.delete(data.get('serviceAgreementId'))
+            # TODO Use the keeper-call to get the if of the service agreement and avoid the need
+            #  of cache it.
+            # cache.delete(data.get('serviceAgreementId'))
             logging.info('Connecting through Osmosis to generate the sign url.')
             try:
                 osm = Osmosis(data.get('url'), config_file)
@@ -211,7 +214,9 @@ def consume():
 
 @services.route('/compute', methods=['POST'])
 def compute():
-    """Allows to execute an algorithm inside a Docker instance in the cloud. Requires the publisher of the assets to provide this service in the service agreement related with the requested `asset_did`.
+    """Allows to execute an algorithm inside a Docker instance in the cloud. Requires the
+    publisher of the assets to provide this service in the service agreement related with the
+    requested `asset_did`.
     ---
     tags:
       - services
@@ -243,7 +248,8 @@ def compute():
               type: string
               example: '0x0234242345'
             docker_image:
-              description: Docker image where the algorithm is going to be executed. Docker image must include all the libraries needed to run it.
+              description: Docker image where the algorithm is going to be executed. Docker image
+              must include all the libraries needed to run it.
               type: string
               example: python:3.6-alpine
             memory:
@@ -262,11 +268,14 @@ def compute():
         return msg, status
     osm = Osmosis(config_file)
     # TODO use this two asigment in the exec_container to use directly did instead of the name
-    # asset_url = _parse_url(get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base']['contentUrls'][0]).file
+    # asset_url = _parse_url(get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base'][
+    # 'contentUrls'][0]).file
     # algorithm_url = _parse_url(
-    #     get_metadata(ocn.assets.get_ddo(data.get('algorithm_url')))['base']['contentUrls'][0]).file
+    #     get_metadata(ocn.assets.get_ddo(data.get('algorithm_url')))['base']['contentUrls'][
+    #     0]).file
     # share_name_input = _parse_url(
-    #     get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base']['contentUrls'][0]).file_share
+    #     get_metadata(ocn.assets.get_ddo(data.get('asset_did')))['base']['contentUrls'][
+    #     0]).file_share
     return osm.computing_plugin.exec_container(asset_url=data.get('asset_did'),
                                                algorithm_url=data.get('algorithm_did'),
                                                resource_group_name=get_env_property(
