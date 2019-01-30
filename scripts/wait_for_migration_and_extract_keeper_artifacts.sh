@@ -21,3 +21,5 @@ if [ $COMMAND_STATUS -ne 0 ]; then
 fi
 
 docker cp $KEEPER_CONTRACTS_DOCKER_ID:/keeper-contracts/artifacts/. ./artifacts/
+sleep 20
+
