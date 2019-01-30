@@ -11,9 +11,6 @@ from brizo.run import app
 
 app = app
 
-PUBLISHER_INDEX = 1
-CONSUMER_INDEX = 0
-
 
 @pytest.fixture
 def client():
@@ -55,16 +52,15 @@ def init_ocn_tokens(ocn, account, amount=100):
     )
 
 
-def make_ocean_instance(account_index):
+def make_ocean_instance():
     path_config = 'config_local.ini'
     os.environ['CONFIG_FILE'] = path_config
     ocn = Ocean(Config(path_config))
-    account = list(ocn.accounts)[account_index]
     return ocn
 
 
 def get_publisher_ocean_instance():
-    ocn = make_ocean_instance(PUBLISHER_INDEX)
+    ocn = make_ocean_instance()
     account = get_publisher_account(ConfigProvider.get_config())
     init_ocn_tokens(ocn, account)
     ocn.main_account = account
@@ -72,7 +68,7 @@ def get_publisher_ocean_instance():
 
 
 def get_consumer_ocean_instance():
-    ocn = make_ocean_instance(CONSUMER_INDEX)
+    ocn = make_ocean_instance()
     account = get_consumer_account(ConfigProvider.get_config())
     init_ocn_tokens(ocn, account)
     ocn.main_account = account
