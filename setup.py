@@ -79,6 +79,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/oceanprotocol/brizo',
-    version='0.1.8',
+    version='0.1.9',
     zip_safe=False,
 )
