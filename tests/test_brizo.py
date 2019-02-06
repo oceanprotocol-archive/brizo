@@ -68,7 +68,7 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     print("did: %s" % ddo.did)
 
     service = ddo.get_service(
-        service_type=ServiceTypes.ASSET_ACCESS).service_definition_id
+        service_type=ServiceTypes.ASSET_ACCESS)
     service_definition_id = service.service_definition_id
 
     agreement_id, signature = consumer_ocean_instance.agreements.prepare(
@@ -79,14 +79,14 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
 
     Brizo.set_http_client(client)
     # subscribe to events
-    register_service_agreement(cons_ocn.config.storage_path,
+    register_service_agreement(cons_ocn._config.storage_path,
                                cons_ocn.main_account,
                                agreement_id,
                                ddo.did,
                                service.as_dictionary(),
                                'consumer',
                                service_definition_id,
-                               service_agreement.get_price(),
+                               service.agreement.conditions[2].parameters[1].value,
                                ddo.encrypted_files,
                                cons_ocn.consume_service,
                                0)
@@ -94,7 +94,7 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     cons_ocn.agreements.send(ddo.did, agreement_id, service_definition_id, signature, consumer_account)
     # wait a bit until all service agreement events are processed
     time.sleep(7)
-    assert pub_ocn.keeper.service_agreement.is_agreement_existing(agreement_id) is True, ''
+    assert pub_ocn._keeper.service_agreement.is_agreement_existing(agreement_id) is True, ''
     print('Service agreement executed and fulfilled, all good.')
     # print('consumed : ', cons_ocn.get_consumed_results())
 
