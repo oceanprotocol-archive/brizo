@@ -33,7 +33,7 @@ def get_registered_access_service_template(ocean_instance, account):
 
 
 def get_registered_ddo(ocean_instance, account):
-    # ocean_instance.templates.create(ACCESS_SERVICE_TEMPLATE_ID, account)
+    ocean_instance.templates.create(ACCESS_SERVICE_TEMPLATE_ID, account)
     ddo = ocean_instance.assets.create(Metadata.get_example(), account)
     return Asset(dictionary=ddo.as_dictionary())
 
