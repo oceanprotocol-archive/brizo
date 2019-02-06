@@ -44,9 +44,10 @@ def consumer_ocean_instance():
 
 
 def init_ocn_tokens(ocn, account, amount=100):
-    account.request_tokens(amount)
-    ocn.keeper.token.token_approve(
-        ocn.keeper.payment_conditions.address,
+    ocn.accounts.request_tokens(account, amount)
+    Keeper.get_instance().unlock_account(account)
+    Keeper.get_instance().token.token_approve(
+        Keeper.get_instance().payment_conditions.address,
         amount,
         account
     )
