@@ -103,7 +103,7 @@ def initialize():
         receipt = ocn.agreements.create(
             did=data.get('did'),
             service_definition_id=data.get('serviceDefinitionId'),
-            service_agreement_id=service_agreement_id,
+            agreement_id=service_agreement_id,
             service_agreement_signature=data.get('signature'),
             consumer_address=data.get('consumerAddress'),
             publisher_account=get_publisher_account()

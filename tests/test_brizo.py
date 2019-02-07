@@ -2,19 +2,19 @@ import os
 import tempfile
 import time
 
-from squid_py.agreements.service_agreement import ServiceAgreement
-from squid_py.agreements.service_types import ACCESS_SERVICE_TEMPLATE_ID
-from squid_py.assets.asset import Asset
-from squid_py.assets.asset_consumer import AssetConsumer
-from squid_py.brizo.brizo import Brizo
-from squid_py.ddo.metadata import Metadata
 from squid_py.agreements.register_service_agreement import register_service_agreement
+from squid_py.agreements.service_agreement import ServiceAgreement
 from squid_py.agreements.service_agreement_template import ServiceAgreementTemplate
-from squid_py.agreements.service_types import ServiceTypes
+from squid_py.agreements.service_types import ACCESS_SERVICE_TEMPLATE_ID, ServiceTypes
 from squid_py.agreements.utils import (
     get_sla_template_path,
     register_service_agreement_template
 )
+from squid_py.assets.asset import Asset
+from squid_py.assets.asset_consumer import AssetConsumer
+from squid_py.brizo.brizo import Brizo
+from squid_py.ddo.metadata import Metadata
+
 from brizo.constants import BaseURLs
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
@@ -94,7 +94,8 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
                                AssetConsumer.download,
                                0)
 
-    cons_ocn.agreements.send(ddo.did, agreement_id, service_definition_id, signature, consumer_account)
+    cons_ocn.agreements.send(ddo.did, agreement_id, service_definition_id, signature,
+                             consumer_account)
     # wait a bit until all service agreement events are processed
     time.sleep(7)
     assert cons_ocn.agreements.is_access_granted(
