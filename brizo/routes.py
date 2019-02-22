@@ -191,7 +191,7 @@ def consume():
                 try:
                     response = requests.get(download_url)
                     file = io.BytesIO(response.content)
-                    return file.read(), 200
+                    return file.read(), response.status_code
                 except Exception as e:
                     logging.error(e)
                     return "Error getting the url content: %s" % e, 401
