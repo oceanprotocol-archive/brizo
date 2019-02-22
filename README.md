@@ -2,7 +2,7 @@
 
 # Brizo
 
-> Helping to Publishers to expose their services.
+> Helping publishers provide extended data services (e.g. storage and compute).
 > [oceanprotocol.com](https://oceanprotocol.com)
 
 ___"🏄‍♀️🌊 Brizo is an ancient Greek goddess who was known as the protector of mariners, sailors, and fishermen.
@@ -22,22 +22,22 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 
 ## Table of Contents
 
-  - [Features](#features)
-  - [Running Locally, for Dev and Test](#running-locally-for-dev-and-test)
-  - [API documentation](#api-documentation)
-  - [Configuration](#configuration)
-  - [Dependencies](#dependencies)
-  - [Code style](#code-style)
-  - [Testing](#testing)
-  - [Debugging](#debugging)
-  - [New Version](#new-version)
-  - [License](#license)
+- [Features](#features)
+- [Running Locally, for Dev and Test](#running-locally-for-dev-and-test)
+- [API documentation](#api-documentation)
+- [Configuration](#configuration)
+- [Dependencies](#dependencies)
+- [Code Style](#code-style)
+- [Testing](#testing)
+- [Debugging](#debugging)
+- [New Version](#new-version)
+- [License](#license)
 
 ---
 
 ## Features
 
-In the "Ocean ecosystem", Brizo is the technical component executed by the Publishers allowing to them to provide extended data services. Brizo, as part of the Publisher ecosystem, includes the credentials to interact with the infrastructure (initially cloud, but could be on-premise).
+In the Ocean ecosystem, Brizo is the technical component executed by the Publishers allowing them to them to provide extended data services (e.g. storage and compute). Brizo, as part of the Publisher ecosystem, includes the credentials to interact with the infrastructure (initially cloud, but could be on-premise).
 
 ## Running Locally, for Dev and Test
 
@@ -58,12 +58,12 @@ cd barge
 bash start_ocean.sh --no-brizo --no-pleuston --local-spree-node
 ```
 
-Barge is the repository where all the docker-compose are allocated. We are running the script start_ocean that is the easy way to have ocean projects up and running.
-We are selecting run without the brizo and pleuston instance. 
+Barge is the repository where all the Ocean Docker Compose files are located. We are running the script `start_ocean.sh`: the easy way to have Ocean projects up and running.
+We run without Brizo or Pleuston instances.
 
-To know more about visit [Barge](https://github.com/oceanprotocol/barge)
+To learn more about Barge, visit [the Barge repository](https://github.com/oceanprotocol/barge).
 
-Note that it runs a Aquarius instance and MongoDB but the Aquarius can also work with BigchainDB or Elasticsearch.
+Note that it runs an Aquarius instance and a MongoDB instance but Aquarius can also work with BigchainDB or Elasticsearch.
 
 The most simple way to start is:
 
@@ -100,82 +100,99 @@ gunicorn --certfile cert.pem --keyfile key.pem -b 0.0.0.0:8030 -w 1 brizo.run:ap
 
 ## API documentation
 
-Once you have your application running you can get access to the documentation at:
+Once you have Brizo running you can get access to the API documentation at:
 
 ```bash
 https://127.0.0.1:8030/api/v1/docs
 ```
 
-Currently Brizo gives you the possibility of serving your data allocated in an Azure BlobStorage and a basic capability of execution of an algorithm.
+There is also some [Brizo API documentation in the official Ocean docs](https://docs.oceanprotocol.com/references/brizo/).
 
 ## Configuration
 
-You can pass the configuration using the CONFIG_FILE environment variable (recommended) or locating your configuration in config.ini file.
+To get configuration settings, Brizo first checks to see if there is a non-empty environment variable named CONFIG_FILE. It there is, it will look in a config file at that path. Otherwise it will look in a config file named `config.ini`. Note that some settings in the config file can be overriden by setting certain environment variables; there are more details below.
 
-In the configuration there are now three sections:
+See the [example config.ini file in this repo](config.ini). You will see that there are three sections: `[keeper-contracts]`, `[resources]` and `[osmosis]`.
 
-- keeper-contracts: This section help you to connect with the network where you have deployed the contracts. You can find more information of how to configure [here](https://github.com/oceanprotocol/squid-py#quick-start).
+### The [keeper-contracts] and [resources] Sections
 
-    ```yaml
-    [keeper-contracts]
-    keeper.url = http://127.0.0.1:8545
-    ```
+The `[keeper-contracts]` and `[resources]` sections are used to configure squid-py.
+Details about how to configure squid-py are in [the squid-py repo](https://github.com/oceanprotocol/squid-py#configuration).
 
-- resources: This section is necessary for the squid-py library.
+**You can override the some squid-py-related settings in the config file by setting certain environment variables, such as KEEPER_URL. For details, see [the squid-py repo](https://github.com/oceanprotocol/squid-py#configuration).**
 
-    ```yaml
-    [resources]
-    ;; brizo url (optional) is used mainly in development and testing
-    brizo.url = http://localhost:8030
-    ;; path to database file where all access requests are stored
-    storage.path = squid_py.db
-    ```
+### The [osmosis] Section
 
-- osmosis: Specify the cloud storage and compute account credentials to allow generating signed urls and enable executing algorithms. We are assuming that the algorithm and the data are in the same folder for this first approach.
+The `[osmosis]` section of the config file is where a publisher puts their own credentials for various third-party services, such as Azure Storage.
+At the time of writing, Brizo could support files with three kinds of URLs:
 
-    ```yaml
-    [osmosis]
-    azure.account.name = <Azure Storage Account Name (for storing files)>
-    azure.account.key = <Azure Storage Account key>
-    azure.resource_group = <Azure resource group>
-    azure.location = <Azure Region>
-    azure.client.id = <Azure Application ID>
-    azure.client.secret = <Azure Application Secret>
-    azure.tenant.id = <Azure Tentant ID>
-    azure.subscription.id = <Azure Subscription>
-    azure.share.input = compute
-    azure.share.output = output
-    ```
+- files in Azure Storage: files with "core.windows.net" in their URLs
+- files in Amazon S3 storage: files with "s3://" in their URLs
+- files in on-premise storage: all other files with resolvable URLs
 
-Also, when running in container or locally, environment variables can be used to configure the azure credentials. These are the variables needed to export:
+Initial work has also been done to support Azure Compute but it's not officially supported yet.
+
+A publisher can choose to support none, one, two or all of the above. It depends on which cloud providers they use.
+
+If a publisher wants to store some files in Azure Storage (and make them available from there), then they must get and set the following config settings in the [osmosis] section of the config file. There is an [Ocean tutorial about how to get all those credentials from Azure](https://docs.oceanprotocol.com/tutorials/azure-for-brizo/).
+
+```ini
+[osmosis]
+azure.account.name = <Azure Storage Account Name (for storing files)>
+azure.account.key = <Azure Storage Account key>
+azure.resource_group = <Azure resource group>
+azure.location = <Azure Region>
+azure.client.id = <Azure Application ID>
+azure.client.secret = <Azure Application Secret>
+azure.tenant.id = <Azure Tenant ID>
+azure.subscription.id = <Azure Subscription>
+; azure.share.input and azure.share.output are only used
+; for Azure Compute data assets (not for Azure Storage data assets).
+; If you're not supporting Azure Compute, just leave their values
+; as compute and output, respectively.
+azure.share.input = compute
+azure.share.output = output
+```
+
+You can override any of those config file settings by setting one or more of the following environment variables. You will want to do that if you're running Brizo in a container.
 
 ```text
-AZURE_ACCOUNT_NAME: Azure Storage Account Name (for storing files)
-AZURE_ACCOUNT_KEY: Azure Storage Account key
-AZURE_RESOURCE_GROUP: Azure resource group
-AZURE_LOCATION: Azure Region
-AZURE_CLIENT_ID: Azure Application ID
-AZURE_CLIENT_SECRET: Azure Application Secret
-AZURE_TENANT_ID: Azure Tenant ID
-AZURE_SUBSCRIPTION_ID: Azure Subscription
+AZURE_ACCOUNT_NAME
+AZURE_ACCOUNT_KEY
+AZURE_RESOURCE_GROUP
+AZURE_LOCATION
+AZURE_CLIENT_ID
+AZURE_CLIENT_SECRET
+AZURE_TENANT_ID
+AZURE_SUBSCRIPTION_ID
+# Just always set AZURE_SHARE_INPUT='compute' for now
+AZURE_SHARE_INPUT='compute'
+# Just always set AZURE_SHARE_OUTPUT='output' for now
+AZURE_SHARE_OUTPUT='output'
 ```
+
+If a publisher wants to store some files in Amazon S3 storage (and make them available from there), then there are no AWS-related config settings to set in the config file. AWS credentials actually get stored elsewhere. See [the Ocean tutorial about how to set up Amazon S3 storage](https://docs.oceanprotocol.com/tutorials/amazon-s3-for-brizo/).
+
+If a publisher wants to store some files on-premise (and make them available from there), then there are no special config settings to set in the config file. The only requirement is that the file URLs must be resolvable by Brizo. See [the Ocean tutorial about how to set up on-premise storage](https://docs.oceanprotocol.com/tutorials/on-premise-for-brizo/).
 
 ## Dependencies
 
-Brizo relies on the following `Ocean` libraries:
+Brizo relies on the following Ocean libraries:
 
-- squid-py: `https://github.com/oceanprotocol/squid-py` -- handles all of the `keeper` interactions
-- osmosis-azure-driver: `https://github.com/oceanprotocol/osmosis-azure-driver` -- simplifies access to azure cloud services
+- [squid-py](https://github.com/oceanprotocol/squid-py) handles all of the `keeper` interactions
+- [osmosis-azure-driver](https://github.com/oceanprotocol/osmosis-azure-driver) mediates access to assets in Azure
+- [osmosis-aws-driver](https://github.com/oceanprotocol/osmosis-aws-driver) mediates access to assets in AWS
+- [osmosis-on-premise-driver](https://github.com/oceanprotocol/osmosis-on-premise-driver) mediates access to on-premise assets
 
-## Code style
+## Code Style
 
-The information about code style in python is documented in this two links [python-developer-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-developer-guide.md)
-and [python-style-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-style-guide.md).
+Information about our Python code style is documented in the [python-developer-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-developer-guide.md)
+and the [python-style-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-style-guide.md).
 
 ## Testing
 
 Automatic tests are setup via Travis, executing `tox`.
-Our test use pytest framework.
+Our tests use the pytest framework.
 
 ## Debugging
 
@@ -187,23 +204,24 @@ To debug Brizo using PyCharm, follow the next instructions:
 4. Configure a new debugger configuration: _Run > Edit Configurations..._, there click on _Add New Configuration_
 5. Configure as shown in the next image:
 ![Pycharm Debugger configuration](imgs/debugger_configuration.png)
-6. Setup the next environment variables:
-```
-PYTHONUNBUFFERED=1
-CONFIG_FILE=config_dev.ini
-AZURE_ACCOUNT_NAME=<COMPLETE_WITH_YOUR_DATA>
-AZURE_TENANT_ID=<COMPLETE_WITH_YOUR_DATA>
-AZURE_SUBSCRIPTION_ID=<COMPLETE_WITH_YOUR_DATA>
-AZURE_LOCATION=<COMPLETE_WITH_YOUR_DATA>
-AZURE_CLIENT_SECRET=<COMPLETE_WITH_YOUR_DATA>
-AZURE_CLIENT_ID=<COMPLETE_WITH_YOUR_DATA>
-AZURE_ACCOUNT_KEY=<COMPLETE_WITH_YOUR_DATA>
-AZURE_RESOURCE_GROUP=<COMPLETE_WITH_YOUR_DATA>
-OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
-```
-The option `OBJC_DISABLE_INITIALIZE_FORK_SAFETY` is needed if you run in last versions of MacOS.
-7. Now you can configure your breakpoints and debug brizo or squid-py.
+6. Set the following environment variables:
 
+    ```text
+    PYTHONUNBUFFERED=1
+    CONFIG_FILE=config_dev.ini
+    AZURE_ACCOUNT_NAME=<COMPLETE_WITH_YOUR_DATA>
+    AZURE_TENANT_ID=<COMPLETE_WITH_YOUR_DATA>
+    AZURE_SUBSCRIPTION_ID=<COMPLETE_WITH_YOUR_DATA>
+    AZURE_LOCATION=<COMPLETE_WITH_YOUR_DATA>
+    AZURE_CLIENT_SECRET=<COMPLETE_WITH_YOUR_DATA>
+    AZURE_CLIENT_ID=<COMPLETE_WITH_YOUR_DATA>
+    AZURE_ACCOUNT_KEY=<COMPLETE_WITH_YOUR_DATA>
+    AZURE_RESOURCE_GROUP=<COMPLETE_WITH_YOUR_DATA>
+    OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+    ```
+
+   The option `OBJC_DISABLE_INITIALIZE_FORK_SAFETY` is needed if you run in last versions of MacOS.
+7. Now you can configure your breakpoints and debug brizo or squid-py.
 
 ## New Version
 
