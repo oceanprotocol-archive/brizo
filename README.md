@@ -116,24 +116,24 @@ In the configuration there are now three sections:
 
 - keeper-contracts: This section help you to connect with the network where you have deployed the contracts. You can find more information of how to configure [here](https://github.com/oceanprotocol/squid-py#quick-start).
 
-    ```yaml
+    ```ini
     [keeper-contracts]
     keeper.url = http://127.0.0.1:8545
     ```
 
 - resources: This section is necessary for the squid-py library.
 
-    ```yaml
+    ```ini
     [resources]
-    ;; brizo url (optional) is used mainly in development and testing
+    ; brizo.url (optional) is used mainly in development and testing
     brizo.url = http://localhost:8030
-    ;; path to database file where all access requests are stored
+    ; path to database file where all access requests are stored
     storage.path = squid_py.db
     ```
 
 - osmosis: Specify the cloud storage and compute account credentials to allow generating signed urls and enable executing algorithms. We are assuming that the algorithm and the data are in the same folder for this first approach.
 
-    ```yaml
+    ```ini
     [osmosis]
     azure.account.name = <Azure Storage Account Name (for storing files)>
     azure.account.key = <Azure Storage Account key>
@@ -143,6 +143,10 @@ In the configuration there are now three sections:
     azure.client.secret = <Azure Application Secret>
     azure.tenant.id = <Azure Tentant ID>
     azure.subscription.id = <Azure Subscription>
+    ; azure.share.input and azure.share.output are only used
+    ; for Azure Compute data assets (not for Azure Storage data assets).
+    ; If you're not supporting Azure Compute, just leave their values
+    ; as compute and output, respectively.
     azure.share.input = compute
     azure.share.output = output
     ```

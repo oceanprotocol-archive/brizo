@@ -31,11 +31,15 @@ ENV PARITY_PASSWORD=''
 ENV AZURE_ACCOUNT_NAME=''
 ENV AZURE_ACCOUNT_KEY=''
 ENV AZURE_RESOURCE_GROUP=''
-ENV AZURE_LOCATION='westus'
+ENV AZURE_LOCATION=''
 ENV AZURE_CLIENT_ID=''
 ENV AZURE_CLIENT_SECRET=''
 ENV AZURE_TENANT_ID=''
 ENV AZURE_SUBSCRIPTION_ID=''
+# Note: AZURE_SHARE_INPUT and AZURE_SHARE_OUTPUT are only used
+# for Azure Compute data assets (not for Azure Storage data assets).
+# If you're not supporting Azure Compute, just leave their values
+# as 'compute' and 'output', respectively.
 ENV AZURE_SHARE_INPUT='compute'
 ENV AZURE_SHARE_OUTPUT='output'
 
