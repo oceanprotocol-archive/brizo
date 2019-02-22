@@ -136,6 +136,7 @@ def initialize():
 @services.route('/consume', methods=['GET'])
 def consume():
     """Allows download of asset data file.
+
     ---
     tags:
       - services
@@ -154,8 +155,8 @@ def consume():
         type: string
       - name: url
         in: query
-        description: This URL is only valid if Brizo acts as a proxy. Consumer can't download
-        using the URL if it's not through Brizo.
+        description: This URL is only valid if Brizo acts as a proxy.
+                     Consumer can't download using the URL if it's not through Brizo.
         required: true
         type: string
     responses:
@@ -190,7 +191,7 @@ def consume():
                 try:
                     response = requests.get(download_url)
                     file = io.BytesIO(response.content)
-                    return file.read(), 200
+                    return file.read(), response.status_code
                 except Exception as e:
                     logging.error(e)
                     return "Error getting the url content: %s" % e, 401
@@ -244,7 +245,7 @@ def compute():
               example: '0x0234242345'
             docker_image:
               description: Docker image where the algorithm is going to be executed. Docker image
-              must include all the libraries needed to run it.
+                           must include all the libraries needed to run it.
               type: string
               example: python:3.6-alpine
             memory:
