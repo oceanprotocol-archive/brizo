@@ -189,7 +189,11 @@ def consume():
                 download_url = osm.data_plugin.generate_url(data.get('url'))
                 logging.debug("Osmosis generate the url: %s", download_url)
                 try:
-                    response = requests.get(download_url)
+                    if request.range:
+                        headers = {"Range": request.headers.get('range')}
+                        response = requests.get(download_url, headers=headers)
+                    else:
+                        response = requests.get(download_url)
                     file = io.BytesIO(response.content)
                     return file.read(), response.status_code
                 except Exception as e:
