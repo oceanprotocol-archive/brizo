@@ -7,9 +7,9 @@ from eth_utils import add_0x_prefix
 from flask import Blueprint, request
 from osmosis_driver_interface.osmosis import Osmosis
 from squid_py.config import Config
+from squid_py.did import id_to_did
 from squid_py.exceptions import OceanDIDNotFound
 from squid_py.ocean.ocean import Ocean
-from werkzeug.contrib.cache import SimpleCache
 
 from brizo.constants import ConfigSections
 from brizo.log import setup_logging
@@ -23,8 +23,6 @@ config = Config(filename=config_file)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
 ocn = Ocean(config=config)
-
-cache = SimpleCache()
 
 logger = logging.getLogger('brizo')
 
@@ -96,7 +94,6 @@ def initialize():
     try:
 
         logger.debug('Found ddo of did %s', data.get('did'))
-        cache.add(data.get('serviceAgreementId'), data.get('did'))
         service_agreement_id = add_0x_prefix(data.get('serviceAgreementId'))
         # When you call execute agreement this start different listeners of the events to
         # catch the paymentLocked.
@@ -177,12 +174,9 @@ def consume():
     try:
         if ocn.agreements.is_access_granted(
                 data.get('serviceAgreementId'),
-                cache.get(data.get('serviceAgreementId')),
+                id_to_did(ocn._keeper.agreement_manager.get_agreement(
+                    data.get('serviceAgreementId')).did),
                 data.get('consumerAddress')):
-            # Delete cached serviceAgreementId.
-            # TODO Use the keeper-call to get the if of the service agreement and avoid the need
-            #  of cache it.
-            # cache.delete(data.get('serviceAgreementId'))
             logging.info('Connecting through Osmosis to generate the sign url.')
             try:
                 osm = Osmosis(data.get('url'), config_file)
