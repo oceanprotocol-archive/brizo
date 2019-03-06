@@ -43,6 +43,14 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     consumer_account = cons_ocn.main_account
     publisher_account = pub_ocn.main_account
 
+    if publisher_ocean_instance._keeper.template_manager.get_num_templates() == 0:
+        publisher_ocean_instance.templates.propose(
+            publisher_ocean_instance._keeper.escrow_access_secretstore_template.address,
+            publisher_ocean_instance.main_account)
+        publisher_ocean_instance.templates.approve(
+            publisher_ocean_instance._keeper.escrow_access_secretstore_template.address,
+            publisher_ocean_instance.main_account)
+
     # Register asset
     ddo = get_registered_ddo(pub_ocn, publisher_account)
 
