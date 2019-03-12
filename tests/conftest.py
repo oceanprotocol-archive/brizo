@@ -29,7 +29,7 @@ json_brizo = {
 
 
 @pytest.fixture
-def sla_template():
+def service_agreement_template():
     return
 
 
