@@ -72,7 +72,7 @@ pip install -r requirements_dev.txt
 export FLASK_APP=brizo/run.py
 export CONFIG_FILE=config.ini
 ./scripts/wait_for_migration_and_extract_keeper_artifacts.sh
-flask run
+flask run --port=8030
 ```
 
 That will use HTTP (i.e. not SSL/TLS).
