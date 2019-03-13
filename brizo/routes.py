@@ -32,7 +32,7 @@ logger = logging.getLogger('brizo')
 
 @services.route('/access/initialize', methods=['POST'])
 def initialize():
-    """Initialize the SLA between the publisher and the consumer.
+    """Initialize the service agreement between the publisher and the consumer.
 
     ---
     tags:
