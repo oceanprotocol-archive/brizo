@@ -3,6 +3,9 @@
 
 """The setup script."""
 
+#  Copyright 2018 Ocean Protocol Foundation
+#  SPDX-License-Identifier: Apache-2.0
+
 from setuptools import setup, find_packages
 
 with open('README.md') as readme_file:
@@ -15,7 +18,7 @@ with open('HISTORY.md') as history_file:
 # or pip install -e .
 install_requirements = [
     # Install squid-py and all its dependencies first
-    'squid-py==0.5.0',  # gets PyYAML, coloredlogs, web3
+    'squid-py==0.5.1',  # gets PyYAML, coloredlogs, web3
     'Flask==1.0.2',
     'Flask-Cors==3.0.6',
     'Flask-RESTful==0.3.6',
@@ -79,6 +82,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/oceanprotocol/brizo',
-    version='0.2.3',
+    version='0.2.4',
     zip_safe=False,
 )
