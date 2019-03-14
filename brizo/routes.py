@@ -101,7 +101,7 @@ def initialize():
         # When you call execute agreement this start different listeners of the events to
         # catch the paymentLocked.
         did = data.get('did')
-        asset = ocn.assets.resolve()
+        asset = ocn.assets.resolve(did)
         publisher_acc = get_publisher_account()
         if publisher_acc.address.lower() != asset.proof.get('creator', '').lower():
             raise ValueError('Cannot serve asset service request because owner of '
