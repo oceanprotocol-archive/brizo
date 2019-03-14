@@ -100,29 +100,28 @@ def initialize():
         service_agreement_id = add_0x_prefix(data.get('serviceAgreementId'))
         # When you call execute agreement this start different listeners of the events to
         # catch the paymentLocked.
-        receipt = ocn.agreements.create(
-            did=data.get('did'),
+        did = data.get('did')
+        asset = ocn.assets.resolve()
+        publisher_acc = get_publisher_account()
+        if publisher_acc.address.lower() != asset.proof.get('creator', '').lower():
+            raise ValueError('Cannot serve asset service request because owner of '
+                             'requested asset is not recognized in this instance of Brizo.')
+
+        success = ocn.agreements.create(
+            did=did,
             service_definition_id=data.get('serviceDefinitionId'),
             agreement_id=service_agreement_id,
             service_agreement_signature=data.get('signature'),
             consumer_address=data.get('consumerAddress'),
-            publisher_account=get_publisher_account()
+            publisher_account=publisher_acc
         )
         logger.info('executed ServiceAgreement, request payload was %s', data)
-        logger.debug('executeServiceAgreement receipt %s', receipt)
-        if not receipt:
-            msg = 'Got unrecognized transaction receipt from `execute_service_agreement`'
+        if not success:
+            msg = 'Failed to create agreement.'
             logger.error(msg)
             return msg, 401
 
-        # if receipt.status == 0:
-        #     msg = 'executeAgreement on-chain failed, check the definition of the ' \
-        #           'service agreement and make sure the parameters match the registered ' \
-        #           'service agreement template. `executeAgreement` receipt {}'.format(receipt)
-        #     logger.warning(msg)
-        #     return msg, 401
-
-        logger.debug('Success executing service agreement, got status %s', receipt)
+        logger.debug('Success executing service agreement')
         return "Service agreement successfully initialized", 201
 
     except OceanDIDNotFound as e:
@@ -323,6 +322,7 @@ def get_env_property(env_variable, property_name):
 
 def get_publisher_account():
     address = config.parity_address
+    print('address: ', address, ocn.accounts.accounts_addresses)
     for acc in ocn.accounts.list():
         if acc.address.lower() == address.lower():
             return acc
