@@ -322,7 +322,7 @@ def get_env_property(env_variable, property_name):
 
 def get_publisher_account():
     address = config.parity_address
-    logger.info('address: ', address, ocn.accounts.accounts_addresses)
+    logger.info(f'address: {address}, {ocn.accounts.accounts_addresses}')
     for acc in ocn.accounts.list():
         if acc.address.lower() == address.lower():
             return acc
