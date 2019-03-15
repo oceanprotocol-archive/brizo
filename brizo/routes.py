@@ -179,11 +179,11 @@ def consume():
                 id_to_did(ocn._keeper.agreement_manager.get_agreement(
                     data.get('serviceAgreementId')).did),
                 data.get('consumerAddress')):
-            logging.info('Connecting through Osmosis to generate the sign url.')
+            logger.info('Connecting through Osmosis to generate the sign url.')
             try:
                 osm = Osmosis(data.get('url'), config_file)
                 download_url = osm.data_plugin.generate_url(data.get('url'))
-                logging.debug("Osmosis generate the url: %s", download_url)
+                logger.debug("Osmosis generate the url: %s", download_url)
                 try:
                     if request.range:
                         headers = {"Range": request.headers.get('range')}
@@ -193,10 +193,10 @@ def consume():
                     file = io.BytesIO(response.content)
                     return file.read(), response.status_code
                 except Exception as e:
-                    logging.error(e)
+                    logger.error(e)
                     return "Error getting the url content: %s" % e, 401
             except Exception as e:
-                logging.error(e)
+                logger.error(e)
                 return "Error generating url: %s" % e, 401
         else:
             msg = "Invalid consumer address and/or service agreement id, " \
@@ -322,7 +322,7 @@ def get_env_property(env_variable, property_name):
 
 def get_publisher_account():
     address = config.parity_address
-    print('address: ', address, ocn.accounts.accounts_addresses)
+    logger.info('address: ', address, ocn.accounts.accounts_addresses)
     for acc in ocn.accounts.list():
         if acc.address.lower() == address.lower():
             return acc
