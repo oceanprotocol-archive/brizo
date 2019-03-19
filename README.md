@@ -121,7 +121,7 @@ Details about how to configure squid-py are in [the squid-py repo](https://githu
 
 **You can override the some squid-py-related settings in the config file by setting certain environment variables, such as KEEPER_URL. For details, see [the squid-py repo](https://github.com/oceanprotocol/squid-py#configuration).**
 
-There is a parameter in the resources section called `commons.marketplace` that is setup true by default, that you have to switch to false in case that you wish to run a private marketplace.
+There is a parameter in the resources section called `validate.creator` that is setup false by default, that you have to switch to true in case that you wish to run a private marketplace.
 
 ### The [osmosis] Section
 
