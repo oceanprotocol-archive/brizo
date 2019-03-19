@@ -103,9 +103,11 @@ def initialize():
         did = data.get('did')
         asset = ocn.assets.resolve(did)
         publisher_acc = get_publisher_account()
-        if publisher_acc.address.lower() != asset.proof.get('creator', '').lower():
-            raise ValueError('Cannot serve asset service request because owner of '
-                             'requested asset is not recognized in this instance of Brizo.')
+        if config.has_option('resources', 'validate.creator'):
+            if config.get('resources', 'validate.creator').lower() == 'true':
+                if publisher_acc.address.lower() != asset.proof.get('creator', '').lower():
+                    raise ValueError('Cannot serve asset service request because owner of '
+                                     'requested asset is not recognized in this instance of Brizo.')
 
         success = ocn.agreements.create(
             did=did,
