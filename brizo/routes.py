@@ -117,14 +117,15 @@ def initialize():
             consumer_address=data.get('consumerAddress'),
             publisher_account=publisher_acc
         )
-        logger.info('executed ServiceAgreement, request payload was %s', data)
+
+        logger.info('Done calling ocean.agreements.create, request payload was %s', data)
         if not success:
             msg = 'Failed to create agreement.'
             logger.error(msg)
             return msg, 401
 
-        logger.debug('Success executing service agreement')
-        return "Service agreement successfully initialized", 201
+        logger.info('Success creating service agreement')
+        return "Service agreement successfully created", 201
 
     except OceanDIDNotFound as e:
         logger.error(e, exc_info=1)
