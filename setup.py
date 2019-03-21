@@ -18,7 +18,7 @@ with open('HISTORY.md') as history_file:
 # or pip install -e .
 install_requirements = [
     # Install squid-py and all its dependencies first
-    'squid-py==0.5.4',  # gets PyYAML, coloredlogs, web3
+    'squid-py==0.5.5',  # gets PyYAML, coloredlogs, web3
     'Flask==1.0.2',
     'Flask-Cors==3.0.6',
     'Flask-RESTful==0.3.6',
