@@ -5,13 +5,13 @@ import io
 import logging
 from os import getenv
 
-import requests
 from eth_utils import add_0x_prefix
 from flask import Blueprint, request
 from osmosis_driver_interface.osmosis import Osmosis
 from squid_py.config import Config
 from squid_py.did import id_to_did
 from squid_py.exceptions import OceanDIDNotFound
+from squid_py.http_requests.requests_session import get_requests_session
 from squid_py.ocean.ocean import Ocean
 
 from brizo.constants import ConfigSections
@@ -26,6 +26,7 @@ config = Config(filename=config_file)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
 ocn = Ocean(config=config)
+requests_session = get_requests_session()
 
 logger = logging.getLogger('brizo')
 
@@ -190,9 +191,9 @@ def consume():
                 try:
                     if request.range:
                         headers = {"Range": request.headers.get('range')}
-                        response = requests.get(download_url, headers=headers)
+                        response = requests_session.get(download_url, headers=headers)
                     else:
-                        response = requests.get(download_url)
+                        response = requests_session.get(download_url)
                     file = io.BytesIO(response.content)
                     return file.read(), response.status_code
                 except Exception as e:
