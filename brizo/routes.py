@@ -121,10 +121,10 @@ def publish():
         encrypted_document = ocn.secret_store.encrypt(did, document, provider_acc)
         return encrypted_document, 201
     except Exception as e:
-        logger.error(f'Error encrypting document: {e}. \n'
-                     f'Payload was: documentId={did}, '
-                     f'publisherAddress={publisher_address}',
-                     exc_info=1
+        logger.error(
+            f'Error encrypting document: {e}. \nPayload was: documentId={did}, '
+            f'publisherAddress={publisher_address}',
+            exc_info=1
         )
         return "Error: " + str(e), 500
 
@@ -425,5 +425,3 @@ def compute():
                                                docker_image=data.get('docker_image'),
                                                memory=data.get('memory'),
                                                cpu=data.get('cpu')), 200
-
-
