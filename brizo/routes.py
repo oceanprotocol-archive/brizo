@@ -21,7 +21,6 @@ from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (
     get_provider_account,
-    get_env_property,
     check_required_attributes
 )
 
