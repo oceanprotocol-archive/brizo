@@ -48,7 +48,6 @@ def consumer_ocean_instance():
 
 def init_ocn_tokens(ocn, account, amount=100):
     ocn.accounts.request_tokens(account, amount)
-    Keeper.get_instance().unlock_account(account)
     Keeper.get_instance().token.token_approve(
         Keeper.get_instance().dispenser.address,
         amount,
@@ -59,7 +58,8 @@ def init_ocn_tokens(ocn, account, amount=100):
 def make_ocean_instance():
     path_config = 'config_local.ini'
     os.environ['CONFIG_FILE'] = path_config
-    ocn = Ocean(Config(path_config))
+    ConfigProvider.set_config(Config(path_config))
+    ocn = Ocean()
     return ocn
 
 
