@@ -14,7 +14,6 @@ from squid_py.did import id_to_did
 from squid_py.exceptions import OceanDIDNotFound
 from squid_py.http_requests.requests_session import get_requests_session
 from squid_py.keeper import Keeper
-from squid_py.keeper.web3_provider import Web3Provider
 from squid_py.ocean.ocean import Ocean
 
 from brizo.log import setup_logging
@@ -111,13 +110,16 @@ def publish():
     publisher_address = data.get('publisherAddress')
 
     try:
-        address = Web3Provider.get_web3().personal.ecRecover(did, signed_did)
+        address = Keeper.get_instance().ec_recover(did, signed_did)
         if address.lower() != publisher_address.lower():
             msg = f'Invalid signature {signed_did} for ' \
                 f'publisherAddress {publisher_address} and documentId {did}.'
             raise ValueError(msg)
 
         encrypted_document = ocn.secret_store.encrypt(did, document, provider_acc)
+        logger.info(f'encrypted urls {encrypted_document}, '
+                    f'publisher {publisher_address}, '
+                    f'documentId {did}')
         return encrypted_document, 201
     except Exception as e:
         logger.error(
@@ -287,7 +289,7 @@ def consume():
         provider_account = get_provider_account(ocn)
         agreement_id = data.get('serviceAgreementId')
         consumer_address = data.get('consumerAddress')
-        asset_id = Keeper.get_instance().agreement_manager.get_agreement(agreement_id).did
+        asset_id = ocn.agreements.get(agreement_id).did
         did = id_to_did(asset_id)
         if ocn.agreements.is_access_granted(
                 agreement_id,
@@ -299,7 +301,7 @@ def consume():
                 if not url:
                     signature = data.get('signature')
                     index = int(data.get('index'))
-                    address = Web3Provider.get_web3().personal.ecRecover(agreement_id, signature)
+                    address = Keeper.get_instance().ec_recover(agreement_id, signature)
                     if address.lower() != consumer_address.lower():
                         msg = f'Invalid signature {signature} for ' \
                             f'consumerAddress {consumer_address} and documentId {did}.'
