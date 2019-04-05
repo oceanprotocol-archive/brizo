@@ -18,10 +18,7 @@ from squid_py.ocean.ocean import Ocean
 
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.util import (
-    get_provider_account,
-    check_required_attributes
-)
+from brizo.util import (check_required_attributes, get_provider_account)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -322,9 +319,9 @@ def consume():
                 try:
                     if request.range:
                         headers = {"Range": request.headers.get('range')}
-                        response = requests_session.get(download_url, headers=headers)
+                        response = requests_session.get(download_url, headers=headers, stream=True)
                     else:
-                        response = requests_session.get(download_url)
+                        response = requests_session.get(download_url, stream=True)
                     file = io.BytesIO(response.content)
                     return file.read(), response.status_code
                 except Exception as e:
