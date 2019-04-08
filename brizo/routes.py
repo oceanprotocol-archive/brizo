@@ -321,8 +321,8 @@ def consume():
                         headers = {"Range": request.headers.get('range')}
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     else:
-                        headers = {"Content-Disposition": "attachment",
-                                   "filename": download_url.split("/")[-1]
+                        headers = {"Content-Disposition":
+                                       f'attachment;filename={download_url.split("/")[-1]}'
                                    }
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     file = io.BytesIO(response.content)
