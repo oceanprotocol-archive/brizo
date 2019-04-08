@@ -321,7 +321,9 @@ def consume():
                         headers = {"Range": request.headers.get('range')}
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     else:
-                        response = requests_session.get(download_url, stream=True)
+                        headers = {f'"Content-Disposition":"attachment;'
+                                   f'filename={download_url.split("/")[-1]}"'}
+                        response = requests_session.get(download_url, headers=headers, stream=True)
                     file = io.BytesIO(response.content)
                     return file.read(), response.status_code
                 except Exception as e:
