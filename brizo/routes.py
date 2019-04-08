@@ -325,8 +325,7 @@ def consume():
                                        f'attachment;filename={url.split("/")[-1]}'
                                    }
                         response = requests_session.get(download_url, headers=headers, stream=True)
-                    file = io.BytesIO(response.content)
-                    return Response(file.read(), response.status_code, headers=headers)
+                    return Response(io.BytesIO(response.content).read(), response.status_code, headers=headers)
                 except Exception as e:
                     logger.error(e)
                     return "Error getting the url content: %s" % e, 401
