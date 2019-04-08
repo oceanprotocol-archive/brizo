@@ -6,7 +6,7 @@ import json
 import logging
 
 from eth_utils import add_0x_prefix
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from osmosis_driver_interface.osmosis import Osmosis
 from squid_py import ConfigProvider
 from squid_py.config import Config
@@ -321,9 +321,11 @@ def consume():
                         headers = {"Range": request.headers.get('range')}
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     else:
-                        response = requests_session.get(download_url, stream=True)
-                    file = io.BytesIO(response.content)
-                    return file.read(), response.status_code
+                        headers = {"Content-Disposition":
+                                       f'attachment;filename={url.split("/")[-1]}'
+                                   }
+                        response = requests_session.get(download_url, headers=headers, stream=True)
+                    return Response(io.BytesIO(response.content).read(), response.status_code, headers=headers)
                 except Exception as e:
                     logger.error(e)
                     return "Error getting the url content: %s" % e, 401
