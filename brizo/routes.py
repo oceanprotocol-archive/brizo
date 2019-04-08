@@ -325,6 +325,7 @@ def consume():
                                        f'attachment;filename={download_url.split("/")[-1]}'
                                    }
                         response = requests_session.get(download_url, headers=headers, stream=True)
+                        response.headers['ContentDisposition'] = f'attachment;filename={download_url.split("/")[-1]}'
                     file = io.BytesIO(response.content)
                     return file.read(), response.status_code
                 except Exception as e:
