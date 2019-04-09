@@ -1,3 +1,6 @@
+#  Copyright 2018 Ocean Protocol Foundation
+#  SPDX-License-Identifier: Apache-2.0
+
 import os
 
 import pytest
@@ -10,9 +13,6 @@ from squid_py.ocean.ocean import Ocean
 from brizo.run import app
 
 app = app
-
-PUBLISHER_INDEX = 1
-CONSUMER_INDEX = 0
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ json_brizo = {
 
 
 @pytest.fixture
-def sla_template():
+def service_agreement_template():
     return
 
 
@@ -47,24 +47,24 @@ def consumer_ocean_instance():
 
 
 def init_ocn_tokens(ocn, account, amount=100):
-    account.request_tokens(amount)
-    ocn.keeper.token.token_approve(
-        ocn.keeper.payment_conditions.address,
+    ocn.accounts.request_tokens(account, amount)
+    Keeper.get_instance().token.token_approve(
+        Keeper.get_instance().dispenser.address,
         amount,
         account
     )
 
 
-def make_ocean_instance(account_index):
+def make_ocean_instance():
     path_config = 'config_local.ini'
     os.environ['CONFIG_FILE'] = path_config
-    ocn = Ocean(Config(path_config))
-    account = list(ocn.accounts)[account_index]
+    ConfigProvider.set_config(Config(path_config))
+    ocn = Ocean()
     return ocn
 
 
 def get_publisher_ocean_instance():
-    ocn = make_ocean_instance(PUBLISHER_INDEX)
+    ocn = make_ocean_instance()
     account = get_publisher_account(ConfigProvider.get_config())
     init_ocn_tokens(ocn, account)
     ocn.main_account = account
@@ -72,7 +72,7 @@ def get_publisher_ocean_instance():
 
 
 def get_consumer_ocean_instance():
-    ocn = make_ocean_instance(CONSUMER_INDEX)
+    ocn = make_ocean_instance()
     account = get_consumer_account(ConfigProvider.get_config())
     init_ocn_tokens(ocn, account)
     ocn.main_account = account

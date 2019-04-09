@@ -10,6 +10,7 @@ parity.password = ${PARITY_PASSWORD}
 brizo.url = ${BRIZO_URL}
 aquarius.url = ${AQUARIUS_URL}
 storage.path = squid_py.db
+downloads.path = consume-downloads
 
 [osmosis]
 azure.account.name = ${AZURE_ACCOUNT_NAME}
@@ -20,5 +21,9 @@ azure.client.id = ${AZURE_CLIENT_ID}
 azure.client.secret = ${AZURE_CLIENT_SECRET}
 azure.tenant.id = ${AZURE_TENANT_ID}
 azure.subscription.id = ${AZURE_SUBSCRIPTION_ID}
+; azure.share.input and azure.share.output are only used
+; for Azure Compute data assets (not for Azure Storage data assets).
+; If you're not supporting Azure Compute, just leave their values
+; as compute and output, respectively.
 azure.share.input = ${AZURE_SHARE_INPUT}
 azure.share.output = ${AZURE_SHARE_OUTPUT}
