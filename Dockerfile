@@ -48,7 +48,8 @@ ENV BRIZO_URL='http://0.0.0.0:8030'
 
 # docker-entrypoint.sh configuration file variables
 ENV BRIZO_WORKERS='1'
-ENV BRIZO_TIMEOUT='9000'
+ENV BRIZO_TIMEOUT='90'
+ENV BRIZO_WORKER_CLASS='gevent'
 
 ENTRYPOINT ["/brizo/docker-entrypoint.sh"]
 

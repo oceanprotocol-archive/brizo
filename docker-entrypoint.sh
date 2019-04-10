@@ -11,5 +11,5 @@ fi
 
 /bin/cp -up /usr/local/keeper-contracts/* /usr/local/artifacts/ 2>/dev/null || true
 
-gunicorn -b ${BRIZO_URL#*://} -w ${BRIZO_WORKERS} -t ${BRIZO_TIMEOUT} brizo.run:app
+gunicorn -b ${BRIZO_URL#*://} -w ${BRIZO_WORKERS} -k ${BRIZO_WORKER_CLASS} -t ${BRIZO_TIMEOUT} brizo.run:app
 tail -f /dev/null
