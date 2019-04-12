@@ -322,7 +322,9 @@ def consume():
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     else:
                         headers = {"Content-Disposition":
-                                       f'attachment;filename={url.split("/")[-1]}'
+                                       f'attachment;filename={url.split("/")[-1]}',
+                                   "Access-Control-Expose-Headers":
+                                       f'Content-Disposition',
                                    }
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     return Response(io.BytesIO(response.content).read(), response.status_code, headers=headers)
