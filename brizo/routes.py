@@ -18,7 +18,11 @@ from squid_py.ocean.ocean import Ocean
 
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.util import (check_required_attributes, get_provider_account)
+from brizo.util import (
+    check_required_attributes,
+    get_provider_account,
+    handle_agreement_created
+)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -29,6 +33,7 @@ ConfigProvider.set_config(config)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
 ocn = Ocean()
+ocn.agreements.subscribe_events(get_provider_account(ocn).address, handle_agreement_created)
 requests_session = get_requests_session()
 
 logger = logging.getLogger('brizo')
