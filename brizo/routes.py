@@ -219,7 +219,7 @@ def initialize():
             agreement_id=service_agreement_id,
             service_agreement_signature=data.get('signature'),
             consumer_address=data.get('consumerAddress'),
-            publisher_account=provider_acc
+            account=provider_acc
         )
 
         logger.info('Done calling ocean.agreements.create, request payload was %s', data)
