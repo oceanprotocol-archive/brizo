@@ -326,13 +326,17 @@ def consume():
                         headers = {"Range": request.headers.get('range')}
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     else:
-                        headers = {"Content-Disposition":
-                                       f'attachment;filename={url.split("/")[-1]}',
-                                   "Access-Control-Expose-Headers":
-                                       f'Content-Disposition',
-                                   }
+                        headers = {
+                            "Content-Disposition": f'attachment;filename={url.split("/")[-1]}',
+                            "Access-Control-Expose-Headers": f'Content-Disposition'
+                        }
                         response = requests_session.get(download_url, headers=headers, stream=True)
-                    return Response(io.BytesIO(response.content).read(), response.status_code, headers=headers)
+
+                    return Response(
+                        io.BytesIO(response.content).read(),
+                        response.status_code,
+                        headers=headers
+                    )
                 except Exception as e:
                     logger.error(e)
                     return "Error getting the url content: %s" % e, 401
