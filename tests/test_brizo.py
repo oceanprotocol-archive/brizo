@@ -227,4 +227,15 @@ def test_handle_agreement_event(client, publisher_ocean_instance, consumer_ocean
 
     # verify that publisher/provider is handling the new agreement and fulfilling the access condition
     event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(agreement_id, 60, None, (), wait=True)
-    assert event and Web3Provider.get_web3().toHex(event.args["_agreementId"]) == agreement_id, f'Access not granted by brizo instance: event={event}'
+    if not event or Web3Provider.get_web3().toHex(event.args["_agreementId"]) != agreement_id:
+        i = 0
+        while i < 30 and not consumer_ocean_instance.agreements.is_access_granted(
+                agreement_id, ddo.did, consumer_account.address):
+            time.sleep(1)
+            i += 1
+
+    assert consumer_ocean_instance.agreements.is_access_granted(
+                agreement_id, ddo.did, consumer_account.address
+    ), f'Failed to get access permission: ' \
+        f'agreement_id={agreement_id}, did={ddo.did}, consumer={consumer_account.address}'
+
