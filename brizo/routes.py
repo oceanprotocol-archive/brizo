@@ -103,7 +103,7 @@ def publish():
     provider_acc = get_provider_account(ocn)
     did = data.get('documentId')
     signed_did = data.get('signedDocumentId')
-    document = data.get('document')
+    document = json.dumps(json.loads(data.get('document')), separators=(',', ':'))
     publisher_address = data.get('publisherAddress')
 
     try:
