@@ -89,14 +89,6 @@ def test_consume(client, publisher_ocean_instance, consumer_ocean_instance):
     files = metadata['base']['files']
     urls = [_file_dict['url'] for _file_dict in files]
 
-    # This is a trick to give access to provider through the secretstore
-    publisher_ocean_instance.assets.order(
-        asset.did,
-        'Access',
-        pub_acc,
-        auto_consume=False
-    )
-
     # initialize an agreement
     agreement_id = consumer_ocean_instance.assets.order(
         asset.did,
@@ -234,5 +226,5 @@ def test_handle_agreement_event(client, publisher_ocean_instance, consumer_ocean
     assert event and Web3Provider.get_web3().toHex(event.args["_agreementId"]) == agreement_id, f'lock reward maybe failed, no event: event={event}'
 
     # verify that publisher/provider is handling the new agreement and fulfilling the access condition
-    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(agreement_id, 30, None, (), wait=True)
+    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(agreement_id, 60, None, (), wait=True)
     assert event and Web3Provider.get_web3().toHex(event.args["_agreementId"]) == agreement_id, f'Access not granted by brizo instance: event={event}'
