@@ -226,10 +226,10 @@ def test_handle_agreement_event(client, publisher_ocean_instance, consumer_ocean
     assert event and Web3Provider.get_web3().toHex(event.args["_agreementId"]) == agreement_id, f'lock reward maybe failed, no event: event={event}'
 
     # verify that publisher/provider is handling the new agreement and fulfilling the access condition
-    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(agreement_id, 60, None, (), wait=True)
+    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(agreement_id, 120, None, (), wait=True)
     if not event or Web3Provider.get_web3().toHex(event.args["_agreementId"]) != agreement_id:
         i = 0
-        while i < 30 and not consumer_ocean_instance.agreements.is_access_granted(
+        while i < 120 and not consumer_ocean_instance.agreements.is_access_granted(
                 agreement_id, ddo.did, consumer_account.address):
             time.sleep(1)
             i += 1
