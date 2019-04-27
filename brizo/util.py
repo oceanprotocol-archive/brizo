@@ -28,13 +28,13 @@ def handle_agreement_created(event, *_):
     did = id_to_did(event.args["_did"])
     agreement_id = Web3Provider.get_web3().toHex(event.args["_agreementId"])
     logger.info(f'handle_agreement_created: did={did}, agrId={agreement_id}')
-    try:
-        agreement_ids = {row[0] for row in get_service_agreements(config.storage_path)}
-        if agreement_id in agreement_ids:
-            logger.info(f'agreement id {agreement_id} is already being processed.')
-            return
-    except Exception as e:
-        logger.debug(f'agreements cache database may not be initialized yet: {e}')
+    # try:
+    #     agreement_ids = {row[0] for row in get_service_agreements(config.storage_path)}
+    #     if agreement_id in agreement_ids:
+    #         logger.info(f'agreement id {agreement_id} is already being processed.')
+    #         return
+    # except Exception as e:
+    #     logger.debug(f'agreements cache database may not be initialized yet: {e}')
 
     ddo = ocean.assets.resolve(did)
     sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
