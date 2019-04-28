@@ -6,7 +6,6 @@ from squid_py import ConfigProvider, Ocean
 from squid_py.agreements.register_service_agreement import register_service_agreement_publisher
 from squid_py.agreements.service_agreement import ServiceAgreement
 from squid_py.agreements.service_types import ServiceTypes
-from squid_py.agreements.storage import get_service_agreements
 from squid_py.did import id_to_did, did_to_id
 from squid_py.keeper import Keeper
 from squid_py.keeper.web3_provider import Web3Provider
@@ -20,29 +19,16 @@ def handle_agreement_created(event, *_):
     if not event or not event.args:
         return
 
-    logger.info(f'Start handle_agreement_created: event_args={event.args}')
+    logger.debug(f'Start handle_agreement_created: event_args={event.args}')
     config = ConfigProvider.get_config()
     ocean = Ocean()
     provider_account = get_provider_account(ocean)
     assert provider_account.address == event.args["_accessProvider"]
     did = id_to_did(event.args["_did"])
     agreement_id = Web3Provider.get_web3().toHex(event.args["_agreementId"])
-    logger.info(f'handle_agreement_created: did={did}, agrId={agreement_id}')
-    # try:
-    #     agreement_ids = {row[0] for row in get_service_agreements(config.storage_path)}
-    #     if agreement_id in agreement_ids:
-    #         logger.info(f'agreement id {agreement_id} is already being processed.')
-    #         return
-    # except Exception as e:
-    #     logger.debug(f'agreements cache database may not be initialized yet: {e}')
 
     ddo = ocean.assets.resolve(did)
     sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
-    logger.info(f'handle_agreement_created() -- Received "AgreementCreated" event:'
-                 f'\naccessProvider={event.args["_accessProvider"]}'
-                 f'\naccessConsumer={event.args["_accessConsumer"]}'
-                 f'\nagreementId={agreement_id}'
-                 f'\ndid={did}')
 
     condition_ids = sa.generate_agreement_condition_ids(
         agreement_id=agreement_id,
@@ -50,7 +36,6 @@ def handle_agreement_created(event, *_):
         consumer_address=event.args["_accessConsumer"],
         publisher_address=ddo.publisher,
         keeper=Keeper.get_instance())
-    logger.info(f'handle_agreement_created() -- conditionIds: {condition_ids}')
     register_service_agreement_publisher(
         config.storage_path,
         event.args["_accessConsumer"],
@@ -62,6 +47,7 @@ def handle_agreement_created(event, *_):
         provider_account,
         condition_ids
     )
+    logger.debug(f'handle_agreement_created() -- done registering event listeners.')
 
 
 def get_provider_account(ocean_instance):
