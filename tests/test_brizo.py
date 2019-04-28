@@ -223,13 +223,14 @@ def test_handle_agreement_event(client, publisher_ocean_instance, consumer_ocean
     assert event and Web3Provider.get_web3().toHex(event.args["_agreementId"]) == agreement_id, f'Create agreement failed {event}'
 
     event = keeper.lock_reward_condition.subscribe_condition_fulfilled(agreement_id, 30, None, (), wait=True)
-    assert event and Web3Provider.get_web3().toHex(event.args["_agreementId"]) == agreement_id, f'lock reward maybe failed, no event: event={event}'
+    assert event and Web3Provider.get_web3().toHex(event.args["_agreementId"]) == agreement_id, \
+        f'lock reward maybe failed, no event: event={event}'
 
     # verify that publisher/provider is handling the new agreement and fulfilling the access condition
-    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(agreement_id, 120, None, (), wait=True)
+    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(agreement_id, 30, None, (), wait=True)
     if not event or Web3Provider.get_web3().toHex(event.args["_agreementId"]) != agreement_id:
         i = 0
-        while i < 120 and not consumer_ocean_instance.agreements.is_access_granted(
+        while i < 30 and not consumer_ocean_instance.agreements.is_access_granted(
                 agreement_id, ddo.did, consumer_account.address):
             time.sleep(1)
             i += 1
@@ -238,4 +239,3 @@ def test_handle_agreement_event(client, publisher_ocean_instance, consumer_ocean
                 agreement_id, ddo.did, consumer_account.address
     ), f'Failed to get access permission: ' \
         f'agreement_id={agreement_id}, did={ddo.did}, consumer={consumer_account.address}'
-
