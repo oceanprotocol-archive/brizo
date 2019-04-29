@@ -15,11 +15,15 @@ from squid_py.keeper import Keeper
 from squid_py.keeper.web3_provider import Web3Provider
 
 from brizo.constants import BaseURLs
-from brizo.util import get_provider_account, check_and_register_agreement_template, dummy_callback
+from brizo.util import get_provider_account, check_and_register_agreement_template
 from tests.conftest import get_publisher_account, get_consumer_account
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
+
+
+def dummy_callback(*_):
+    pass
 
 
 def get_registered_ddo(ocean_instance, account, providers=None):

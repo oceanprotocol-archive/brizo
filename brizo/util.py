@@ -95,7 +95,3 @@ def check_and_register_agreement_template(ocean_instance, keeper, account):
         ocean_instance.templates.approve(
             keeper.escrow_access_secretstore_template.address,
             account)
-
-
-def dummy_callback(*_):
-    pass
