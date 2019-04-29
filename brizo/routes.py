@@ -18,7 +18,11 @@ from squid_py.ocean.ocean import Ocean
 
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.util import (check_required_attributes, get_provider_account)
+from brizo.util import (
+    check_required_attributes,
+    get_provider_account,
+    handle_agreement_created
+)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -29,6 +33,7 @@ ConfigProvider.set_config(config)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
 ocn = Ocean()
+ocn.agreements.subscribe_events(get_provider_account(ocn).address, handle_agreement_created)
 requests_session = get_requests_session()
 
 logger = logging.getLogger('brizo')
@@ -214,7 +219,7 @@ def initialize():
             agreement_id=service_agreement_id,
             service_agreement_signature=data.get('signature'),
             consumer_address=data.get('consumerAddress'),
-            publisher_account=provider_acc
+            account=provider_acc
         )
 
         logger.info('Done calling ocean.agreements.create, request payload was %s', data)
@@ -321,13 +326,17 @@ def consume():
                         headers = {"Range": request.headers.get('range')}
                         response = requests_session.get(download_url, headers=headers, stream=True)
                     else:
-                        headers = {"Content-Disposition":
-                                       f'attachment;filename={url.split("/")[-1]}',
-                                   "Access-Control-Expose-Headers":
-                                       f'Content-Disposition',
-                                   }
+                        headers = {
+                            "Content-Disposition": f'attachment;filename={url.split("/")[-1]}',
+                            "Access-Control-Expose-Headers": f'Content-Disposition'
+                        }
                         response = requests_session.get(download_url, headers=headers, stream=True)
-                    return Response(io.BytesIO(response.content).read(), response.status_code, headers=headers)
+
+                    return Response(
+                        io.BytesIO(response.content).read(),
+                        response.status_code,
+                        headers=headers
+                    )
                 except Exception as e:
                     logger.error(e)
                     return "Error getting the url content: %s" % e, 401

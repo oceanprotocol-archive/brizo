@@ -14,7 +14,7 @@ services:
 before_install:
   - git clone https://github.com/oceanprotocol/barge
   - cd barge
-  - export KEEPER_VERSION=v0.8.8
+  - export KEEPER_VERSION=latest
   - bash -x start_ocean.sh --latest --no-brizo --no-pleuston --local-spree-node 2>&1 > start_ocean.log &
   - cd ..
   - sleep 15
