@@ -32,7 +32,7 @@ ConfigProvider.set_config(config)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
 ocn = Ocean()
-keeper = ocn._keeper
+keeper = ocn.keeper
 provider_acc = get_provider_account(ocn)
 ocn.agreements.subscribe_events(get_provider_account(ocn).address, handle_agreement_created)
 requests_session = get_requests_session()

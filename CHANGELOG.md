@@ -1,6 +1,29 @@
 History
 =======
 
+0.3.6 (April 30th, 2019)
+------------------------   
+* Implement watcher to allow consumer initialize the agreement
+* Reduce logging
+* Use squid-py 0.6.2
+
+0.3.3 (April 5th, 2019)
+------------------------ 
+* Update entrypoint to add worker timeout as an environment variable
+
+0.3.2 (April 5th, 2019)
+------------------------ 
+* Download request using streaming.
+
+0.3.1 (April 1st, 2019)
+------------------------ 
+* Fix signature issue for javascript implementation
+
+0.3.0 (March 29th, 2019)
+------------------------ 
+* New API to expose the decryption of the Secret Store and make it compatible with squid-js.
+* Upgrade squid-py to 0.5.9
+
 0.2.10 (March 26th, 2019)
 -------------------------
 * Upgrade to squid-py 0.5.7
