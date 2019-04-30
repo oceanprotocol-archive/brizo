@@ -13,7 +13,6 @@ from squid_py.config import Config
 from squid_py.did import id_to_did
 from squid_py.exceptions import OceanDIDNotFound
 from squid_py.http_requests.requests_session import get_requests_session
-from squid_py.keeper import Keeper
 from squid_py.ocean.ocean import Ocean
 
 from brizo.log import setup_logging
@@ -33,6 +32,8 @@ ConfigProvider.set_config(config)
 # Prepare keeper contracts for on-chain access control
 # Prepare OceanDB
 ocn = Ocean()
+keeper = ocn.keeper
+provider_acc = get_provider_account(ocn)
 ocn.agreements.subscribe_events(get_provider_account(ocn).address, handle_agreement_created)
 requests_session = get_requests_session()
 
@@ -105,14 +106,13 @@ def publish():
     if msg:
         return msg, status
 
-    provider_acc = get_provider_account(ocn)
     did = data.get('documentId')
     signed_did = data.get('signedDocumentId')
     document = json.dumps(json.loads(data.get('document')), separators=(',', ':'))
     publisher_address = data.get('publisherAddress')
 
     try:
-        address = Keeper.get_instance().ec_recover(did, signed_did)
+        address = keeper.ec_recover(did, signed_did)
         if address.lower() != publisher_address.lower():
             msg = f'Invalid signature {signed_did} for ' \
                 f'publisherAddress {publisher_address} and documentId {did}.'
@@ -206,7 +206,6 @@ def initialize():
         # catch the paymentLocked.
         did = data.get('did')
         asset = ocn.assets.resolve(did)
-        provider_acc = get_provider_account(ocn)
         if config.has_option('resources', 'validate.creator'):
             if config.get('resources', 'validate.creator').lower() == 'true':
                 if provider_acc.address.lower() != asset.proof.get('creator', '').lower():
@@ -288,7 +287,6 @@ def consume():
         return f'Either `url` or `signature and index` are required in the call to "consume".', 400
 
     try:
-        provider_account = get_provider_account(ocn)
         agreement_id = data.get('serviceAgreementId')
         consumer_address = data.get('consumerAddress')
         asset_id = ocn.agreements.get(agreement_id).did
@@ -303,7 +301,7 @@ def consume():
                 if not url:
                     signature = data.get('signature')
                     index = int(data.get('index'))
-                    address = Keeper.get_instance().ec_recover(agreement_id, signature)
+                    address = keeper.ec_recover(agreement_id, signature)
                     if address.lower() != consumer_address.lower():
                         msg = f'Invalid signature {signature} for ' \
                             f'consumerAddress {consumer_address} and documentId {did}.'
@@ -311,7 +309,7 @@ def consume():
 
                     asset = ocn.assets.resolve(did)
                     urls_str = ocn.secret_store.decrypt(
-                        asset_id, asset.encrypted_files, provider_account
+                        asset_id, asset.encrypted_files, provider_acc
                     )
                     urls = json.loads(urls_str)
                     if index >= len(urls):
