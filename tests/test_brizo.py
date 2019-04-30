@@ -15,11 +15,15 @@ from squid_py.keeper import Keeper
 from squid_py.keeper.web3_provider import Web3Provider
 
 from brizo.constants import BaseURLs
-from brizo.util import get_provider_account
+from brizo.util import get_provider_account, check_and_register_agreement_template
 from tests.conftest import get_publisher_account, get_consumer_account
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
+
+
+def dummy_callback(*_):
+    pass
 
 
 def get_registered_ddo(ocean_instance, account, providers=None):
@@ -89,14 +93,6 @@ def test_consume(client, publisher_ocean_instance, consumer_ocean_instance):
     files = metadata['base']['files']
     urls = [_file_dict['url'] for _file_dict in files]
 
-    # This is a trick to give access to provider through the secretstore
-    publisher_ocean_instance.assets.order(
-        asset.did,
-        'Access',
-        pub_acc,
-        auto_consume=False
-    )
-
     # initialize an agreement
     agreement_id = consumer_ocean_instance.assets.order(
         asset.did,
@@ -143,13 +139,8 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     consumer_account = cons_ocn.main_account
     publisher_account = pub_ocn.main_account
 
-    if publisher_ocean_instance._keeper.template_manager.get_num_templates() == 0:
-        publisher_ocean_instance.templates.propose(
-            publisher_ocean_instance._keeper.escrow_access_secretstore_template.address,
-            publisher_ocean_instance.main_account)
-        publisher_ocean_instance.templates.approve(
-            publisher_ocean_instance._keeper.escrow_access_secretstore_template.address,
-            publisher_ocean_instance.main_account)
+    check_and_register_agreement_template(
+        publisher_ocean_instance, Keeper.get_instance(), publisher_ocean_instance.main_account)
 
     # Register asset
     ddo = get_registered_ddo(pub_ocn, publisher_account)
@@ -202,3 +193,58 @@ def test_empty_payload(client, publisher_ocean_instance, consumer_ocean_instance
         content_type='application/json'
     )
     assert initialize.status_code == 400
+
+
+def test_handle_agreement_event(client, publisher_ocean_instance, consumer_ocean_instance):
+    # create agreement by consumer
+    pub_ocn, cons_ocn = publisher_ocean_instance, consumer_ocean_instance
+    consumer_account = cons_ocn.main_account
+    publisher_account = pub_ocn.main_account
+    keeper = Keeper.get_instance()
+
+    # Register asset
+    ddo = get_registered_ddo(pub_ocn, publisher_account)
+
+    service = ddo.get_service(service_type=ServiceTypes.ASSET_ACCESS)
+    service_definition_id = service.service_definition_id
+
+    agreement_id, signature = consumer_ocean_instance.agreements.prepare(
+        ddo.did, service_definition_id, consumer_account
+    )
+
+    Brizo.set_http_client(client)
+    # .create will register consumer to auto-handle events and fulfilling lock reward.
+    cons_ocn.agreements.create(
+        ddo.did,
+        service_definition_id,
+        agreement_id,
+        signature,
+        consumer_account.address,
+        consumer_account
+    )
+    event = keeper.escrow_access_secretstore_template.subscribe_agreement_created(
+        agreement_id, 30, dummy_callback, (), wait=True)
+    event_agr_id = Web3Provider.get_web3().toHex(event.args["_agreementId"]) if event else None
+    assert event and event_agr_id == agreement_id, f'Create agreement failed {event}'
+
+    event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
+        agreement_id, 30, dummy_callback, (), wait=True)
+    event_agr_id = Web3Provider.get_web3().toHex(event.args["_agreementId"]) if event else None
+    assert event and event_agr_id == agreement_id, \
+        f'lock reward maybe failed, no event: event={event}'
+
+    # verify that publisher/provider is handling the new agreement and fulfilling the access condition
+    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(
+        agreement_id, 60, dummy_callback, (), wait=True)
+    event_agr_id = Web3Provider.get_web3().toHex(event.args["_agreementId"]) if event else None
+    if not event or event_agr_id != agreement_id:
+        i = 0
+        while i < 60 and not consumer_ocean_instance.agreements.is_access_granted(
+                agreement_id, ddo.did, consumer_account.address):
+            time.sleep(1)
+            i += 1
+
+    assert consumer_ocean_instance.agreements.is_access_granted(
+                agreement_id, ddo.did, consumer_account.address
+    ), f'Failed to get access permission: ' \
+        f'agreement_id={agreement_id}, did={ddo.did}, consumer={consumer_account.address}'
