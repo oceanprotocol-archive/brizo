@@ -1,6 +1,11 @@
 History
 =======
 
+0.3.7 (May 7th, 2019)
+------------------------   
+* Use squid-py 0.6.4 with proper keeper-contracts version
+
+
 0.3.6 (April 30th, 2019)
 ------------------------   
 * Implement watcher to allow consumer initialize the agreement
