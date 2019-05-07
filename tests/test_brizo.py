@@ -4,8 +4,6 @@ import json
 import time
 
 from squid_py import ConfigProvider
-from squid_py.agreements.register_service_agreement import register_service_agreement_consumer
-from squid_py.agreements.service_agreement import ServiceAgreement
 from squid_py.agreements.service_types import ServiceTypes
 from squid_py.assets.asset import Asset
 from squid_py.brizo.brizo import Brizo
@@ -155,31 +153,16 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     )
 
     Brizo.set_http_client(client)
-    # subscribe to events
-    service_agreement = ServiceAgreement.from_ddo(service_definition_id, ddo)
-
-    condition_ids = service_agreement.generate_agreement_condition_ids(
-        agreement_id, ddo.asset_id, consumer_account.address, publisher_account.address,
-        publisher_ocean_instance._keeper)
-
-    register_service_agreement_consumer(
-        publisher_ocean_instance._config.storage_path,
-        publisher_account.address,
-        agreement_id,
-        ddo.did,
-        service_agreement,
-        service_definition_id,
-        service_agreement.get_price(),
-        ddo.encrypted_files,
-        consumer_account,
-        condition_ids,
-        publisher_ocean_instance.agreements._asset_consumer.download,
-    )
 
     cons_ocn.agreements.send(ddo.did, agreement_id, service_definition_id, signature,
-                             consumer_account)
+                             consumer_account, auto_consume=True)
     # wait a bit until all service agreement events are processed
-    time.sleep(15)
+    i = 0
+    while i < 30 and not consumer_ocean_instance.agreements.is_access_granted(
+            agreement_id, ddo.did, consumer_account.address):
+        time.sleep(1)
+        i += 1
+
     assert cons_ocn.agreements.is_access_granted(
         agreement_id, ddo.did, consumer_account.address) is True, ''
     print('Service agreement executed and fulfilled, all good.')
