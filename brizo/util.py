@@ -1,4 +1,6 @@
 import logging
+import sqlite3
+import traceback
 from os import getenv
 
 from eth_utils import add_0x_prefix
@@ -17,37 +19,51 @@ logger = logging.getLogger(__name__)
 
 def handle_agreement_created(event, *_):
     if not event or not event.args:
+        logger.debug('handle_agreement_created: empty event')
         return
 
-    logger.debug(f'Start handle_agreement_created: event_args={event.args}')
-    config = ConfigProvider.get_config()
-    ocean = Ocean()
-    provider_account = get_provider_account(ocean)
-    assert provider_account.address == event.args["_accessProvider"]
-    did = id_to_did(event.args["_did"])
-    agreement_id = Web3Provider.get_web3().toHex(event.args["_agreementId"])
+    logger.debug(f'handle_agreement_created: checking if should handle this event, event_args={event.args}')
+    try:
+        config = ConfigProvider.get_config()
+        agreement_id = Web3Provider.get_web3().toHex(event.args["_agreementId"])
+        ids = get_agreement_ids(config.storage_path)
+        if ids:
+            # logger.info(f'got agreement ids: #{agreement_id}#, ##{ids}##, \nid in ids: {agreement_id in ids}')
+            if agreement_id in ids:
+                logger.debug(f'handle_agreement_created: skipping service agreement {agreement_id} '
+                             f'because it already been processed before.')
+                return
 
-    ddo = ocean.assets.resolve(did)
-    sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
+        logger.info(f'Start handle_agreement_created: event_args={event.args}')
+        ocean = Ocean()
+        provider_account = get_provider_account(ocean)
+        assert provider_account.address == event.args["_accessProvider"]
+        did = id_to_did(event.args["_did"])
+        ddo = ocean.assets.resolve(did)
+        sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
 
-    condition_ids = sa.generate_agreement_condition_ids(
-        agreement_id=agreement_id,
-        asset_id=add_0x_prefix(did_to_id(did)),
-        consumer_address=event.args["_accessConsumer"],
-        publisher_address=ddo.publisher,
-        keeper=Keeper.get_instance())
-    register_service_agreement_publisher(
-        config.storage_path,
-        event.args["_accessConsumer"],
-        agreement_id,
-        did,
-        sa,
-        sa.service_definition_id,
-        sa.get_price(),
-        provider_account,
-        condition_ids
-    )
-    logger.debug(f'handle_agreement_created() -- done registering event listeners.')
+        condition_ids = sa.generate_agreement_condition_ids(
+            agreement_id=agreement_id,
+            asset_id=add_0x_prefix(did_to_id(did)),
+            consumer_address=event.args["_accessConsumer"],
+            publisher_address=ddo.publisher,
+            keeper=Keeper.get_instance())
+        register_service_agreement_publisher(
+            config.storage_path,
+            event.args["_accessConsumer"],
+            agreement_id,
+            did,
+            sa,
+            sa.service_definition_id,
+            sa.get_price(),
+            provider_account,
+            condition_ids
+        )
+        logger.info(f'handle_agreement_created() -- done registering event listeners.')
+    except Exception as e:
+        logger.error(f'Error in handle_agreement_created: {e}\n{traceback.format_exc()}')
+    finally:
+        logger.debug(f'handle_agreement_created() -- EXITing.')
 
 
 def get_provider_account(ocean_instance):
@@ -95,3 +111,18 @@ def check_and_register_agreement_template(ocean_instance, keeper, account):
         ocean_instance.templates.approve(
             keeper.escrow_access_secretstore_template.address,
             account)
+
+
+def get_agreement_ids(storage_path):
+    conn = sqlite3.connect(storage_path)
+    try:
+        cursor = conn.cursor()
+        agreement_ids = {row[0] for row in cursor.execute(
+            "SELECT id FROM service_agreements", ())}
+        return agreement_ids
+    except Exception as e:
+        logger.error(f'db error getting agreement ids: {e}')
+        return []
+
+    finally:
+        conn.close()
