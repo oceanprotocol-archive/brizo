@@ -20,8 +20,8 @@ from brizo.myapp import app
 from brizo.util import (
     check_required_attributes,
     get_provider_account,
-    handle_agreement_created
-)
+    handle_agreement_created,
+    verify_signature)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -67,7 +67,7 @@ def publish():
           type: object
           required:
             - documentId
-            - signedDocumentId
+            - signature
             - document
             - publisherAddress:
           properties:
@@ -75,7 +75,7 @@ def publish():
               description: Identifier of the asset to be registered in ocean.
               type: string
               example: 'did:op:08a429b8529856d59867503f8056903a680935a76950bb9649785cc97869a43d'
-            signedDocumentId:
+            signature:
               description: Publisher signature of the documentId
               type: string
               example: ''
@@ -97,7 +97,7 @@ def publish():
     """
     required_attributes = [
         'documentId',
-        'signedDocumentId',
+        'signature',
         'document',
         'publisherAddress'
     ]
@@ -107,14 +107,13 @@ def publish():
         return msg, status
 
     did = data.get('documentId')
-    signed_did = data.get('signedDocumentId')
+    signature = data.get('signature')
     document = json.dumps(json.loads(data.get('document')), separators=(',', ':'))
     publisher_address = data.get('publisherAddress')
 
     try:
-        address = keeper.ec_recover(did, signed_did)
-        if address.lower() != publisher_address.lower():
-            msg = f'Invalid signature {signed_did} for ' \
+        if not verify_signature(ocn, keeper, publisher_address, signature, did):
+            msg = f'Invalid signature {signature} for ' \
                 f'publisherAddress {publisher_address} and documentId {did}.'
             raise ValueError(msg)
 
@@ -301,10 +300,10 @@ def consume():
                 if not url:
                     signature = data.get('signature')
                     index = int(data.get('index'))
-                    address = keeper.ec_recover(agreement_id, signature)
-                    if address.lower() != consumer_address.lower():
+
+                    if not verify_signature(ocn, keeper, consumer_address, signature, agreement_id):
                         msg = f'Invalid signature {signature} for ' \
-                            f'consumerAddress {consumer_address} and documentId {did}.'
+                            f'publisherAddress {consumer_address} and documentId {agreement_id}.'
                         raise ValueError(msg)
 
                     asset = ocn.assets.resolve(did)
