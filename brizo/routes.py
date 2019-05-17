@@ -102,6 +102,9 @@ def publish():
         'publisherAddress'
     ]
     data = request.json
+    if 'signedDocumentId' in data and 'signature' not in data:
+        data['signature'] = data['signedDocumentId']
+
     msg, status = check_required_attributes(required_attributes, data, 'publish')
     if msg:
         return msg, status
