@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 import traceback
 from os import getenv
 
@@ -8,6 +7,7 @@ from squid_py import ConfigProvider, Ocean
 from squid_py.agreements.register_service_agreement import register_service_agreement_publisher
 from squid_py.agreements.service_agreement import ServiceAgreement
 from squid_py.agreements.service_types import ServiceTypes
+from squid_py.data_store.agreements import AgreementsStorage
 from squid_py.did import id_to_did, did_to_id
 from squid_py.keeper import Keeper
 from squid_py.keeper.web3_provider import Web3Provider
@@ -26,7 +26,7 @@ def handle_agreement_created(event, *_):
     try:
         config = ConfigProvider.get_config()
         agreement_id = Web3Provider.get_web3().toHex(event.args["_agreementId"])
-        ids = get_agreement_ids(config.storage_path)
+        ids = AgreementsStorage(config.storage_path).get_agreement_ids()
         if ids:
             # logger.info(f'got agreement ids: #{agreement_id}#, ##{ids}##, \nid in ids: {agreement_id in ids}')
             if agreement_id in ids:
@@ -64,6 +64,15 @@ def handle_agreement_created(event, *_):
         logger.error(f'Error in handle_agreement_created: {e}\n{traceback.format_exc()}')
     finally:
         logger.debug(f'handle_agreement_created() -- EXITing.')
+
+
+def verify_signature(ocn, keeper, signer_address, signature, original_msg):
+    if ocn.auth.is_token_valid(signature):
+        address = ocn.auth.check(signature)
+    else:
+        address = keeper.ec_recover(original_msg, signature)
+
+    return address.lower() == signer_address.lower()
 
 
 def get_provider_account(ocean_instance):
@@ -111,18 +120,3 @@ def check_and_register_agreement_template(ocean_instance, keeper, account):
         ocean_instance.templates.approve(
             keeper.escrow_access_secretstore_template.address,
             account)
-
-
-def get_agreement_ids(storage_path):
-    conn = sqlite3.connect(storage_path)
-    try:
-        cursor = conn.cursor()
-        agreement_ids = {row[0] for row in cursor.execute(
-            "SELECT id FROM service_agreements", ())}
-        return agreement_ids
-    except Exception as e:
-        logger.error(f'db error getting agreement ids: {e}')
-        return []
-
-    finally:
-        conn.close()

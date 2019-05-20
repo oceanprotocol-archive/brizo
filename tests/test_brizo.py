@@ -78,6 +78,24 @@ def test_publish(client, publisher_ocean_instance):
     encrypted_url = post_response.data.decode('utf-8')
     assert encrypted_url.startswith('0x')
 
+    # publish using auth token
+    did = DID.did()
+    asset_id = did_to_id(did)
+    signature = ocn.auth.store(account)
+    payload = {
+        'documentId': asset_id,
+        'signature': signature,
+        'document': urls_json,
+        'publisherAddress': account.address
+    }
+    post_response = client.post(
+        endpoint,
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    encrypted_url = post_response.data.decode('utf-8')
+    assert encrypted_url.startswith('0x')
+
 
 def test_consume(client, publisher_ocean_instance, consumer_ocean_instance):
     Brizo.set_http_client(client)
@@ -106,14 +124,33 @@ def test_consume(client, publisher_ocean_instance, consumer_ocean_instance):
     signature = Keeper.get_instance().sign_hash(agreement_id, cons_acc)
     index = 2
 
+    keeper = Keeper.get_instance()
+    event = keeper.escrow_access_secretstore_template.subscribe_agreement_created(
+        agreement_id, 30, None, (), wait=True
+    )
+    assert event, "Agreement event is not found, check the keeper node's logs"
+
+    event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
+        agreement_id, 90, None, (), wait=True
+    )
+    assert event, "Lock reward condition fulfilled event is not found, check the keeper node's logs"
+    event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(
+        agreement_id, 60, None, (), wait=True
+    )
+    assert event, "Access secretstore condition fulfilled event is not found, " \
+                  "check the keeper node's logs"
+
     # Consume using decrypted url
     payload['url'] = urls[index]
     request_url = endpoint + '?' + '&'.join([f'{k}={v}' for k, v in payload.items()])
     i = 0
-    while i < 30 and not consumer_ocean_instance.agreements.is_access_granted(
+    while i < 60 and not consumer_ocean_instance.agreements.is_access_granted(
             agreement_id, asset.did, cons_acc.address):
         time.sleep(1)
         i += 1
+
+    assert consumer_ocean_instance.agreements.is_access_granted(
+        agreement_id, asset.did, cons_acc.address), "Access not granted."
 
     response = client.get(
         request_url
