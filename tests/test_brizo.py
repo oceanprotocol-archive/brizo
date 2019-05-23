@@ -66,7 +66,7 @@ def test_publish(client, publisher_ocean_instance):
 
     payload = {
         'documentId': asset_id,
-        'signedDocumentId': signature,
+        'signature': signature,
         'document': urls_json,
         'publisherAddress': account.address
     }
