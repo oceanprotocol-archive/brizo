@@ -40,6 +40,7 @@ def version():
     info['contracts']['SignCondition'] = keeper.get_instance().sign_condition.address
     info['contracts']['OceanToken'] = keeper.get_instance().token.address
     info['contracts']['TemplateStoreManager'] = keeper.get_instance().template_manager.address
+    info['keeper-version'] = keeper.get_instance().token.version
     return jsonify(info)
 
 
