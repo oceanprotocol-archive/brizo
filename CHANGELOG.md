@@ -1,10 +1,18 @@
 History
 =======
 
+0.3.9 (May 29th, 2019)
+------------------------ 
+* Fix some small issues using squid-py v0.6.7
+* Add info about the contracts and version used.
+
+0.3.8 (May 20th, 2019)
+------------------------  
+* Support the use of auth token in place of signature for off-chain requests.
+
 0.3.7 (May 7th, 2019)
 ------------------------   
 * Use squid-py 0.6.4 with proper keeper-contracts version
-
 
 0.3.6 (April 30th, 2019)
 ------------------------   
