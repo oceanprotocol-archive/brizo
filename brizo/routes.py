@@ -1,13 +1,11 @@
 #  Copyright 2018 Ocean Protocol Foundation
 #  SPDX-License-Identifier: Apache-2.0
 
-import io
 import json
 import logging
 
 from eth_utils import add_0x_prefix
-from flask import Blueprint, request, Response
-from osmosis_driver_interface.osmosis import Osmosis
+from flask import Blueprint, request
 from squid_py import ConfigProvider
 from squid_py.config import Config
 from squid_py.did import id_to_did
@@ -21,7 +19,7 @@ from brizo.util import (
     check_required_attributes,
     get_provider_account,
     handle_agreement_created,
-    verify_signature)
+    verify_signature, get_asset_url_at_index, get_download_url, build_download_response)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -131,7 +129,7 @@ def publish():
             f'publisherAddress={publisher_address}',
             exc_info=1
         )
-        return "Error: " + str(e), 500
+        return f'Error: {str(e)}', 500
 
 
 @services.route('/access/initialize', methods=['POST'])
@@ -200,6 +198,7 @@ def initialize():
     msg, status = check_required_attributes(required_attributes, data, 'initialize')
     if msg:
         return msg, status
+
     try:
 
         logger.debug('Found ddo of did %s', data.get('did'))
@@ -230,14 +229,14 @@ def initialize():
             return msg, 401
 
         logger.info('Success creating service agreement')
-        return "Service agreement successfully created", 201
+        return 'Service agreement successfully created', 201
 
     except OceanDIDNotFound as e:
         logger.error(e, exc_info=1)
-        return "Requested did is not found in the keeper network: {}".format(str(e)), 422
+        return f'Requested did is not found in the keeper network: {str(e)}', 422
     except Exception as e:
         logger.error(e, exc_info=1)
-        return "Error: " + str(e), 500
+        return f'Error: {str(e)}', 500
 
 
 @services.route('/consume', methods=['GET'])
@@ -293,61 +292,32 @@ def consume():
         consumer_address = data.get('consumerAddress')
         asset_id = ocn.agreements.get(agreement_id).did
         did = id_to_did(asset_id)
-        if ocn.agreements.is_access_granted(
+
+        if not ocn.agreements.is_access_granted(
                 agreement_id,
                 did,
                 consumer_address):
-            logger.info('Connecting through Osmosis to generate the sign url.')
-            url = data.get('url')
-            try:
-                if not url:
-                    signature = data.get('signature')
-                    index = int(data.get('index'))
-
-                    if not verify_signature(ocn, keeper, consumer_address, signature, agreement_id):
-                        msg = f'Invalid signature {signature} for ' \
-                            f'publisherAddress {consumer_address} and documentId {agreement_id}.'
-                        raise ValueError(msg)
-
-                    asset = ocn.assets.resolve(did)
-                    urls_str = ocn.secret_store.decrypt(
-                        asset_id, asset.encrypted_files, provider_acc
-                    )
-                    urls = json.loads(urls_str)
-                    if index >= len(urls):
-                        raise ValueError(f'url index "{index}"" is invalid.')
-                    url = urls[index]['url']
-
-                osm = Osmosis(url, config_file)
-                download_url = osm.data_plugin.generate_url(url)
-                logger.debug("Osmosis generate the url: %s", download_url)
-                try:
-                    if request.range:
-                        headers = {"Range": request.headers.get('range')}
-                        response = requests_session.get(download_url, headers=headers, stream=True)
-                    else:
-                        headers = {
-                            "Content-Disposition": f'attachment;filename={url.split("/")[-1]}',
-                            "Access-Control-Expose-Headers": f'Content-Disposition'
-                        }
-                        response = requests_session.get(download_url, headers=headers, stream=True)
-
-                    return Response(
-                        io.BytesIO(response.content).read(),
-                        response.status_code,
-                        headers=headers
-                    )
-                except Exception as e:
-                    logger.error(e)
-                    return "Error getting the url content: %s" % e, 401
-            except Exception as e:
-                logger.error(e)
-                return "Error generating url: %s" % e, 401
-        else:
-            msg = "Invalid consumer address and/or service agreement id, " \
-                  "or consumer address does not have permission to consume this asset."
+            msg = ('Checking access permissions failed. Either consumer address does not have '
+                   'permission to consume this asset or consumer address and/or service agreement '
+                   'id is invalid.')
             logger.warning(msg)
             return msg, 401
+
+        url = data.get('url')
+        if not url:
+            signature = data.get('signature')
+            index = int(data.get('index'))
+            if not verify_signature(ocn, keeper, consumer_address, signature, agreement_id):
+                msg = f'Invalid signature {signature} for ' \
+                    f'publisherAddress {consumer_address} and documentId {agreement_id}.'
+                raise ValueError(msg)
+
+            url = get_asset_url_at_index(ocn, index, did, provider_acc)
+
+        download_url = get_download_url(url, config_file)
+        logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
+                    f' url {download_url}')
+        return build_download_response(request, requests_session, url, download_url)
     except Exception as e:
-        logger.error("Error- " + str(e))
-        return "Error : " + str(e), 500
+        logger.error(f'Error- {str(e)}', exc_info=1)
+        return f'Error : {str(e)}', 500
