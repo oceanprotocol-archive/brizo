@@ -315,6 +315,8 @@ def consume():
             url = get_asset_url_at_index(ocn, index, did, provider_acc)
 
         download_url = get_download_url(url, config_file)
+        logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
+                    f' url {download_url}')
         return build_download_response(request, requests_session, url, download_url)
     except Exception as e:
         logger.error(f'Error- {str(e)}', exc_info=1)

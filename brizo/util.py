@@ -133,6 +133,8 @@ def get_asset_url_at_index(ocean_instance, url_index, did, account):
         )
         logger.debug(f'Got decrypted files str {files_str}')
         files_list = json.loads(files_str)
+        if not isinstance(files_list, list):
+            raise TypeError(f'Expected a files list, got {type(files_list)}.')
         if url_index >= len(files_list):
             raise ValueError(f'url index "{url_index}"" is invalid.')
 
@@ -158,7 +160,7 @@ def get_download_url(url, config_file):
         logger.debug(f'Osmosis generated the url: {download_url}')
         return download_url
     except Exception as e:
-        logger.error(f'Error generating Osmosis url: {str(e)}')
+        logger.error(f'Error generating url (using Osmosis): {str(e)}')
         raise
 
 
