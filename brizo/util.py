@@ -23,10 +23,8 @@ logger = logging.getLogger(__name__)
 
 def handle_agreement_created(event, *_):
     if not event or not event.args:
-        logger.debug('handle_agreement_created: empty event')
         return
 
-    logger.debug(f'handle_agreement_created: checking if should handle this event, event_args={event.args}')
     try:
         config = ConfigProvider.get_config()
         agreement_id = Web3Provider.get_web3().toHex(event.args["_agreementId"])
@@ -65,9 +63,7 @@ def handle_agreement_created(event, *_):
         )
         logger.info(f'handle_agreement_created() -- done registering event listeners.')
     except Exception as e:
-        logger.error(f'Error in handle_agreement_created: {e}\n{traceback.format_exc()}')
-    finally:
-        logger.debug(f'handle_agreement_created() -- EXITing.')
+        logger.error(f'Error in handle_agreement_created: {e}', exc_info=1)
 
 
 def verify_signature(ocn, keeper, signer_address, signature, original_msg):
@@ -143,7 +139,8 @@ def get_asset_url_at_index(ocean_instance, url_index, did, account):
             raise TypeError(f'Invalid file meta at index {url_index}, expected a dict, got a '
                             f'{type(file_meta_dict)}.')
         if 'url' not in file_meta_dict:
-            raise ValueError(f'The "url" key is not found in the file dict {file_meta_dict} at index {url_index}.')
+            raise ValueError(f'The "url" key is not found in the '
+                             f'file dict {file_meta_dict} at index {url_index}.')
 
         return file_meta_dict['url']
 
