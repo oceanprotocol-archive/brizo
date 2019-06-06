@@ -48,55 +48,6 @@ def process_enc_token(event):
     print("token published event: %s" % event)
 
 
-def test_publish(client, publisher_ocean_instance):
-    ocn = publisher_ocean_instance
-    endpoint = BaseURLs.ASSETS_URL + '/publish'
-    did = DID.did()
-    asset_id = did_to_id(did)
-    account = get_provider_account(ocn)
-    test_urls = [
-        'url 0',
-        'url 1',
-        'url 2'
-    ]
-    urls_json = json.dumps(test_urls)
-    signature = Keeper.get_instance().sign_hash(asset_id, account)
-    address = Web3Provider.get_web3().personal.ecRecover(asset_id, signature)
-    assert address.lower() == account.address.lower()
-
-    payload = {
-        'documentId': asset_id,
-        'signature': signature,
-        'document': urls_json,
-        'publisherAddress': account.address
-    }
-    post_response = client.post(
-        endpoint,
-        data=json.dumps(payload),
-        content_type='application/json'
-    )
-    encrypted_url = post_response.data.decode('utf-8')
-    assert encrypted_url.startswith('0x')
-
-    # publish using auth token
-    did = DID.did()
-    asset_id = did_to_id(did)
-    signature = ocn.auth.store(account)
-    payload = {
-        'documentId': asset_id,
-        'signature': signature,
-        'document': urls_json,
-        'publisherAddress': account.address
-    }
-    post_response = client.post(
-        endpoint,
-        data=json.dumps(payload),
-        content_type='application/json'
-    )
-    encrypted_url = post_response.data.decode('utf-8')
-    assert encrypted_url.startswith('0x')
-
-
 def test_consume(client, publisher_ocean_instance, consumer_ocean_instance):
     Brizo.set_http_client(client)
     endpoint = BaseURLs.ASSETS_URL + '/consume'
@@ -268,3 +219,52 @@ def test_handle_agreement_event(client, publisher_ocean_instance, consumer_ocean
                 agreement_id, ddo.did, consumer_account.address
     ), f'Failed to get access permission: ' \
         f'agreement_id={agreement_id}, did={ddo.did}, consumer={consumer_account.address}'
+
+
+def test_publish(client, publisher_ocean_instance):
+    ocn = publisher_ocean_instance
+    endpoint = BaseURLs.ASSETS_URL + '/publish'
+    did = DID.did()
+    asset_id = did_to_id(did)
+    account = get_provider_account(ocn)
+    test_urls = [
+        'url 0',
+        'url 1',
+        'url 2'
+    ]
+    urls_json = json.dumps(test_urls)
+    signature = Keeper.get_instance().sign_hash(asset_id, account)
+    address = Web3Provider.get_web3().personal.ecRecover(asset_id, signature)
+    assert address.lower() == account.address.lower()
+
+    payload = {
+        'documentId': asset_id,
+        'signature': signature,
+        'document': urls_json,
+        'publisherAddress': account.address
+    }
+    post_response = client.post(
+        endpoint,
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    encrypted_url = post_response.data.decode('utf-8')
+    assert encrypted_url.startswith('0x')
+
+    # publish using auth token
+    did = DID.did()
+    asset_id = did_to_id(did)
+    signature = ocn.auth.store(account)
+    payload = {
+        'documentId': asset_id,
+        'signature': signature,
+        'document': urls_json,
+        'publisherAddress': account.address
+    }
+    post_response = client.post(
+        endpoint,
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    encrypted_url = post_response.data.decode('utf-8')
+    assert encrypted_url.startswith('0x')
