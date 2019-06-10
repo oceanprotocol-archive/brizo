@@ -3,19 +3,9 @@ import logging
 from os import getenv
 import io
 
-from eth_utils import add_0x_prefix
 from osmosis_driver_interface.osmosis import Osmosis
 from flask import Response
 from squid_py import ConfigProvider, Ocean, Config
-from squid_py.agreements.manager import AgreementsManager
-from squid_py.agreements.service_agreement import ServiceAgreement
-from squid_py.agreements.service_types import ServiceTypes
-from squid_py.data_store.agreements import AgreementsStorage
-from squid_py.did import id_to_did, did_to_id
-from squid_py.keeper import Keeper
-from squid_py.keeper.events_manager import EventsManager
-from squid_py.keeper.web3_provider import Web3Provider
-
 from brizo.constants import ConfigSections
 
 logger = logging.getLogger(__name__)
