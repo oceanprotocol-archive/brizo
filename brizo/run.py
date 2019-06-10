@@ -7,11 +7,11 @@ from flask import jsonify
 from flask_swagger import swagger
 from flask_swagger_ui import get_swaggerui_blueprint
 from squid_py.config import Config
+from squid_py.keeper import Keeper
 
 from brizo.constants import BaseURLs, ConfigSections, Metadata
 from brizo.myapp import app
 from brizo.routes import services
-from brizo.routes import keeper
 
 
 def get_version():
@@ -22,6 +22,7 @@ def get_version():
 
 @app.route("/")
 def version():
+    keeper = Keeper.get_instance()
     info = dict()
     info['software'] = Metadata.TITLE
     info['version'] = get_version()
