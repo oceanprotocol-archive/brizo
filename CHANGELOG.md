@@ -1,6 +1,11 @@
 History
 =======
 
+0.3.10 (Jun 11th, 2019)
+------------------------ 
+* Better error handling
+* Improved processing of agreement events
+
 0.3.9 (May 29th, 2019)
 ------------------------ 
 * Fix some small issues using squid-py v0.6.7
