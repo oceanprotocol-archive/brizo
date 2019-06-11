@@ -6,37 +6,24 @@ import logging
 
 from eth_utils import add_0x_prefix
 from flask import Blueprint, request
-from squid_py import ConfigProvider
-from squid_py.config import Config
 from squid_py.did import id_to_did
 from squid_py.exceptions import OceanDIDNotFound
 from squid_py.http_requests.requests_session import get_requests_session
-from squid_py.ocean.ocean import Ocean
 
 from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (
     check_required_attributes,
     get_provider_account,
-    handle_agreement_created,
-    verify_signature, get_asset_url_at_index, get_download_url, build_download_response)
+    verify_signature, get_asset_url_at_index, get_download_url, build_download_response, setup_ocean_instance)
 
 setup_logging()
 services = Blueprint('services', __name__)
-
-config_file = app.config['CONFIG_FILE']
-config = Config(filename=config_file)
-ConfigProvider.set_config(config)
-# Prepare keeper contracts for on-chain access control
-# Prepare OceanDB
-ocn = Ocean()
-keeper = ocn.keeper
+ocn = setup_ocean_instance(app.config['CONFIG_FILE'])
 provider_acc = get_provider_account(ocn)
-ocn.agreements.subscribe_events(get_provider_account(ocn).address, handle_agreement_created)
 requests_session = get_requests_session()
 
-logger = logging.getLogger('brizo')
-
+logger = logging.getLogger(__name__)
 
 # TODO run in cases of brizo crash or you restart
 # ocn.execute_pending_service_agreements()
@@ -113,7 +100,7 @@ def publish():
     publisher_address = data.get('publisherAddress')
 
     try:
-        if not verify_signature(ocn, keeper, publisher_address, signature, did):
+        if not verify_signature(ocn, ocn.keeper, publisher_address, signature, did):
             msg = f'Invalid signature {signature} for ' \
                 f'publisherAddress {publisher_address} and documentId {did}.'
             raise ValueError(msg)
@@ -207,8 +194,8 @@ def initialize():
         # catch the paymentLocked.
         did = data.get('did')
         asset = ocn.assets.resolve(did)
-        if config.has_option('resources', 'validate.creator'):
-            if config.get('resources', 'validate.creator').lower() == 'true':
+        if ocn.config.has_option('resources', 'validate.creator'):
+            if ocn.config.get('resources', 'validate.creator').lower() == 'true':
                 if provider_acc.address.lower() != asset.proof.get('creator', '').lower():
                     raise ValueError('Cannot serve asset service request because owner of '
                                      'requested asset is not recognized in this instance of Brizo.')
@@ -307,14 +294,14 @@ def consume():
         if not url:
             signature = data.get('signature')
             index = int(data.get('index'))
-            if not verify_signature(ocn, keeper, consumer_address, signature, agreement_id):
+            if not verify_signature(ocn, ocn.keeper, consumer_address, signature, agreement_id):
                 msg = f'Invalid signature {signature} for ' \
                     f'publisherAddress {consumer_address} and documentId {agreement_id}.'
                 raise ValueError(msg)
 
             url = get_asset_url_at_index(ocn, index, did, provider_acc)
 
-        download_url = get_download_url(url, config_file)
+        download_url = get_download_url(url, app.config['CONFIG_FILE'])
         logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
                     f' url {download_url}')
         return build_download_response(request, requests_session, url, download_url)

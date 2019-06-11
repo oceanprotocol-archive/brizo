@@ -55,36 +55,30 @@ def init_ocn_tokens(ocn, account, amount=100):
     )
 
 
-def make_ocean_instance():
-    path_config = 'config_local.ini'
-    os.environ['CONFIG_FILE'] = path_config
-    ConfigProvider.set_config(Config(path_config))
-    ocn = Ocean()
+def make_ocean_instance(config):
+    ocn = Ocean(config)
     return ocn
 
 
 def get_publisher_ocean_instance():
-    ocn = make_ocean_instance()
-    account = get_publisher_account(ConfigProvider.get_config())
+    path_config = 'config_publisher.ini'
+    config = Config(path_config)
+    ConfigProvider.set_config(config)
+    ocn = Ocean(config)
+    account = get_account_from_config(config, 'parity.address', 'parity.password')
     init_ocn_tokens(ocn, account)
     ocn.main_account = account
     return ocn
 
 
 def get_consumer_ocean_instance():
-    ocn = make_ocean_instance()
-    account = get_consumer_account(ConfigProvider.get_config())
+    path_config = 'config_consumer.ini'
+    config = Config(path_config)
+    ocn = Ocean(config)
+    account = get_account_from_config(config, 'parity.address', 'parity.password')
     init_ocn_tokens(ocn, account)
     ocn.main_account = account
     return ocn
-
-
-def get_publisher_account(config):
-    return get_account_from_config(config, 'parity.address', 'parity.password')
-
-
-def get_consumer_account(config):
-    return get_account_from_config(config, 'parity.address1', 'parity.password1')
 
 
 def get_account_from_config(config, config_account_key, config_account_password_key):

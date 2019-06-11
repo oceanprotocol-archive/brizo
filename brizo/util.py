@@ -1,73 +1,23 @@
 import json
 import logging
-import traceback
 from os import getenv
 import io
 
-from eth_utils import add_0x_prefix
 from osmosis_driver_interface.osmosis import Osmosis
 from flask import Response
-from squid_py import ConfigProvider, Ocean
-from squid_py.agreements.register_service_agreement import register_service_agreement_publisher
-from squid_py.agreements.service_agreement import ServiceAgreement
-from squid_py.agreements.service_types import ServiceTypes
-from squid_py.data_store.agreements import AgreementsStorage
-from squid_py.did import id_to_did, did_to_id
-from squid_py.keeper import Keeper
-from squid_py.keeper.web3_provider import Web3Provider
-
+from squid_py import ConfigProvider, Ocean, Config
 from brizo.constants import ConfigSections
 
 logger = logging.getLogger(__name__)
 
 
-def handle_agreement_created(event, *_):
-    if not event or not event.args:
-        logger.debug('handle_agreement_created: empty event')
-        return
-
-    logger.debug(f'handle_agreement_created: checking if should handle this event, event_args={event.args}')
-    try:
-        config = ConfigProvider.get_config()
-        agreement_id = Web3Provider.get_web3().toHex(event.args["_agreementId"])
-        ids = AgreementsStorage(config.storage_path).get_agreement_ids()
-        if ids:
-            # logger.info(f'got agreement ids: #{agreement_id}#, ##{ids}##, \nid in ids: {agreement_id in ids}')
-            if agreement_id in ids:
-                logger.debug(f'handle_agreement_created: skipping service agreement {agreement_id} '
-                             f'because it already been processed before.')
-                return
-
-        logger.info(f'Start handle_agreement_created: event_args={event.args}')
-        ocean = Ocean()
-        provider_account = get_provider_account(ocean)
-        assert provider_account.address == event.args["_accessProvider"]
-        did = id_to_did(event.args["_did"])
-        ddo = ocean.assets.resolve(did)
-        sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
-
-        condition_ids = sa.generate_agreement_condition_ids(
-            agreement_id=agreement_id,
-            asset_id=add_0x_prefix(did_to_id(did)),
-            consumer_address=event.args["_accessConsumer"],
-            publisher_address=ddo.publisher,
-            keeper=Keeper.get_instance())
-        register_service_agreement_publisher(
-            config.storage_path,
-            event.args["_accessConsumer"],
-            agreement_id,
-            did,
-            sa,
-            sa.service_definition_id,
-            sa.get_price(),
-            provider_account,
-            condition_ids
-        )
-        logger.info(f'handle_agreement_created() -- done registering event listeners.')
-    except Exception as e:
-        logger.error(f'Error in handle_agreement_created: {e}\n{traceback.format_exc()}')
-    finally:
-        logger.debug(f'handle_agreement_created() -- EXITing.')
+def setup_ocean_instance(config_file):
+    config = Config(filename=config_file)
+    ConfigProvider.set_config(config)
+    ocn = Ocean()
+    provider_acc = get_provider_account(ocn)
+    ocn.agreements.watch_provider_events(provider_acc)
+    return ocn
 
 
 def verify_signature(ocn, keeper, signer_address, signature, original_msg):
@@ -81,7 +31,7 @@ def verify_signature(ocn, keeper, signer_address, signature, original_msg):
 
 def get_provider_account(ocean_instance):
     address = ConfigProvider.get_config().parity_address
-    logger.info(f'address: {address}, {ocean_instance.accounts.accounts_addresses}')
+    logger.debug(f'address: {address}, {ocean_instance.accounts.accounts_addresses}')
     for acc in ocean_instance.accounts.list():
         if acc.address.lower() == address.lower():
             return acc
@@ -143,7 +93,8 @@ def get_asset_url_at_index(ocean_instance, url_index, did, account):
             raise TypeError(f'Invalid file meta at index {url_index}, expected a dict, got a '
                             f'{type(file_meta_dict)}.')
         if 'url' not in file_meta_dict:
-            raise ValueError(f'The "url" key is not found in the file dict {file_meta_dict} at index {url_index}.')
+            raise ValueError(f'The "url" key is not found in the '
+                             f'file dict {file_meta_dict} at index {url_index}.')
 
         return file_meta_dict['url']
 

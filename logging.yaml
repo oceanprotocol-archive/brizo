@@ -30,28 +30,28 @@ handlers:
         encoding: utf8
 
 loggers:
-    service_agreement:
-        level: DEBUG
+    brizo:
+        level: INFO
         handlers: [console]
         propagate: no
-    ddo:
-        level: DEBUG
+    brizo.routes:
+        level: INFO
         handlers: [console]
         propagate: no
-    ocean:
-        level: DEBUG
+    brizo.util:
+        level: INFO
         handlers: [console]
         propagate: no
-    keeper:
-        level: DEBUG
+    squid_py:
+        level: INFO
         handlers: [console]
         propagate: no
-    keeper-events:
-        level: DEBUG
+    squid_py.ocean:
+        level: INFO
         handlers: [console]
         propagate: no
-    events:
-        level: DEBUG
+    squid_py.keeper:
+        level: INFO
         handlers: [console]
         propagate: no
 
