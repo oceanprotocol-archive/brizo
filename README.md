@@ -37,7 +37,7 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 
 ## Features
 
-In the Ocean ecosystem, Brizo is the technical component executed by the Publishers allowing them to them to provide extended data services (e.g. storage and compute). Brizo, as part of the Publisher ecosystem, includes the credentials to interact with the infrastructure (initially cloud, but could be on-premise).
+In the Ocean ecosystem, Brizo is the technical component executed by the Publishers allowing them to provide extended data services (e.g. storage and compute). Brizo, as part of the Publisher ecosystem, includes the credentials to interact with the infrastructure (initially cloud, but could be on-premise).
 
 ## Running Locally, for Dev and Test
 
