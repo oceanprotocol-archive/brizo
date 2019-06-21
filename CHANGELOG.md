@@ -1,6 +1,15 @@
 History
 =======
 
+0.3.12 (Jun 21nd, 2019)
+------------------------
+* Not dispenser when pacific network.
+* Squid-py 0.6.13
+
+0.3.11 (Jun 20th, 2019)
+------------------------ 
+* Update with keeper-contracts v0.10.2
+
 0.3.10 (Jun 11th, 2019)
 ------------------------ 
 * Better error handling
