@@ -33,7 +33,8 @@ def version():
     info['contracts']['AgreementStoreManager'] = keeper.get_instance().agreement_manager.address
     info['contracts']['ConditionStoreManager'] = keeper.get_instance().condition_manager.address
     info['contracts']['DIDRegistry'] = keeper.get_instance().did_registry.address
-    info['contracts']['Dispenser'] = keeper.get_instance().dispenser.address
+    if keeper.get_instance().network_name != 'pacific':
+        info['contracts']['Dispenser'] = keeper.get_instance().dispenser.address
     info['contracts']['EscrowAccessSecretStoreTemplate'] = keeper.get_instance().escrow_access_secretstore_template.address
     info['contracts']['EscrowReward'] = keeper.get_instance().escrow_reward_condition.address
     info['contracts']['HashLockCondition'] = keeper.get_instance().hash_lock_condition.address
