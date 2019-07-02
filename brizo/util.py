@@ -6,6 +6,8 @@ import io
 from osmosis_driver_interface.osmosis import Osmosis
 from flask import Response
 from squid_py import ConfigProvider, Ocean, Config
+from squid_py.keeper.diagnostics import Diagnostics
+
 from brizo.constants import ConfigSections
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,8 @@ def setup_ocean_instance(config_file):
     ocn = Ocean()
     provider_acc = get_provider_account(ocn)
     ocn.agreements.watch_provider_events(provider_acc)
+    Diagnostics.verify_contracts()
+
     return ocn
 
 
