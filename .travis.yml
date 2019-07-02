@@ -11,14 +11,21 @@ sudo: false
 services:
   - docker
 
-before_install:
+before_install:`
   - git clone https://github.com/oceanprotocol/barge
   - cd barge
   - export KEEPER_VERSION=v0.10.3
   - export AQUARIUS_VERSION=v0.3.5
+  - rm -rf "${HOME}/.ocean/keeper-contracts/artifacts"
   - bash -x start_ocean.sh --latest --no-brizo --no-pleuston --local-spree-node 2>&1 > start_ocean.log &
   - cd ..
-  - sleep 15
+  - |
+      for i in $(seq 1 50); do
+        sleep 5
+        [ -f "${HOME}/.ocean/keeper-contracts/artifacts/ready" ] && break
+      done
+      ls -la "${HOME}/.ocean/keeper-contracts/artifacts/"
+  - docker restart $(docker ps | grep aquarius | cut -f1 -d' ')
 
 install: pip install -U tox-travis
 script: tox
