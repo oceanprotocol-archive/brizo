@@ -21,8 +21,9 @@ before_install:
   - cd ..
   - |
       for i in $(seq 1 50); do
+        echo "sleep 5 for $i time(s)"
         sleep 5
-        [ -f "${HOME}/.ocean/keeper-contracts/artifacts/ready" ] && break
+        [ -f "${HOME}/.ocean/keeper-contracts/artifacts/ready" ] && ls -la "${HOME}/.ocean/keeper-contracts/artifacts/ready" && break
       done
       ls -la "${HOME}/.ocean/keeper-contracts/artifacts/"
   - docker restart $(docker ps | grep aquarius | cut -f1 -d' ')
