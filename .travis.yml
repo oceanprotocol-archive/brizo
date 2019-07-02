@@ -27,6 +27,7 @@ before_install:
         [ -f "${HOME}/.ocean/keeper-contracts/artifacts/ready" ] && ls -la "${HOME}/.ocean/keeper-contracts/artifacts/ready" && break
       done
       ls -la "${HOME}/.ocean/keeper-contracts/artifacts/"
+  - timeout 600 bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://localhost:9200/_cluster/health?pretty=true&wait_for_status=green)" != "200" ]]; do sleep 5; done' || false
   - docker restart $(docker ps | grep aquarius | cut -f1 -d' ')
 
 install: pip install -U tox-travis
