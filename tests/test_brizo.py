@@ -12,7 +12,7 @@ from squid_py.keeper import Keeper
 from squid_py.keeper.web3_provider import Web3Provider
 
 from brizo.constants import BaseURLs
-from brizo.util import get_provider_account, check_and_register_agreement_template
+from brizo.util import get_provider_account  # , check_and_register_agreement_template
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
@@ -155,9 +155,6 @@ def test_initialize_and_consume(client, publisher_ocean_instance, consumer_ocean
     pub_ocn, cons_ocn = publisher_ocean_instance, consumer_ocean_instance
     consumer_account = cons_ocn.main_account
     publisher_account = pub_ocn.main_account
-
-    check_and_register_agreement_template(
-        publisher_ocean_instance, Keeper.get_instance(), publisher_ocean_instance.main_account)
 
     # Register asset
     ddo = get_registered_ddo(pub_ocn, publisher_account)

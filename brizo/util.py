@@ -3,48 +3,64 @@ import logging
 from os import getenv
 import io
 
+from ocean_keeper.utils import get_account
+from ocean_utils.did_resolver.did_resolver import DIDResolver
+from ocean_utils.did import did_to_id
 from osmosis_driver_interface.osmosis import Osmosis
 from flask import Response
-from squid_py import ConfigProvider, Ocean, Config
-from squid_py.keeper.diagnostics import Diagnostics
 
 from brizo.constants import ConfigSections
 
 logger = logging.getLogger(__name__)
 
 
-def setup_ocean_instance(config_file):
-    config = Config(filename=config_file)
-    ConfigProvider.set_config(config)
-    ocn = Ocean()
-    provider_acc = get_provider_account(ocn)
-    ocn.agreements.watch_provider_events(provider_acc)
-    Diagnostics.verify_contracts()
-
-    return ocn
+def do_secret_store_encrypt(did, document, provider_acc):
+    # TODO: encrypt text according to the secret-store method defined in parity client
+    encrypted_document = ''
+    return encrypted_document
 
 
-def verify_signature(ocn, keeper, signer_address, signature, original_msg):
-    if ocn.auth.is_token_valid(signature):
-        address = ocn.auth.check(signature)
+def do_secret_store_decrypt(did, encrypted_document, provider_acc):
+    return ''
+
+
+def is_access_granted(agreement_id, did, consumer_address, keeper):
+    agreement_consumer = keeper.escrow_access_secretstore_template.get_agreement_consumer(
+        agreement_id)
+
+    if agreement_consumer is None:
+        return False
+
+    if agreement_consumer != consumer_address:
+        logger.warning(f'Invalid consumer address {consumer_address} and/or '
+                       f'service agreement id {agreement_id} (did {did})'
+                       f', agreement consumer is {agreement_consumer}')
+        return False
+
+    document_id = did_to_id(did)
+    return keeper.access_secret_store_condition.check_permissions(
+        document_id, consumer_address
+    )
+
+
+def verify_signature(keeper, signer_address, signature, original_msg):
+    auth = object()
+    if auth.is_token_valid(signature):
+        address = auth.check(signature)
     else:
         address = keeper.ec_recover(original_msg, signature)
 
     return address.lower() == signer_address.lower()
 
 
-def get_provider_account(ocean_instance):
-    address = ConfigProvider.get_config().parity_address
-    logger.debug(f'address: {address}, {ocean_instance.accounts.accounts_addresses}')
-    for acc in ocean_instance.accounts.list():
-        if acc.address.lower() == address.lower():
-            return acc
+def get_provider_account():
+    get_account(0)
 
 
 def get_env_property(env_variable, property_name):
     return getenv(
         env_variable,
-        ConfigProvider.get_config().get(ConfigSections.OSMOSIS, property_name)
+        None,  # ConfigProvider.get_config().get(ConfigSections.OSMOSIS, property_name)
     )
 
 
@@ -78,11 +94,12 @@ def build_download_response(request, requests_session, url, download_url):
         raise
 
 
-def get_asset_url_at_index(ocean_instance, url_index, did, account):
+def get_asset_url_at_index(keeper, url_index, did, account):
     logger.debug(f'get_asset_url_at_index(): url_index={url_index}, did={did}, provider={account.address}')
     try:
-        asset = ocean_instance.assets.resolve(did)
-        files_str = ocean_instance.secret_store.decrypt(
+        resolver = DIDResolver(keeper.did_registry)
+        asset = resolver.resolve(did)
+        files_str = do_secret_store_decrypt(
             asset.asset_id, asset.encrypted_files, account
         )
         logger.debug(f'Got decrypted files str {files_str}')
@@ -130,13 +147,3 @@ def check_required_attributes(required_attributes, data, method):
             logger.error('%s request failed: required attr %s missing.' % (method, attr))
             return '"%s" is required in the call to %s' % (attr, method), 400
     return None, None
-
-
-def check_and_register_agreement_template(ocean_instance, keeper, account):
-    if keeper.template_manager.get_num_templates() == 0:
-        ocean_instance.templates.propose(
-            keeper.escrow_access_secretstore_template.address,
-            account)
-        ocean_instance.templates.approve(
-            keeper.escrow_access_secretstore_template.address,
-            account)
