@@ -19,7 +19,9 @@ from brizo.util import (
     get_download_url,
     build_download_response,
     is_access_granted,
-    do_secret_store_encrypt)
+    do_secret_store_encrypt,
+    get_config,
+)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -106,7 +108,12 @@ def publish():
                 f'publisherAddress {publisher_address} and documentId {did}.'
             raise ValueError(msg)
 
-        encrypted_document = do_secret_store_encrypt(did, document, provider_acc)
+        encrypted_document = do_secret_store_encrypt(
+            did,
+            document,
+            provider_acc,
+            get_config()
+        )
         logger.info(f'encrypted urls {encrypted_document}, '
                     f'publisher {publisher_address}, '
                     f'documentId {did}')

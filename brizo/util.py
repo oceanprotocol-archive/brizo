@@ -1,27 +1,50 @@
 import json
 import logging
+import os
+from datetime import datetime
 from os import getenv
 import io
 
+from ocean_keeper import Keeper
 from ocean_keeper.utils import get_account
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.did import did_to_id
 from osmosis_driver_interface.osmosis import Osmosis
 from flask import Response
+from secret_store_client.client import Client as SecretStore
+from web3 import Web3
 
-from brizo.constants import ConfigSections
+from brizo.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-def do_secret_store_encrypt(did, document, provider_acc):
-    # TODO: encrypt text according to the secret-store method defined in parity client
-    encrypted_document = ''
+def get_config():
+    config_file = os.getenv('CONFIG_FILE', 'config.ini')
+    return Config(filename=config_file)
+
+
+def do_secret_store_encrypt(did, document, provider_acc, config):
+    secret_store = SecretStore(
+        config.secret_store_url,
+        config.parity_url,
+        provider_acc.address,
+        provider_acc.password
+    )
+    encrypted_document = secret_store.publish_document(did, document)
     return encrypted_document
 
 
-def do_secret_store_decrypt(did, encrypted_document, provider_acc):
-    return ''
+def do_secret_store_decrypt(did_id, encrypted_document, provider_acc, config):
+    secret_store = SecretStore(
+        config.secret_store_url,
+        config.parity_url,
+        provider_acc.address,
+        provider_acc.password
+    )
+    return secret_store.decrypt_document(
+        did_id, encrypted_document
+    )
 
 
 def is_access_granted(agreement_id, did, consumer_address, keeper):
@@ -43,10 +66,31 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
     )
 
 
+def is_token_valid(token):
+    return isinstance(token, str) and token.startswith('0x') and len(token.split('-')) == 2
+
+
+def check_auth_token(token):
+    parts = token.split('-')
+    if len(parts) < 2:
+        return '0x0'
+    # :HACK: alert, this should be part of ocean-utils, ocean-keeper, or a stand-alone library
+    sig, timestamp = parts
+    auth_token_message = get_config().auth_token_message or "Ocean Protocol Authentication"
+    default_exp = 30 * 24 * 60 * 60
+    expiration = int(get_config().auth_token_expiration or default_exp)
+    if int(datetime.now().timestamp()) > (int(timestamp) + expiration):
+        return '0x0'
+
+    keeper = Keeper.get_instance(get_keeper_path())
+    message = f'{auth_token_message}\n{timestamp}'
+    address = keeper.ec_recover(Web3.sha3(text=message), sig)
+    return Web3.toChecksumAddress(address)
+
+
 def verify_signature(keeper, signer_address, signature, original_msg):
-    auth = object()
-    if auth.is_token_valid(signature):
-        address = auth.check(signature)
+    if is_token_valid(signature):
+        address = check_auth_token(signature)
     else:
         address = keeper.ec_recover(original_msg, signature)
 
@@ -60,8 +104,16 @@ def get_provider_account():
 def get_env_property(env_variable, property_name):
     return getenv(
         env_variable,
-        None,  # ConfigProvider.get_config().get(ConfigSections.OSMOSIS, property_name)
+        get_config().get('osmosis', property_name)
     )
+
+
+def get_keeper_path(config):
+    path = config.keeper_path
+    if not path or not os.path.exists(path) and os.getenv('VIRTUAL_ENV'):
+        path = os.path.join(os.getenv('VIRTUAL_ENV'), 'artifacts')
+
+    return path
 
 
 def get_metadata(ddo):
