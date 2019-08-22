@@ -5,14 +5,15 @@ from datetime import datetime
 from os import getenv
 import io
 
+from eth_utils import remove_0x_prefix
 from ocean_keeper import Keeper
 from ocean_keeper.utils import get_account
+from ocean_keeper.web3_provider import Web3Provider
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.did import did_to_id
 from osmosis_driver_interface.osmosis import Osmosis
 from flask import Response
 from secret_store_client.client import Client as SecretStore
-from web3 import Web3
 
 from brizo.config import Config
 
@@ -71,6 +72,7 @@ def is_token_valid(token):
 
 
 def check_auth_token(token):
+    w3 = web3()
     parts = token.split('-')
     if len(parts) < 2:
         return '0x0'
@@ -82,10 +84,18 @@ def check_auth_token(token):
     if int(datetime.now().timestamp()) > (int(timestamp) + expiration):
         return '0x0'
 
-    keeper = Keeper.get_instance(get_keeper_path())
+    keeper = keeper_instance()
     message = f'{auth_token_message}\n{timestamp}'
-    address = keeper.ec_recover(Web3.sha3(text=message), sig)
-    return Web3.toChecksumAddress(address)
+    address = keeper.ec_recover(w3.sha3(text=message), sig)
+    return w3.toChecksumAddress(address)
+
+
+def generate_token(account):
+    raw_msg = get_config().auth_token_message or "Ocean Protocol Authentication"
+    _time = int(datetime.now().timestamp())
+    _message = f'{raw_msg}\n{_time}'
+    msg_hash = web3().sha3(text=_message)
+    return f'{keeper_instance().sign_hash(msg_hash, account)}-{_time}'
 
 
 def verify_signature(keeper, signer_address, signature, original_msg):
@@ -98,7 +108,7 @@ def verify_signature(keeper, signer_address, signature, original_msg):
 
 
 def get_provider_account():
-    get_account(0)
+    return get_account(0)
 
 
 def get_env_property(env_variable, property_name):
@@ -114,6 +124,14 @@ def get_keeper_path(config):
         path = os.path.join(os.getenv('VIRTUAL_ENV'), 'artifacts')
 
     return path
+
+
+def keeper_instance():
+    return Keeper.get_instance(get_keeper_path(get_config()))
+
+
+def web3():
+    return Web3Provider.get_web3(get_config().keeper_url)
 
 
 def get_metadata(ddo):
@@ -152,7 +170,10 @@ def get_asset_url_at_index(keeper, url_index, did, account):
         resolver = DIDResolver(keeper.did_registry)
         asset = resolver.resolve(did)
         files_str = do_secret_store_decrypt(
-            asset.asset_id, asset.encrypted_files, account
+            remove_0x_prefix(asset.asset_id),
+            asset.encrypted_files,
+            account,
+            get_config()
         )
         logger.debug(f'Got decrypted files str {files_str}')
         files_list = json.loads(files_str)

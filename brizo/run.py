@@ -6,12 +6,12 @@ import configparser
 from flask import jsonify
 from flask_swagger import swagger
 from flask_swagger_ui import get_swaggerui_blueprint
-from squid_py.config import Config
-from squid_py.keeper import Keeper
 
+from brizo.config import Config
 from brizo.constants import BaseURLs, ConfigSections, Metadata
 from brizo.myapp import app
 from brizo.routes import services
+from brizo.util import keeper_instance, get_provider_account
 
 config = Config(filename=app.config['CONFIG_FILE'])
 brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
@@ -25,7 +25,7 @@ def get_version():
 
 @app.route("/")
 def version():
-    keeper = Keeper.get_instance()
+    keeper = keeper_instance()
     info = dict()
     info['software'] = Metadata.TITLE
     info['version'] = get_version()
@@ -50,7 +50,7 @@ def version():
     info['contracts']['OceanToken'] = keeper.get_instance().token.address
     info['contracts']['TemplateStoreManager'] = keeper.get_instance().template_manager.address
     info['keeper-version'] = keeper.get_instance().token.version
-    info['provider-address'] = config.parity_address
+    info['provider-address'] = get_provider_account().address
     return jsonify(info)
 
 

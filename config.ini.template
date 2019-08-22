@@ -9,7 +9,6 @@ parity.password = ${PARITY_PASSWORD}
 [resources]
 brizo.url = ${BRIZO_URL}
 aquarius.url = ${AQUARIUS_URL}
-storage.path = squid_py.db
 downloads.path = consume-downloads
 
 [osmosis]

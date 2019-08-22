@@ -42,18 +42,6 @@ loggers:
         level: INFO
         handlers: [console]
         propagate: no
-    squid_py:
-        level: INFO
-        handlers: [console]
-        propagate: no
-    squid_py.ocean:
-        level: INFO
-        handlers: [console]
-        propagate: no
-    squid_py.keeper:
-        level: INFO
-        handlers: [console]
-        propagate: no
 
 root:
     level: INFO

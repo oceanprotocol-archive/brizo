@@ -6,7 +6,6 @@
 import configparser
 import logging
 import os
-import site
 from pathlib import Path
 
 NAME_KEEPER_URL = 'keeper.url'
@@ -84,28 +83,28 @@ class Config(configparser.ConfigParser):
     @property
     def keeper_path(self):
         """Path where the keeper-contracts artifacts are allocated."""
-        keeper_path_string = self.get(self._section_name, NAME_KEEPER_PATH)
-        return Path(keeper_path_string).expanduser().resolve()
+        keeper_path_string = self.get(self._section_name, NAME_KEEPER_PATH, fallback=None)
+        return Path(keeper_path_string).expanduser().resolve() if keeper_path_string else None
 
     @property
     def keeper_url(self):
         """URL of the keeper. (e.g.): http://mykeeper:8545."""
-        return self.get(self._section_name, NAME_KEEPER_URL)
+        return self.get(self._section_name, NAME_KEEPER_URL, fallback=None)
 
     @property
     def secret_store_url(self):
         """URL of the secret store component. (e.g.): http://mysecretstore:12001."""
-        return self.get(self._section_name, NAME_SECRET_STORE_URL)
+        return self.get(self._section_name, NAME_SECRET_STORE_URL, fallback=None)
 
     @property
     def parity_url(self):
         """URL of parity client. (e.g.): http://myparity:8545."""
-        return self.get(self._section_name, NAME_PARITY_URL)
+        return self.get(self._section_name, NAME_PARITY_URL, fallback=None)
 
     @property
     def auth_token_message(self):
-        return self.get('resources', NAME_AUTH_TOKEN_MESSAGE)
+        return self.get('resources', NAME_AUTH_TOKEN_MESSAGE, fallback=None)
 
     @property
     def auth_token_expiration(self):
-        return self.get('resources', NAME_AUTH_TOKEN_EXPIRATION)
+        return self.get('resources', NAME_AUTH_TOKEN_EXPIRATION, fallback=None)
