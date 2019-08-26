@@ -25,14 +25,14 @@ def get_config():
     return Config(filename=config_file)
 
 
-def do_secret_store_encrypt(did, document, provider_acc, config):
+def do_secret_store_encrypt(did_id, document, provider_acc, config):
     secret_store = SecretStore(
         config.secret_store_url,
         config.parity_url,
         provider_acc.address,
         provider_acc.password
     )
-    encrypted_document = secret_store.publish_document(did, document)
+    encrypted_document = secret_store.publish_document(did_id, document)
     return encrypted_document
 
 

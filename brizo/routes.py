@@ -4,6 +4,7 @@
 import json
 import logging
 
+from eth_utils import remove_0x_prefix
 from flask import Blueprint, request
 from ocean_utils.did import id_to_did
 from ocean_utils.http_requests.requests_session import get_requests_session
@@ -109,7 +110,7 @@ def publish():
             raise ValueError(msg)
 
         encrypted_document = do_secret_store_encrypt(
-            did,
+            remove_0x_prefix(did),
             document,
             provider_acc,
             get_config()

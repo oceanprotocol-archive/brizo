@@ -5,7 +5,7 @@ import json
 import os
 import pathlib
 
-from eth_utils import remove_0x_prefix
+from eth_utils import remove_0x_prefix, add_0x_prefix
 from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
@@ -201,7 +201,7 @@ def test_publish(client):
     assert address.lower() == account.address.lower()
 
     payload = {
-        'documentId': asset_id,
+        'documentId': add_0x_prefix(asset_id),
         'signature': signature,
         'document': urls_json,
         'publisherAddress': account.address
@@ -217,6 +217,9 @@ def test_publish(client):
     # publish using auth token
     signature = generate_token(account)
     payload['signature'] = signature
+    did = DID.did()
+    asset_id = did_to_id(did)
+    payload['documentId'] = add_0x_prefix(asset_id)
     post_response = client.post(
         endpoint,
         data=json.dumps(payload),
