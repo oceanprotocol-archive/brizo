@@ -10,7 +10,6 @@ from pathlib import Path
 
 NAME_KEEPER_URL = 'keeper.url'
 NAME_KEEPER_PATH = 'keeper.path'
-NAME_AQUARIUS_URL = 'aquarius.url'
 NAME_AUTH_TOKEN_MESSAGE = 'auth_token_message'
 NAME_AUTH_TOKEN_EXPIRATION = 'auth_token_expiration'
 
@@ -20,7 +19,6 @@ NAME_PARITY_URL = 'parity.url'
 environ_names = {
     NAME_KEEPER_URL: ['KEEPER_URL', 'Keeper URL'],
     NAME_KEEPER_PATH: ['KEEPER_PATH', 'Path to the keeper contracts'],
-    NAME_AQUARIUS_URL: ['AQUARIUS_URL', 'Aquarius URL'],
     NAME_AUTH_TOKEN_MESSAGE: ['AUTH_TOKEN_MESSAGE',
                               'Message to use for generating user auth token'],
     NAME_AUTH_TOKEN_EXPIRATION: ['AUTH_TOKEN_EXPIRATION',
@@ -45,7 +43,6 @@ class Config(configparser.ConfigParser):
         secret_store.url = http://localhost:12001                     # Secret store url.
         parity.url = http://localhost:8545                            # Parity client url.
         [resources]
-        aquarius.url = http://localhost:5000                          # Aquarius url.
         brizo.url = http://localhost:8030                             # Brizo url.
 
         :param filename: Path of the config file, str.

@@ -37,7 +37,10 @@ She was worshipped primarily by the women of Delos, who set out food offerings i
 
 ## Features
 
-In the Ocean ecosystem, Brizo is the technical component executed by the Publishers allowing them to provide extended data services (e.g. storage and compute). Brizo, as part of the Publisher ecosystem, includes the credentials to interact with the infrastructure (initially cloud, but could be on-premise).
+In the Ocean ecosystem, Brizo is the technical component executed by the Publishers 
+allowing them to provide extended data services (e.g. storage and compute). 
+Brizo, as part of the Publisher ecosystem, includes the credentials to interact 
+with the infrastructure (initially cloud, but could be on-premise).
 
 ## Running Locally, for Dev and Test
 
@@ -58,12 +61,14 @@ cd barge
 bash start_ocean.sh --no-brizo --no-pleuston --local-spree-node
 ```
 
-Barge is the repository where all the Ocean Docker Compose files are located. We are running the script `start_ocean.sh`: the easy way to have Ocean projects up and running.
-We run without Brizo or Pleuston instances.
+Barge is the repository where all the Ocean Docker Compose files are located. 
+We are running the script `start_ocean.sh`: the easy way to have Ocean projects 
+up and running. We run without Brizo or Pleuston instances.
 
 To learn more about Barge, visit [the Barge repository](https://github.com/oceanprotocol/barge).
 
-Note that it runs an Aquarius instance and a MongoDB instance but Aquarius can also work with BigchainDB or Elasticsearch.
+Note that it runs an Aquarius instance and an Elasticsearch instance but Aquarius can 
+also work with BigchainDB or MongoDB.
 
 The most simple way to start is:
 
@@ -110,18 +115,19 @@ There is also some [Brizo API documentation in the official Ocean docs](https://
 
 ## Configuration
 
-To get configuration settings, Brizo first checks to see if there is a non-empty environment variable named CONFIG_FILE. It there is, it will look in a config file at that path. Otherwise it will look in a config file named `config.ini`. Note that some settings in the config file can be overriden by setting certain environment variables; there are more details below.
+To get configuration settings, Brizo first checks to see if there is a non-empty 
+environment variable named CONFIG_FILE. It there is, it will look in a config file 
+at that path. Otherwise it will look in a config file named `config.ini`. Note 
+that some settings in the config file can be overriden by setting certain 
+environment variables; there are more details below.
 
-See the [example config.ini file in this repo](config.ini). You will see that there are three sections: `[keeper-contracts]`, `[resources]` and `[osmosis]`.
+See the [example config.ini file in this repo](config.ini). You will see that 
+there are three sections: `[keeper-contracts]`, `[resources]` and `[osmosis]`.
 
 ### The [keeper-contracts] and [resources] Sections
 
-The `[keeper-contracts]` and `[resources]` sections are used to configure squid-py.
-Details about how to configure squid-py are in [the squid-py repo](https://github.com/oceanprotocol/squid-py#configuration).
-
-**You can override the some squid-py-related settings in the config file by setting certain environment variables, such as KEEPER_URL. For details, see [the squid-py repo](https://github.com/oceanprotocol/squid-py#configuration).**
-
-There is a parameter in the resources section called `validate.creator` that is setup false by default, that you have to switch to true in case that you wish to run a private marketplace.
+The `[keeper-contracts]` section is used to setup connection to the keeper nodes and load keeper-contracts artifacts.
+The `[resources]` sections is used to configure Aquarius and Brizo services. 
 
 ### The [osmosis] Section
 
@@ -136,7 +142,10 @@ Initial work has also been done to support Azure Compute but it's not officially
 
 A publisher can choose to support none, one, two or all of the above. It depends on which cloud providers they use.
 
-If a publisher wants to store some files in Azure Storage (and make them available from there), then they must get and set the following config settings in the [osmosis] section of the config file. There is an [Ocean tutorial about how to get all those credentials from Azure](https://docs.oceanprotocol.com/tutorials/azure-for-brizo/).
+If a publisher wants to store some files in Azure Storage (and make them available 
+from there), then they must get and set the following config settings in the [osmosis] 
+section of the config file. There is 
+an [Ocean tutorial about how to get all those credentials from Azure](https://docs.oceanprotocol.com/tutorials/azure-for-brizo/).
 
 ```ini
 [osmosis]
@@ -173,22 +182,31 @@ AZURE_SHARE_INPUT='compute'
 AZURE_SHARE_OUTPUT='output'
 ```
 
-If a publisher wants to store some files in Amazon S3 storage (and make them available from there), then there are no AWS-related config settings to set in the config file. AWS credentials actually get stored elsewhere. See [the Ocean tutorial about how to set up Amazon S3 storage](https://docs.oceanprotocol.com/tutorials/amazon-s3-for-brizo/).
+If a publisher wants to store some files in Amazon S3 storage (and make them 
+available from there), then there are no AWS-related config settings to set 
+in the config file. AWS credentials actually get stored elsewhere. See 
+[the Ocean tutorial about how to set up Amazon S3 storage](https://docs.oceanprotocol.com/tutorials/amazon-s3-for-brizo/).
 
-If a publisher wants to store some files on-premise (and make them available from there), then there are no special config settings to set in the config file. The only requirement is that the file URLs must be resolvable by Brizo. See [the Ocean tutorial about how to set up on-premise storage](https://docs.oceanprotocol.com/tutorials/on-premise-for-brizo/).
+If a publisher wants to store some files on-premise (and make them available 
+from there), then there are no special config settings to set in the config 
+file. The only requirement is that the file URLs must be resolvable by Brizo. 
+See [the Ocean tutorial about how to set up on-premise storage](https://docs.oceanprotocol.com/tutorials/on-premise-for-brizo/).
 
 ## Dependencies
 
 Brizo relies on the following Ocean libraries:
 
-- [squid-py](https://github.com/oceanprotocol/squid-py) handles all of the `keeper` interactions
+- [ocean-utils](https://github.com/oceanprotocol/common-utils-py) provides common functions and datastructures for interaction with the Ocean Protocol components
+- [ocean-keeper](https://github.com/oceanprotocol/keeper-py-lib) handles all of the `keeper` interactions
+- [ocean-secret-store-client](https://github.com/oceanprotocol/secret-store-client-py) to encrypt/decrypt the dataset urls
 - [osmosis-azure-driver](https://github.com/oceanprotocol/osmosis-azure-driver) mediates access to assets in Azure
 - [osmosis-aws-driver](https://github.com/oceanprotocol/osmosis-aws-driver) mediates access to assets in AWS
 - [osmosis-on-premise-driver](https://github.com/oceanprotocol/osmosis-on-premise-driver) mediates access to on-premise assets
 
 ## Code Style
 
-Information about our Python code style is documented in the [python-developer-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-developer-guide.md)
+Information about our Python code style is documented in the 
+[python-developer-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-developer-guide.md)
 and the [python-style-guide](https://github.com/oceanprotocol/dev-ocean/blob/master/doc/development/python-style-guide.md).
 
 ## Testing
@@ -210,7 +228,7 @@ To debug Brizo using PyCharm, follow the next instructions:
 
     ```text
     PYTHONUNBUFFERED=1
-    CONFIG_FILE=config_dev.ini
+    CONFIG_FILE=config.ini
     AZURE_ACCOUNT_NAME=<COMPLETE_WITH_YOUR_DATA>
     AZURE_TENANT_ID=<COMPLETE_WITH_YOUR_DATA>
     AZURE_SUBSCRIPTION_ID=<COMPLETE_WITH_YOUR_DATA>
@@ -227,7 +245,8 @@ To debug Brizo using PyCharm, follow the next instructions:
 
 ## New Version
 
-The `bumpversion.sh` script helps to bump the project version. You can execute the script using as first argument {major|minor|patch} to bump accordingly the version.
+The `bumpversion.sh` script helps to bump the project version. You can execute 
+the script using as first argument {major|minor|patch} to bump accordingly the version.
 
 ## License
 

@@ -84,6 +84,7 @@ def place_order(publisher_account, service_definition_id, ddo, consumer_account)
         agreement_id,
         ddo.asset_id,
         condition_ids,
+
         time_locks,
         time_outs,
         consumer_account.address,

@@ -1,15 +1,10 @@
 [keeper-contracts]
 keeper.url = ${KEEPER_URL}
-
 secret_store.url = ${SECRET_STORE_URL}
 parity.url = ${PARITY_URL}
-parity.address = ${PARITY_ADDRESS}
-parity.password = ${PARITY_PASSWORD}
 
 [resources]
 brizo.url = ${BRIZO_URL}
-aquarius.url = ${AQUARIUS_URL}
-downloads.path = consume-downloads
 
 [osmosis]
 azure.account.name = ${AZURE_ACCOUNT_NAME}
