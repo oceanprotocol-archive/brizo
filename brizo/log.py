@@ -9,12 +9,22 @@ import coloredlogs
 import yaml
 
 
-def setup_logging(default_path='logging.yaml', default_level=logging.INFO, env_key='LOG_CFG'):
+def setup_logging(default_path='logging.yaml', default_level=None, env_key='LOG_CFG'):
     """Logging Setup"""
     path = default_path
     value = os.getenv(env_key, None)
     if value:
         path = value
+
+    if not default_level:
+        level_map = {
+            'INFO': logging.INFO,
+            'DEBUG': logging.DEBUG,
+            'WARNING': logging.WARNING,
+            'ERROR': logging.ERROR
+        }
+        default_level = level_map.get(os.getenv('LOG_LEVEL', 'INFO'), logging.INFO)
+
     if os.path.exists(path):
         with open(path, 'rt') as f:
             try:
