@@ -6,12 +6,12 @@ import configparser
 from flask import jsonify
 from flask_swagger import swagger
 from flask_swagger_ui import get_swaggerui_blueprint
-from squid_py.config import Config
-from squid_py.keeper import Keeper
 
+from brizo.config import Config
 from brizo.constants import BaseURLs, ConfigSections, Metadata
 from brizo.myapp import app
 from brizo.routes import services
+from brizo.util import keeper_instance, get_provider_account
 
 config = Config(filename=app.config['CONFIG_FILE'])
 brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
@@ -25,32 +25,30 @@ def get_version():
 
 @app.route("/")
 def version():
-    keeper = Keeper.get_instance()
+    keeper = keeper_instance()
     info = dict()
     info['software'] = Metadata.TITLE
     info['version'] = get_version()
     info['keeper-url'] = config.keeper_url
-    info['network'] = keeper.get_instance().network_name
+    info['network'] = keeper.network_name
     info['contracts'] = dict()
     info['contracts'][
-        'AccessSecretStoreCondition'] = keeper.get_instance().access_secret_store_condition.address
-    info['contracts']['AgreementStoreManager'] = keeper.get_instance().agreement_manager.address
-    info['contracts']['ConditionStoreManager'] = keeper.get_instance().condition_manager.address
-    info['contracts']['DIDRegistry'] = keeper.get_instance().did_registry.address
-    if keeper.get_instance().network_name != 'pacific':
-        info['contracts']['Dispenser'] = keeper.get_instance().dispenser.address
+        'AccessSecretStoreCondition'] = keeper.access_secret_store_condition.address
+    info['contracts']['AgreementStoreManager'] = keeper.agreement_manager.address
+    info['contracts']['ConditionStoreManager'] = keeper.condition_manager.address
+    info['contracts']['DIDRegistry'] = keeper.did_registry.address
+    if keeper.network_name != 'pacific':
+        info['contracts']['Dispenser'] = keeper.dispenser.address
     info['contracts'][
-        'EscrowAccessSecretStoreTemplate'] = keeper.get_instance(
-
-    ).escrow_access_secretstore_template.address
-    info['contracts']['EscrowReward'] = keeper.get_instance().escrow_reward_condition.address
-    info['contracts']['HashLockCondition'] = keeper.get_instance().hash_lock_condition.address
-    info['contracts']['LockRewardCondition'] = keeper.get_instance().lock_reward_condition.address
-    info['contracts']['SignCondition'] = keeper.get_instance().sign_condition.address
-    info['contracts']['OceanToken'] = keeper.get_instance().token.address
-    info['contracts']['TemplateStoreManager'] = keeper.get_instance().template_manager.address
-    info['keeper-version'] = keeper.get_instance().token.version
-    info['provider-address'] = config.parity_address
+        'EscrowAccessSecretStoreTemplate'] = keeper.escrow_access_secretstore_template.address
+    info['contracts']['EscrowReward'] = keeper.escrow_reward_condition.address
+    info['contracts']['HashLockCondition'] = keeper.hash_lock_condition.address
+    info['contracts']['LockRewardCondition'] = keeper.lock_reward_condition.address
+    info['contracts']['SignCondition'] = keeper.sign_condition.address
+    info['contracts']['OceanToken'] = keeper.token.address
+    info['contracts']['TemplateStoreManager'] = keeper.template_manager.address
+    info['keeper-version'] = keeper.token.version
+    info['provider-address'] = get_provider_account().address
     return jsonify(info)
 
 
