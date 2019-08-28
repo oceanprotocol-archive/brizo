@@ -81,7 +81,7 @@ class Config(configparser.ConfigParser):
     def keeper_path(self):
         """Path where the keeper-contracts artifacts are allocated."""
         keeper_path_string = self.get(self._section_name, NAME_KEEPER_PATH, fallback=None)
-        return Path(keeper_path_string).expanduser().resolve() if keeper_path_string else None
+        return Path(keeper_path_string).expanduser().resolve() if keeper_path_string else ''
 
     @property
     def keeper_url(self):

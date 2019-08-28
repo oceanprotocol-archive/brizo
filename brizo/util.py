@@ -8,6 +8,7 @@ import io
 
 from eth_utils import remove_0x_prefix
 from ocean_keeper import Keeper
+from ocean_keeper.contract_handler import ContractHandler
 from ocean_keeper.utils import get_account
 from ocean_keeper.web3_provider import Web3Provider
 from ocean_utils.did_resolver.did_resolver import DIDResolver
@@ -19,6 +20,26 @@ from secret_store_client.client import Client as SecretStore
 from brizo.config import Config
 
 logger = logging.getLogger(__name__)
+
+
+def setup_keeper(config_file=None):
+    config = Config(filename=config_file) if config_file else get_config()
+    keeper_url = config.keeper_url
+    artifacts_path = get_keeper_path(config)
+
+    ContractHandler.artifacts_path = artifacts_path
+    Web3Provider.get_web3(keeper_url)
+    account = get_account(0)
+    if account is None:
+        raise AssertionError(f'Brizo cannot run without a valid '
+                             f'ethereum account. Account address was not found in the environment'
+                             f'variable `PARITY_ADDRESS`. Please set the following evnironment '
+                             f'variables and try again: `PARITY_ADDRESS`, `PARITY_PASSWORD`, '
+                             f'and `PARITY_KEYFILE`.')
+    if not account.password or not account.key_file:
+        raise AssertionError(f'Brizo cannot run without a valid '
+                             f'ethereum account with a password and keyfile. Current account '
+                             f'has password {account.password} and keyfile {account.key_file}.')
 
 
 def get_config():
@@ -131,6 +152,8 @@ def get_keeper_path(config):
 
 
 def keeper_instance():
+    # Init web3 before fetching keeper instance.
+    web3()
     return Keeper.get_instance(get_keeper_path(get_config()))
 
 

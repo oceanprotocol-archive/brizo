@@ -22,11 +22,11 @@ from brizo.util import (
     is_access_granted,
     do_secret_store_encrypt,
     get_config,
-)
+    keeper_instance, setup_keeper)
 
 setup_logging()
 services = Blueprint('services', __name__)
-# ocn = setup_ocean_instance(app.config['CONFIG_FILE'])
+setup_keeper(app.config['CONFIG_FILE'])
 provider_acc = get_provider_account()
 requests_session = get_requests_session()
 
@@ -104,7 +104,7 @@ def publish():
     publisher_address = data.get('publisherAddress')
 
     try:
-        if not verify_signature(Keeper.get_instance(), publisher_address, signature, did):
+        if not verify_signature(keeper_instance(), publisher_address, signature, did):
             msg = f'Invalid signature {signature} for ' \
                 f'publisherAddress {publisher_address} and documentId {did}.'
             raise ValueError(msg)
@@ -179,14 +179,14 @@ def consume():
     try:
         agreement_id = data.get('serviceAgreementId')
         consumer_address = data.get('consumerAddress')
-        asset_id = Keeper.get_instance().agreement_manager.get_agreement(agreement_id).did
+        asset_id = keeper_instance().agreement_manager.get_agreement(agreement_id).did
         did = id_to_did(asset_id)
 
         if not is_access_granted(
                 agreement_id,
                 did,
                 consumer_address,
-                Keeper.get_instance()):
+                keeper_instance()):
             msg = ('Checking access permissions failed. Either consumer address does not have '
                    'permission to consume this asset or consumer address and/or service agreement '
                    'id is invalid.')
@@ -197,12 +197,12 @@ def consume():
         if not url:
             signature = data.get('signature')
             index = int(data.get('index'))
-            if not verify_signature(Keeper.get_instance(), consumer_address, signature, agreement_id):
+            if not verify_signature(keeper_instance(), consumer_address, signature, agreement_id):
                 msg = f'Invalid signature {signature} for ' \
                     f'publisherAddress {consumer_address} and documentId {agreement_id}.'
                 raise ValueError(msg)
 
-            url = get_asset_url_at_index(Keeper.get_instance(), index, did, provider_acc)
+            url = get_asset_url_at_index(keeper_instance(), index, did, provider_acc)
 
         download_url = get_download_url(url, app.config['CONFIG_FILE'])
         logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
