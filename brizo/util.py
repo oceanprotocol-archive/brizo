@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import site
 from datetime import datetime
 from os import getenv
 import io
@@ -120,8 +121,11 @@ def get_env_property(env_variable, property_name):
 
 def get_keeper_path(config):
     path = config.keeper_path
-    if not path or not os.path.exists(path) and os.getenv('VIRTUAL_ENV'):
-        path = os.path.join(os.getenv('VIRTUAL_ENV'), 'artifacts')
+    if not os.path.exists(path):
+        if os.getenv('VIRTUAL_ENV'):
+            path = os.path.join(os.getenv('VIRTUAL_ENV'), 'artifacts')
+        else:
+            path = os.path.join(site.PREFIXES[0], 'artifacts')
 
     return path
 
