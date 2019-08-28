@@ -8,7 +8,6 @@ from eth_utils import remove_0x_prefix
 from flask import Blueprint, request
 from ocean_utils.did import id_to_did
 from ocean_utils.http_requests.requests_session import get_requests_session
-from ocean_keeper import Keeper
 
 from brizo.log import setup_logging
 from brizo.myapp import app
