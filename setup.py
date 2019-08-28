@@ -33,7 +33,7 @@ install_requirements = [
     'osmosis-aws-driver==0.0.2',
     'osmosis-driver-interface==0.0.6',
     'osmosis-on-premise-driver==0.0.6',
-    'Werkzeug==0.14.1',
+    'Werkzeug>=0.15.3',
 ]
 
 # Required to run setup.py:
