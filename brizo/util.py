@@ -29,17 +29,25 @@ def setup_keeper(config_file=None):
 
     ContractHandler.artifacts_path = artifacts_path
     Web3Provider.get_web3(keeper_url)
+    init_account_envvars()
+
     account = get_account(0)
     if account is None:
         raise AssertionError(f'Brizo cannot run without a valid '
                              f'ethereum account. Account address was not found in the environment'
-                             f'variable `PARITY_ADDRESS`. Please set the following evnironment '
-                             f'variables and try again: `PARITY_ADDRESS`, `PARITY_PASSWORD`, '
-                             f'and `PARITY_KEYFILE`.')
+                             f'variable `PROVIDER_ADDRESS`. Please set the following evnironment '
+                             f'variables and try again: `PROVIDER_ADDRESS`, `PROVIDER_PASSWORD`, '
+                             f'and `PROVIDER_KEYFILE`.')
     if not account.password or not account.key_file:
         raise AssertionError(f'Brizo cannot run without a valid '
                              f'ethereum account with a password and keyfile. Current account '
                              f'has password {account.password} and keyfile {account.key_file}.')
+
+
+def init_account_envvars():
+    os.environ['PARITY_ADDRESS'] = os.getenv('PROVIDER_ADDRESS', '')
+    os.environ['PARITY_PASSWORD'] = os.getenv('PROVIDER_PASSWORD', '')
+    os.environ['PARITY_KEYFILE'] = os.getenv('PROVIDER_KEYFILE', '')
 
 
 def get_config():
