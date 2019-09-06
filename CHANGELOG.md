@@ -1,6 +1,26 @@
 History
 =======
 
+0.5.0 (September 6th, 2019)
+--------------------------
+* Update ocean-utils to work with the new ddos structure.
+
+0.4.1 (September 2nd, 2019)
+---------------------------
+* Upgrade the keeper contracts to v0.11.1
+
+0.4.0 (August 28th ,2019)
+-------------------------
+* This release removes the events monitoring responsibility from Brizo which is now only responsible for serving agreement related endpoints.
+
+0.3.14 (July 16th ,2019)
+-------------------------
+* Fix error when running on Pacific network.
+
+0.3.13 (July 3rd ,2019)
+-------------------------
+* Update squid-py version with improved events handling.
+
 0.3.12 (Jun 21nd, 2019)
 ------------------------
 * Not dispenser when pacific network.

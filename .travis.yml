@@ -15,7 +15,7 @@ before_install:
   - git clone https://github.com/oceanprotocol/barge
   - cd barge
   - export KEEPER_VERSION=v0.11.1
-  - export AQUARIUS_VERSION=v0.3.8
+  - export AQUARIUS_VERSION=v0.4.2
   - bash -x start_ocean.sh --no-brizo --no-pleuston --local-spree-node 2>&1 > start_ocean.log &
   - cd ..
 

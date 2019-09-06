@@ -2,20 +2,24 @@
 #  SPDX-License-Identifier: Apache-2.0
 
 import json
-import os
-import pathlib
+import uuid
 
-from eth_utils import remove_0x_prefix, add_0x_prefix
+from eth_utils import add_0x_prefix, remove_0x_prefix
 from ocean_utils.agreements.service_agreement import ServiceAgreement
+from ocean_utils.agreements.service_factory import ServiceDescriptor, ServiceFactory
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.ddo.ddo import DDO
-from ocean_utils.did import DID, did_to_id
+from ocean_utils.ddo.metadata import MetadataMain
+from ocean_utils.ddo.public_key_rsa import PUBLIC_KEY_TYPE_RSA
+from ocean_utils.did import DID, did_to_id, did_to_id_bytes
+from ocean_utils.utils.utilities import checksum
 
 from brizo.constants import BaseURLs
-from brizo.util import get_provider_account, keeper_instance, web3, get_config, generate_token, \
-    do_secret_store_encrypt, do_secret_store_decrypt
-from tests.conftest import get_publisher_account, get_consumer_account
+from brizo.util import (do_secret_store_decrypt, do_secret_store_encrypt, generate_token,
+                        get_config,
+                        get_provider_account, keeper_instance, web3)
+from tests.conftest import get_consumer_account, get_publisher_account, get_sample_ddo
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
@@ -28,36 +32,78 @@ def dummy_callback(*_):
 def get_registered_ddo(account, providers=None):
     keeper = keeper_instance()
     aqua = Aquarius('http://localhost:5000')
-    base = os.path.realpath(__file__).split(os.path.sep)[1:-1]
-    path = pathlib.Path(os.path.join(os.path.sep, *base, 'ddo', 'ddo_sa_sample.json'))
-    ddo = DDO(json_filename=path)
-    ddo._did = DID.did()
-    ddo_service_endpoint = aqua.get_service_endpoint(ddo.did)
+    metadata = get_sample_ddo()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
 
-    metadata = ddo.metadata
-    metadata['base']['checksum'] = ddo.generate_checksum(ddo.did, metadata)
-    checksum = metadata['base']['checksum']
-    ddo.add_proof(checksum, account, keeper.sign_hash(checksum, account))
+    ddo = DDO()
+    ddo_service_endpoint = aqua.get_service_endpoint()
+
+    metadata_service_desc = ServiceDescriptor.metadata_service_descriptor(metadata,
+                                                                          ddo_service_endpoint)
+
+    access_service_attributes = {"main": {
+        "name": "dataAssetAccessServiceAgreement",
+        "creator": account.address,
+        "price": metadata[MetadataMain.KEY]['price'],
+        "timeout": 3600,
+        "datePublished": metadata[MetadataMain.KEY]['dateCreated']
+    }}
+
+    service_descriptors = [ServiceDescriptor.authorization_service_descriptor(
+        'http://localhost:12001')]
+    service_descriptors += [ServiceDescriptor.access_service_descriptor(
+        access_service_attributes,
+        'http://localhost:8030'
+    )]
+
+    service_descriptors = [metadata_service_desc] + service_descriptors
+
+    services = ServiceFactory.build_services(service_descriptors)
+    checksums = dict()
+    for service in services:
+        checksums[str(service.index)] = checksum(service.main)
+
+    # Adding proof to the ddo.
+    ddo.add_proof(checksums, account)
+
+    did = ddo.assign_did(DID.did(ddo.proof['checksum']))
+
+    access_service = ServiceFactory.complete_access_service(did,
+                                                            'http://localhost:8030',
+                                                            access_service_attributes,
+                                                            keeper.escrow_access_secretstore_template.address,
+                                                            keeper.escrow_reward_condition.address)
+    for service in services:
+        if service.type == 'access':
+            ddo.add_service(access_service)
+        else:
+            ddo.add_service(service)
+
+    ddo.proof['signatureValue'] = keeper.sign_hash(did_to_id_bytes(did), account)
+
+    ddo.add_public_key(did, account.address)
+
+    ddo.add_authentication(did, PUBLIC_KEY_TYPE_RSA)
 
     encrypted_files = do_secret_store_encrypt(
         remove_0x_prefix(ddo.asset_id),
-        json.dumps(metadata['base']['files']),
+        json.dumps(metadata['main']['files']),
         account,
         get_config()
     )
-    _files = metadata['base']['files']
+    _files = metadata['main']['files']
     # only assign if the encryption worked
     if encrypted_files:
         index = 0
-        for file in metadata['base']['files']:
+        for file in metadata['main']['files']:
             file['index'] = index
             index = index + 1
             del file['url']
-        metadata['base']['encryptedFiles'] = encrypted_files
+        metadata['encryptedFiles'] = encrypted_files
 
     keeper_instance().did_registry.register(
         ddo.asset_id,
-        checksum=web3().sha3(text='new_asset'),
+        checksum=web3().toBytes(hexstr=ddo.asset_id),
         url=ddo_service_endpoint,
         account=account,
         providers=providers
@@ -66,16 +112,16 @@ def get_registered_ddo(account, providers=None):
     return ddo
 
 
-def place_order(publisher_account, service_definition_id, ddo, consumer_account):
+def place_order(publisher_account, ddo, consumer_account):
     keeper = keeper_instance()
     agreement_id = ServiceAgreement.create_new_agreement_id()
     agreement_template = keeper.escrow_access_secretstore_template
     publisher_address = publisher_account.address
-    balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
+    balance = keeper.token.get_token_balance(consumer_account.address) / (2 ** 18)
     if balance < 20:
         keeper.dispenser.request_tokens(100, consumer_account)
 
-    service_agreement = ServiceAgreement.from_ddo(service_definition_id, ddo)
+    service_agreement = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
     condition_ids = service_agreement.generate_agreement_condition_ids(
         agreement_id, ddo.asset_id, consumer_account.address, publisher_address, keeper)
     time_locks = service_agreement.conditions_timelocks
@@ -118,11 +164,9 @@ def test_consume(client):
     cons_acc = get_consumer_account()
 
     ddo = get_registered_ddo(pub_acc, providers=[pub_acc.address])
-    service = ddo.get_service(service_type=ServiceTypes.ASSET_ACCESS)
-    service_definition_id = service.service_definition_id
 
     # initialize an agreement
-    agreement_id = place_order(pub_acc, service_definition_id, ddo, cons_acc)
+    agreement_id = place_order(pub_acc, ddo, cons_acc)
     payload = dict({
         'serviceAgreementId': agreement_id,
         'consumerAddress': cons_acc.address
@@ -137,7 +181,7 @@ def test_consume(client):
     )
     assert event, "Agreement event is not found, check the keeper node's logs"
 
-    sa = ServiceAgreement.from_ddo(service_definition_id, ddo)
+    sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
     lock_reward(agreement_id, sa, cons_acc)
     event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
         agreement_id, 15, None, (), wait=True
@@ -149,12 +193,13 @@ def test_consume(client):
         agreement_id, 15, None, (), wait=True
     )
     assert event or keeper.access_secret_store_condition.check_permissions(
-            ddo.asset_id, cons_acc.address
+        ddo.asset_id, cons_acc.address
     ), f'Failed to get access permission: agreement_id={agreement_id}, ' \
        f'did={ddo.did}, consumer={cons_acc.address}'
 
     # Consume using decrypted url
-    files_list = json.loads(do_secret_store_decrypt(did_to_id(ddo.did), ddo.encrypted_files, pub_acc, get_config()))
+    files_list = json.loads(
+        do_secret_store_decrypt(did_to_id(ddo.did), ddo.encrypted_files, pub_acc, get_config()))
     payload['url'] = files_list[index]['url']
     request_url = endpoint + '?' + '&'.join([f'{k}={v}' for k, v in payload.items()])
 
@@ -192,13 +237,13 @@ def test_empty_payload(client):
 
 def test_publish(client):
     endpoint = BaseURLs.ASSETS_URL + '/publish'
-    did = DID.did()
+    did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
     account = get_provider_account()
     test_urls = [
-        'url 0',
-        'url 1',
-        'url 2'
+        'url 00',
+        'url 11',
+        'url 22'
     ]
     urls_json = json.dumps(test_urls)
     signature = keeper_instance().sign_hash(asset_id, account)
@@ -222,7 +267,7 @@ def test_publish(client):
     # publish using auth token
     signature = generate_token(account)
     payload['signature'] = signature
-    did = DID.did()
+    did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
     payload['documentId'] = add_0x_prefix(asset_id)
     post_response = client.post(
