@@ -2,6 +2,7 @@
 #  SPDX-License-Identifier: Apache-2.0
 
 import json
+import uuid
 
 from eth_utils import add_0x_prefix, remove_0x_prefix
 from ocean_utils.agreements.service_agreement import ServiceAgreement
@@ -32,6 +33,8 @@ def get_registered_ddo(account, providers=None):
     keeper = keeper_instance()
     aqua = Aquarius('http://localhost:5000')
     metadata = get_sample_ddo()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+
     ddo = DDO()
     ddo_service_endpoint = aqua.get_service_endpoint()
 
@@ -234,7 +237,7 @@ def test_empty_payload(client):
 
 def test_publish(client):
     endpoint = BaseURLs.ASSETS_URL + '/publish'
-    did = DID.did({"0": "0x123213466"})
+    did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
     account = get_provider_account()
     test_urls = [
@@ -264,7 +267,7 @@ def test_publish(client):
     # publish using auth token
     signature = generate_token(account)
     payload['signature'] = signature
-    did = DID.did({"0": "0x1232134599"})
+    did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
     payload['documentId'] = add_0x_prefix(asset_id)
     post_response = client.post(
