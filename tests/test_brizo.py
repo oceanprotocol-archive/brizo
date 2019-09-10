@@ -248,6 +248,7 @@ def test_publish(client):
         'url 11',
         'url 22'
     ]
+    keeper = keeper_instance()
     urls_json = json.dumps(test_urls)
     asset_id_hash = add_ethereum_prefix_and_hash_msg(asset_id)
     signature = keeper.sign_hash(asset_id_hash, account)
