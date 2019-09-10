@@ -6,6 +6,7 @@ import os
 import pathlib
 
 from eth_utils import remove_0x_prefix, add_0x_prefix
+from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
@@ -129,24 +130,25 @@ def test_consume(client):
     })
 
     keeper = keeper_instance()
-    signature = keeper.sign_hash(agreement_id, cons_acc)
+    agr_id_hash = add_ethereum_prefix_and_hash_msg(agreement_id)
+    signature = keeper.sign_hash(agr_id_hash, cons_acc)
     index = 0
 
     event = keeper.escrow_access_secretstore_template.subscribe_agreement_created(
-        agreement_id, 15, None, (), wait=True
+        agreement_id, 15, None, (), wait=True, from_block=0
     )
     assert event, "Agreement event is not found, check the keeper node's logs"
 
     sa = ServiceAgreement.from_ddo(service_definition_id, ddo)
     lock_reward(agreement_id, sa, cons_acc)
     event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
-        agreement_id, 15, None, (), wait=True
+        agreement_id, 15, None, (), wait=True, from_block=0
     )
     assert event, "Lock reward condition fulfilled event is not found, check the keeper node's logs"
 
     grant_access(agreement_id, ddo, cons_acc, pub_acc)
     event = keeper.access_secret_store_condition.subscribe_condition_fulfilled(
-        agreement_id, 15, None, (), wait=True
+        agreement_id, 15, None, (), wait=True, from_block=0
     )
     assert event or keeper.access_secret_store_condition.check_permissions(
             ddo.asset_id, cons_acc.address
@@ -200,13 +202,17 @@ def test_publish(client):
         'url 1',
         'url 2'
     ]
+    keeper = keeper_instance()
     urls_json = json.dumps(test_urls)
-    signature = keeper_instance().sign_hash(asset_id, account)
-    address = web3().eth.account.recoverHash(asset_id, signature=signature)
+    asset_id_hash = add_ethereum_prefix_and_hash_msg(asset_id)
+    signature = keeper.sign_hash(asset_id_hash, account)
+    address = web3().eth.account.recoverHash(asset_id_hash, signature=signature)
+    assert address.lower() == account.address.lower()
+    address = keeper.personal_ec_recover(asset_id, signature)
     assert address.lower() == account.address.lower()
 
     payload = {
-        'documentId': add_0x_prefix(asset_id),
+        'documentId': asset_id,
         'signature': signature,
         'document': urls_json,
         'publisherAddress': account.address
