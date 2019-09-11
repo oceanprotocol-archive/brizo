@@ -1,6 +1,10 @@
 History
 =======
 
+0.5.1 (September 11th, 2019)
+----------------------------
+* Fix signature issue
+
 0.5.0 (September 6th, 2019)
 --------------------------
 * Update ocean-utils to work with the new ddos structure.

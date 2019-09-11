@@ -10,6 +10,7 @@ from eth_utils import remove_0x_prefix
 from ocean_keeper import Keeper
 from ocean_keeper.contract_handler import ContractHandler
 from ocean_keeper.utils import get_account
+from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_keeper.web3_provider import Web3Provider
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.did import did_to_id
@@ -116,7 +117,7 @@ def check_auth_token(token):
 
     keeper = keeper_instance()
     message = f'{auth_token_message}\n{timestamp}'
-    address = keeper.ec_recover(w3.sha3(text=message), sig)
+    address = keeper.personal_ec_recover(w3.sha3(text=message), sig)
     return w3.toChecksumAddress(address)
 
 
@@ -125,14 +126,15 @@ def generate_token(account):
     _time = int(datetime.now().timestamp())
     _message = f'{raw_msg}\n{_time}'
     msg_hash = web3().sha3(text=_message)
-    return f'{keeper_instance().sign_hash(msg_hash, account)}-{_time}'
+    prefixed_msg_hash = add_ethereum_prefix_and_hash_msg(msg_hash)
+    return f'{keeper_instance().sign_hash(prefixed_msg_hash, account)}-{_time}'
 
 
 def verify_signature(keeper, signer_address, signature, original_msg):
     if is_token_valid(signature):
         address = check_auth_token(signature)
     else:
-        address = keeper.ec_recover(original_msg, signature)
+        address = keeper.personal_ec_recover(original_msg, signature)
 
     return address.lower() == signer_address.lower()
 
