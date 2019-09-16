@@ -2,6 +2,7 @@
 #  SPDX-License-Identifier: Apache-2.0
 
 import json
+from unittest.mock import Mock
 import uuid
 
 from eth_utils import add_0x_prefix, remove_0x_prefix
@@ -11,6 +12,8 @@ from ocean_utils.agreements.service_factory import ServiceDescriptor, ServiceFac
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.ddo.ddo import DDO
+from ocean_utils.http_requests.requests_session import get_requests_session
+
 from ocean_utils.ddo.metadata import MetadataMain
 from ocean_utils.ddo.public_key_rsa import PUBLIC_KEY_TYPE_RSA
 from ocean_utils.did import DID, did_to_id, did_to_id_bytes
@@ -20,7 +23,9 @@ from brizo.constants import BaseURLs
 from brizo.util import (check_auth_token, do_secret_store_decrypt, do_secret_store_encrypt,
                         generate_token, get_config, get_provider_account, is_token_valid,
                         keeper_instance,
-                        verify_signature, web3)
+                        verify_signature,
+                        web3,
+                        build_download_response)
 from tests.conftest import get_consumer_account, get_publisher_account, get_sample_ddo
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
@@ -305,3 +310,18 @@ def test_auth_token():
 
 def test_exec_endpoint():
     pass
+
+
+def test_download_ipfs_file(client):
+    cid = 'QmQfpdcMWnLTXKKW9GPV7NgtEugghgD6HgzSF6gSrp2mL9'
+    url = f'ipfs://{cid}'
+    download_url = get_download_url(url, None)
+    requests_session = get_requests_session()
+
+    request = Mock()
+    request.range = None
+
+    print(f'got ipfs download url: {download_url}')
+    assert download_url and download_url.endswith(f'ipfs/{cid}')
+    response = build_download_response(request, requests_session, download_url, download_url)
+    assert response.data, f'got no data {response.data}'
