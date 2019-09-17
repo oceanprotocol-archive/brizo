@@ -4,6 +4,7 @@
 import json
 import os
 import pathlib
+from unittest.mock import Mock
 
 from eth_utils import remove_0x_prefix, add_0x_prefix
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
@@ -12,10 +13,13 @@ from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.ddo.ddo import DDO
 from ocean_utils.did import DID, did_to_id
+from ocean_utils.http_requests.requests_session import get_requests_session
+from osmosis_driver_interface.osmosis import Osmosis
 
 from brizo.constants import BaseURLs
 from brizo.util import get_provider_account, keeper_instance, web3, get_config, generate_token, \
-    do_secret_store_encrypt, do_secret_store_decrypt, verify_signature, is_token_valid, check_auth_token
+    do_secret_store_encrypt, do_secret_store_decrypt, verify_signature, is_token_valid, check_auth_token, get_download_url, \
+    build_download_response
 from tests.conftest import get_publisher_account, get_consumer_account
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
@@ -251,3 +255,18 @@ def test_auth_token():
     assert address and address.lower() == pub_address.lower(), f'address mismatch, got {address}, expected {pub_address}'
     good = verify_signature(keeper_instance(), pub_address, token, doc_id)
     assert good, f'invalid signature/auth-token {token}, {pub_address}, {doc_id}'
+
+
+def test_download_ipfs_file(client):
+    cid = 'QmQfpdcMWnLTXKKW9GPV7NgtEugghgD6HgzSF6gSrp2mL9'
+    url = f'ipfs://{cid}'
+    download_url = get_download_url(url, None)
+    requests_session = get_requests_session()
+
+    request = Mock()
+    request.range = None
+
+    print(f'got ipfs download url: {download_url}')
+    assert download_url and download_url.endswith(f'ipfs/{cid}')
+    response = build_download_response(request, requests_session, download_url, download_url)
+    assert response.data, f'got no data {response.data}'

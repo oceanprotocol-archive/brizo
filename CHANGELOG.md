@@ -1,7 +1,19 @@
 History
 =======
 
-0.3.12 (Jun 21nd, 2019)
+0.4.4 (Sep 16, 2019)
+------------------------
+* Support `ipfs` files by using the osmosis-ipfs-driver
+
+0.4.0 (Sep 10, 2019)
+------------------------
+* Keep only the proxy in Brizo and move events handling to a 
+separate stand-alone tool
+* Remove squid-py dependency, instead use the lower level ocean 
+libraries that were split out of squid-py (ocean-utils and ocean-keeper)
+* Remove support for the `initialize` endpoint
+
+0.3.12 (Jun 21st, 2019)
 ------------------------
 * Not dispenser when pacific network.
 * Squid-py 0.6.13
