@@ -117,7 +117,7 @@ def check_auth_token(token):
 
     keeper = keeper_instance()
     message = f'{auth_token_message}\n{timestamp}'
-    address = keeper.personal_ec_recover(w3.sha3(text=message), sig)
+    address = keeper.personal_ec_recover(message, sig)
     return w3.toChecksumAddress(address)
 
 
@@ -125,8 +125,7 @@ def generate_token(account):
     raw_msg = get_config().auth_token_message or "Ocean Protocol Authentication"
     _time = int(datetime.now().timestamp())
     _message = f'{raw_msg}\n{_time}'
-    msg_hash = web3().sha3(text=_message)
-    prefixed_msg_hash = add_ethereum_prefix_and_hash_msg(msg_hash)
+    prefixed_msg_hash = add_ethereum_prefix_and_hash_msg(_message)
     return f'{keeper_instance().sign_hash(prefixed_msg_hash, account)}-{_time}'
 
 

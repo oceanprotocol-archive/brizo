@@ -1,6 +1,10 @@
 History
 =======
 
+0.5.2 (September 17th, 2019)
+----------------------------
+* Fix access token issue
+
 0.5.1 (September 11th, 2019)
 ----------------------------
 * Fix signature issue
