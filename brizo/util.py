@@ -1,21 +1,20 @@
+import io
 import json
 import logging
 import os
 import site
 from datetime import datetime
 from os import getenv
-import io
 
 from eth_utils import remove_0x_prefix
+from flask import Response
 from ocean_keeper import Keeper
 from ocean_keeper.contract_handler import ContractHandler
-from ocean_keeper.utils import get_account
-from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
+from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg, get_account
 from ocean_keeper.web3_provider import Web3Provider
-from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.did import did_to_id
+from ocean_utils.did_resolver.did_resolver import DIDResolver
 from osmosis_driver_interface.osmosis import Osmosis
-from flask import Response
 from secret_store_client.client import Client as SecretStore
 
 from brizo.config import Config
@@ -95,6 +94,24 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
     document_id = did_to_id(did)
     return keeper.access_secret_store_condition.check_permissions(
         document_id, consumer_address
+    )
+
+
+def was_compute_triggered(agreement_id, did, computer_consumer_address, keeper):
+    agreement_consumer = keeper.escrow_compute_execution_template.get_agreement_consumer(
+        agreement_id)
+    if agreement_consumer is None:
+        return False
+
+    if agreement_consumer != computer_consumer_address:
+        logger.warning(f'Invalid consumer address {computer_consumer_address} and/or '
+                       f'service agreement id {agreement_id} (did {did})'
+                       f', agreement consumer is {agreement_consumer}')
+        return False
+
+    document_id = did_to_id(did)
+    return keeper.compute_execution_condition.was_compute_triggered(
+        document_id, computer_consumer_address
     )
 
 
@@ -201,7 +218,8 @@ def build_download_response(request, requests_session, url, download_url):
 
 
 def get_asset_url_at_index(keeper, url_index, did, account):
-    logger.debug(f'get_asset_url_at_index(): url_index={url_index}, did={did}, provider={account.address}')
+    logger.debug(
+        f'get_asset_url_at_index(): url_index={url_index}, did={did}, provider={account.address}')
     try:
         resolver = DIDResolver(keeper.did_registry)
         asset = resolver.resolve(did)
