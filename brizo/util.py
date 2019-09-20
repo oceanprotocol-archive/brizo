@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import mimetypes
 import os
 import site
 from datetime import datetime
@@ -196,13 +197,23 @@ def get_metadata(ddo):
         logger.error("Error getting the metatada: %s" % e)
 
 
-def build_download_response(request, requests_session, url, download_url):
+def build_download_response(request, requests_session, url, download_url, content_type):
     try:
         if request.range:
             headers = {"Range": request.headers.get('range')}
         else:
+            filename = url.split("/")[-1]
+            file_ext = os.path.splitext(filename)[1]
+            if file_ext and not content_type:
+                content_type = mimetypes.guess_type(filename)[0]
+            elif not file_ext and content_type:
+                # add an extension to filename based on the content_type
+                extension = mimetypes.guess_extension(content_type)
+                if extension:
+                    filename = filename + extension
+
             headers = {
-                "Content-Disposition": f'attachment;filename={url.split("/")[-1]}',
+                "Content-Disposition": f'attachment;filename={filename}',
                 "Access-Control-Expose-Headers": f'Content-Disposition'
             }
 
@@ -210,19 +221,17 @@ def build_download_response(request, requests_session, url, download_url):
         return Response(
             io.BytesIO(response.content).read(),
             response.status_code,
-            headers=headers
+            headers=headers,
+            content_type=content_type
         )
     except Exception as e:
         logger.error(f'Error preparing file download response: {str(e)}')
         raise
 
 
-def get_asset_url_at_index(keeper, url_index, did, account):
-    logger.debug(
-        f'get_asset_url_at_index(): url_index={url_index}, did={did}, provider={account.address}')
+def get_asset_url_at_index(url_index, asset, account):
+    logger.debug(f'get_asset_url_at_index(): url_index={url_index}, did={asset.did}, provider={account.address}')
     try:
-        resolver = DIDResolver(keeper.did_registry)
-        asset = resolver.resolve(did)
         files_str = do_secret_store_decrypt(
             remove_0x_prefix(asset.asset_id),
             asset.encrypted_files,
@@ -247,7 +256,7 @@ def get_asset_url_at_index(keeper, url_index, did, account):
         return file_meta_dict['url']
 
     except Exception as e:
-        logger.error(f'Error decrypting url at index {url_index} for asset {did}: {str(e)}')
+        logger.error(f'Error decrypting url at index {url_index} for asset {asset.did}: {str(e)}')
         raise
 
 
