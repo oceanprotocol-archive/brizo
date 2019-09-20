@@ -7,7 +7,9 @@ import logging
 from eth_utils import remove_0x_prefix
 from flask import Blueprint, request
 from ocean_utils.did import id_to_did
+from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
+from secret_store_client.client import RPCError
 
 from brizo.log import setup_logging
 from brizo.myapp import app
@@ -118,10 +120,14 @@ def publish():
                     f'publisher {publisher_address}, '
                     f'documentId {did}')
         return encrypted_document, 201
-    except Exception as e:
+
+    except (RPCError, Exception) as e:
         logger.error(
-            f'Error encrypting document: {e}. \nPayload was: documentId={did}, '
-            f'publisherAddress={publisher_address}',
+            f'SecretStore Error: {e}. \n'
+            f'providerAddress={provider_acc.address}\n'
+            f'Payload was: documentId={did}, '
+            f'publisherAddress={publisher_address},'
+            f'signature={signature}',
             exc_info=1
         )
         return f'Error: {str(e)}', 500
@@ -176,37 +182,42 @@ def consume():
         return f'Either `url` or `signature and index` are required in the call to "consume".', 400
 
     try:
+        keeper = keeper_instance()
         agreement_id = data.get('serviceAgreementId')
         consumer_address = data.get('consumerAddress')
-        asset_id = keeper_instance().agreement_manager.get_agreement(agreement_id).did
+        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
         did = id_to_did(asset_id)
 
         if not is_access_granted(
                 agreement_id,
                 did,
                 consumer_address,
-                keeper_instance()):
+                keeper):
             msg = ('Checking access permissions failed. Either consumer address does not have '
                    'permission to consume this asset or consumer address and/or service agreement '
                    'id is invalid.')
             logger.warning(msg)
             return msg, 401
 
+        asset = DIDResolver(keeper.did_registry).resolve(did)
+        content_type = None
         url = data.get('url')
         if not url:
             signature = data.get('signature')
             index = int(data.get('index'))
-            if not verify_signature(keeper_instance(), consumer_address, signature, agreement_id):
+            if not verify_signature(keeper, consumer_address, signature, agreement_id):
                 msg = f'Invalid signature {signature} for ' \
                     f'publisherAddress {consumer_address} and documentId {agreement_id}.'
                 raise ValueError(msg)
 
-            url = get_asset_url_at_index(keeper_instance(), index, did, provider_acc)
+            file_attributes = asset.metadata['base']['files'][index]
+            content_type = file_attributes['contentType']
+            url = get_asset_url_at_index(index, asset, provider_acc)
 
         download_url = get_download_url(url, app.config['CONFIG_FILE'])
         logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
                     f' url {download_url}')
-        return build_download_response(request, requests_session, url, download_url)
-    except Exception as e:
+        return build_download_response(request, requests_session, url, download_url, content_type)
+    except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500

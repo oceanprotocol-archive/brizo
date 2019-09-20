@@ -2,9 +2,10 @@
 #  SPDX-License-Identifier: Apache-2.0
 
 import json
+import mimetypes
 import os
 import pathlib
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 
 from eth_utils import remove_0x_prefix, add_0x_prefix
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
@@ -15,6 +16,7 @@ from ocean_utils.ddo.ddo import DDO
 from ocean_utils.did import DID, did_to_id
 from ocean_utils.http_requests.requests_session import get_requests_session
 from osmosis_driver_interface.osmosis import Osmosis
+from werkzeug.utils import get_content_type
 
 from brizo.constants import BaseURLs
 from brizo.util import get_provider_account, keeper_instance, web3, get_config, generate_token, \
@@ -76,9 +78,9 @@ def place_order(publisher_account, service_definition_id, ddo, consumer_account)
     agreement_id = ServiceAgreement.create_new_agreement_id()
     agreement_template = keeper.escrow_access_secretstore_template
     publisher_address = publisher_account.address
-    balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
-    if balance < 20:
-        keeper.dispenser.request_tokens(100, consumer_account)
+    # balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
+    # if balance < 20:
+    #     keeper.dispenser.request_tokens(100, consumer_account)
 
     service_agreement = ServiceAgreement.from_ddo(service_definition_id, ddo)
     condition_ids = service_agreement.generate_agreement_condition_ids(
@@ -268,5 +270,39 @@ def test_download_ipfs_file(client):
 
     print(f'got ipfs download url: {download_url}')
     assert download_url and download_url.endswith(f'ipfs/{cid}')
-    response = build_download_response(request, requests_session, download_url, download_url)
+    response = build_download_response(request, requests_session, download_url, download_url, None)
     assert response.data, f'got no data {response.data}'
+
+
+def test_build_download_response():
+    request = Mock()
+    request.range = None
+
+    class Dummy:
+        pass
+
+    response = Dummy()
+    response.content = b'asdsadf'
+    response.status_code = 200
+
+    requests_session = Dummy()
+    requests_session.get = MagicMock(return_value=response)
+
+    filename = '<<filename>>.xml'
+    content_type = mimetypes.guess_type(filename)[0]
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session, url, url, None)
+    assert response.headers["content-type"] == content_type
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename}'
+
+    filename = '<<filename>>'
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session, url, url, None)
+    assert response.headers["content-type"] == get_content_type(response.default_mimetype, response.charset)
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename}'
+
+    filename = '<<filename>>'
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session, url, url, content_type)
+    assert response.headers["content-type"] == content_type
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename+mimetypes.guess_extension(content_type)}'
