@@ -5,16 +5,16 @@ import json
 import logging
 
 from eth_utils import remove_0x_prefix
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from ocean_utils.did import id_to_did
+from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
 
 from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (build_download_response, check_required_attributes, do_secret_store_encrypt,
                         get_asset_url_at_index, get_config, get_download_url, get_provider_account,
-                        is_access_granted, keeper_instance, setup_keeper, verify_signature,
-                        was_compute_triggered)
+                        is_access_granted, keeper_instance, setup_keeper, verify_signature)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -205,7 +205,7 @@ def consume():
         return f'Error : {str(e)}', 500
 
 
-@services.route('/exec', methods=['GET'])
+@services.route('/exec', methods=['POST'])
 def exec():
     """Call the execution of a workflow.
 
@@ -223,12 +223,6 @@ def exec():
       - name: serviceAgreementId
         in: query
         description: The ID of the service agreement.
-        required: true
-        type: string
-      - name: url
-        in: query
-        description: This URL is only valid if Brizo acts as a proxy.
-                     Consumer can't execute using the URL if it's not through Brizo.
         required: true
         type: string
     responses:
@@ -250,28 +244,30 @@ def exec():
     if msg:
         return msg, status
 
-    if not (data.get('url') or (data.get('signature') and data.get('index'))):
-        return f'Either `url` or `signature and index` are required in the call to "consume".', 400
+    if not (data.get('signature')):
+        return f'`signature is required in the call to "consume".', 400
 
     try:
         agreement_id = data.get('serviceAgreementId')
         consumer_address = data.get('consumerAddress')
         asset_id = keeper_instance().agreement_manager.get_agreement(agreement_id).did
         did = id_to_did(asset_id)
-        if not was_compute_triggered(did, consumer_address):
-            msg = (
-                'Checking if the compute was triggered failed. Either consumer address does not '
-                'have permission to executre this workflow or consumer address and/or service '
-                'agreement id is invalid.')
-            logger.warning(msg)
-            return msg, 401
+        # if not was_compute_triggered(did, consumer_address):
+        #     msg = (
+        #         'Checking if the compute was triggered failed. Either consumer address does not '
+        #         'have permission to executre this workflow or consumer address and/or service '
+        #         'agreement id is invalid.')
+        #     logger.warning(msg)
+        #     return msg, 401
 
-        workflow = keeper_instance().did_registry.resolve(did)
-        body = {"serviceAgreementId": agreement_id, "workflow": workflow}
+        workflow = DIDResolver(keeper_instance().did_registry).resolve(data.get('workflowDID'))
+        body = {"serviceAgreementId": agreement_id, "workflow": workflow.as_dictionary()}
 
-        requests_session.post(get_config().operator_service_url, data=body,
-                              headers={'content-type': 'application/json'})
-
+        response = requests_session.post(
+            get_config().operator_service_url + '/api/v1/operator/init',
+            data=json.dumps(body),
+            headers={'content-type': 'application/json'})
+        return jsonify({"workflowId": response.content.decode('utf-8')})
     except Exception as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
