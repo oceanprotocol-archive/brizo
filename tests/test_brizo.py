@@ -15,7 +15,6 @@ from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.ddo.ddo import DDO
 from ocean_utils.did import DID, did_to_id
 from ocean_utils.http_requests.requests_session import get_requests_session
-from osmosis_driver_interface.osmosis import Osmosis
 from werkzeug.utils import get_content_type
 
 from brizo.constants import BaseURLs
@@ -78,9 +77,9 @@ def place_order(publisher_account, service_definition_id, ddo, consumer_account)
     agreement_id = ServiceAgreement.create_new_agreement_id()
     agreement_template = keeper.escrow_access_secretstore_template
     publisher_address = publisher_account.address
-    # balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
-    # if balance < 20:
-    #     keeper.dispenser.request_tokens(100, consumer_account)
+    balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
+    if balance < 20:
+        keeper.dispenser.request_tokens(100, consumer_account)
 
     service_agreement = ServiceAgreement.from_ddo(service_definition_id, ddo)
     condition_ids = service_agreement.generate_agreement_condition_ids(
