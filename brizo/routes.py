@@ -5,7 +5,7 @@ import json
 import logging
 
 from eth_utils import remove_0x_prefix
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 from ocean_utils.did import id_to_did
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
@@ -14,7 +14,8 @@ from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (build_download_response, check_required_attributes, do_secret_store_encrypt,
                         get_asset_url_at_index, get_config, get_download_url, get_provider_account,
-                        is_access_granted, keeper_instance, setup_keeper, verify_signature)
+                        is_access_granted, keeper_instance, setup_keeper, verify_signature,
+                        was_compute_triggered)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -252,13 +253,13 @@ def exec():
         consumer_address = data.get('consumerAddress')
         asset_id = keeper_instance().agreement_manager.get_agreement(agreement_id).did
         did = id_to_did(asset_id)
-        # if not was_compute_triggered(did, consumer_address):
-        #     msg = (
-        #         'Checking if the compute was triggered failed. Either consumer address does not '
-        #         'have permission to executre this workflow or consumer address and/or service '
-        #         'agreement id is invalid.')
-        #     logger.warning(msg)
-        #     return msg, 401
+        if not was_compute_triggered(agreement_id, did, consumer_address, keeper_instance()):
+            msg = (
+                'Checking if the compute was triggered failed. Either consumer address does not '
+                'have permission to executre this workflow or consumer address and/or service '
+                'agreement id is invalid.')
+            logger.warning(msg)
+            return msg, 401
 
         workflow = DIDResolver(keeper_instance().did_registry).resolve(data.get('workflowDID'))
         body = {"serviceAgreementId": agreement_id, "workflow": workflow.as_dictionary()}
