@@ -1,6 +1,10 @@
 History
 =======
 
+0.6.0 (October 9th, 2019)
+------------------------
+* Add execute endpoint
+
 0.5.2 (September 17th, 2019)
 ----------------------------
 * Fix access token issue
