@@ -147,6 +147,12 @@ def consume():
                      Consumer can't download using the URL if it's not through Brizo.
         required: true
         type: string
+      - name: signature
+        in: query
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+      - name: index
+        in: query
+        description: Index of the file in the array of files.
     responses:
       200:
         description: Redirect to valid asset url.
@@ -226,9 +232,17 @@ def exec():
         description: The ID of the service agreement.
         required: true
         type: string
+      - name: signature
+        in: query
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        type: string
+      - name: workflowDID
+        in: query
+        description: DID of the workflow that is going to start to be executed.
+        type: string
     responses:
       200:
-        description: Redirect to valid asset url.
+        description: Call to the operator-service was successful.
       400:
         description: One of the required attributes is missing.
       401:
@@ -239,7 +253,9 @@ def exec():
     data = request.args
     required_attributes = [
         'serviceAgreementId',
-        'consumerAddress'
+        'consumerAddress',
+        'signature',
+        'workflowDID'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'consume')
     if msg:

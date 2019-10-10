@@ -303,4 +303,9 @@ def test_auth_token():
 
 
 def test_exec_endpoint():
-    pass
+    endpoint = BaseURLs.ASSETS_URL + '/exec'
+
+    pub_acc = get_publisher_account()
+    cons_acc = get_consumer_account()
+
+    ddo = get_registered_ddo(pub_acc, providers=[pub_acc.address])
