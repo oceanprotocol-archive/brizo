@@ -297,6 +297,7 @@ def test_auth_token():
     address = check_auth_token(token)
     assert address and address.lower() == pub_address.lower(), f'address mismatch, got {address}, ' \
                                                                f'' \
+                                                               f'' \
                                                                f'expected {pub_address}'
     good = verify_signature(keeper_instance(), pub_address, token, doc_id)
     assert good, f'invalid signature/auth-token {token}, {pub_address}, {doc_id}'
