@@ -5,23 +5,17 @@ import json
 import logging
 
 from eth_utils import remove_0x_prefix
-from flask import Blueprint, request
+from flask import Blueprint, jsonify, request
 from ocean_utils.did import id_to_did
+from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
 
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.util import (
-    check_required_attributes,
-    get_provider_account,
-    verify_signature,
-    get_asset_url_at_index,
-    get_download_url,
-    build_download_response,
-    is_access_granted,
-    do_secret_store_encrypt,
-    get_config,
-    keeper_instance, setup_keeper)
+from brizo.util import (build_download_response, check_required_attributes, do_secret_store_encrypt,
+                        get_asset_url_at_index, get_config, get_download_url, get_provider_account,
+                        is_access_granted, keeper_instance, setup_keeper, verify_signature,
+                        was_compute_triggered)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -105,7 +99,7 @@ def publish():
     try:
         if not verify_signature(keeper_instance(), publisher_address, signature, did):
             msg = f'Invalid signature {signature} for ' \
-                f'publisherAddress {publisher_address} and documentId {did}.'
+                  f'publisherAddress {publisher_address} and documentId {did}.'
             raise ValueError(msg)
 
         encrypted_document = do_secret_store_encrypt(
@@ -153,6 +147,12 @@ def consume():
                      Consumer can't download using the URL if it's not through Brizo.
         required: true
         type: string
+      - name: signature
+        in: query
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+      - name: index
+        in: query
+        description: Index of the file in the array of files.
     responses:
       200:
         description: Redirect to valid asset url.
@@ -198,7 +198,7 @@ def consume():
             index = int(data.get('index'))
             if not verify_signature(keeper_instance(), consumer_address, signature, agreement_id):
                 msg = f'Invalid signature {signature} for ' \
-                    f'publisherAddress {consumer_address} and documentId {agreement_id}.'
+                      f'publisherAddress {consumer_address} and documentId {agreement_id}.'
                 raise ValueError(msg)
 
             url = get_asset_url_at_index(keeper_instance(), index, did, provider_acc)
@@ -207,6 +207,84 @@ def consume():
         logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
                     f' url {download_url}')
         return build_download_response(request, requests_session, url, download_url)
+    except Exception as e:
+        logger.error(f'Error- {str(e)}', exc_info=1)
+        return f'Error : {str(e)}', 500
+
+
+@services.route('/exec', methods=['POST'])
+def exec():
+    """Call the execution of a workflow.
+
+    ---
+    tags:
+      - services
+    consumes:
+      - application/json
+    parameters:
+      - name: consumerAddress
+        in: query
+        description: The consumer address.
+        required: true
+        type: string
+      - name: serviceAgreementId
+        in: query
+        description: The ID of the service agreement.
+        required: true
+        type: string
+      - name: signature
+        in: query
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        type: string
+      - name: workflowDID
+        in: query
+        description: DID of the workflow that is going to start to be executed.
+        type: string
+    responses:
+      200:
+        description: Call to the operator-service was successful.
+      400:
+        description: One of the required attributes is missing.
+      401:
+        description: Invalid asset data.
+      500:
+        description: Error
+    """
+    data = request.args
+    required_attributes = [
+        'serviceAgreementId',
+        'consumerAddress',
+        'signature',
+        'workflowDID'
+    ]
+    msg, status = check_required_attributes(required_attributes, data, 'consume')
+    if msg:
+        return msg, status
+
+    if not (data.get('signature')):
+        return f'`signature is required in the call to "consume".', 400
+
+    try:
+        agreement_id = data.get('serviceAgreementId')
+        consumer_address = data.get('consumerAddress')
+        asset_id = keeper_instance().agreement_manager.get_agreement(agreement_id).did
+        did = id_to_did(asset_id)
+        if not was_compute_triggered(agreement_id, did, consumer_address, keeper_instance()):
+            msg = (
+                'Checking if the compute was triggered failed. Either consumer address does not '
+                'have permission to executre this workflow or consumer address and/or service '
+                'agreement id is invalid.')
+            logger.warning(msg)
+            return msg, 401
+
+        workflow = DIDResolver(keeper_instance().did_registry).resolve(data.get('workflowDID'))
+        body = {"serviceAgreementId": agreement_id, "workflow": workflow.as_dictionary()}
+
+        response = requests_session.post(
+            get_config().operator_service_url + '/api/v1/operator/init',
+            data=json.dumps(body),
+            headers={'content-type': 'application/json'})
+        return jsonify({"workflowId": response.content.decode('utf-8')})
     except Exception as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
