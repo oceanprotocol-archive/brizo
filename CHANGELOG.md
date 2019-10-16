@@ -1,6 +1,68 @@
 History
 =======
 
+0.4.4 (Sep 16, 2019)
+------------------------
+* Support `ipfs` files by using the osmosis-ipfs-driver
+
+0.4.0 (Sep 10, 2019)
+------------------------
+* Keep only the proxy in Brizo and move events handling to a 
+separate stand-alone tool
+* Remove squid-py dependency, instead use the lower level ocean 
+libraries that were split out of squid-py (ocean-utils and ocean-keeper)
+* Remove support for the `initialize` endpoint
+
+0.3.12 (Jun 21st, 2019)
+------------------------
+* Not dispenser when pacific network.
+* Squid-py 0.6.13
+
+0.3.11 (Jun 20th, 2019)
+------------------------ 
+* Update with keeper-contracts v0.10.2
+
+0.3.10 (Jun 11th, 2019)
+------------------------ 
+* Better error handling
+* Improved processing of agreement events
+
+0.3.9 (May 29th, 2019)
+------------------------ 
+* Fix some small issues using squid-py v0.6.7
+* Add info about the contracts and version used.
+
+0.3.8 (May 20th, 2019)
+------------------------  
+* Support the use of auth token in place of signature for off-chain requests.
+
+0.3.7 (May 7th, 2019)
+------------------------   
+* Use squid-py 0.6.4 with proper keeper-contracts version
+
+0.3.6 (April 30th, 2019)
+------------------------   
+* Implement watcher to allow consumer initialize the agreement
+* Reduce logging
+* Use squid-py 0.6.2
+
+0.3.3 (April 5th, 2019)
+------------------------ 
+* Update entrypoint to add worker timeout as an environment variable
+
+0.3.2 (April 5th, 2019)
+------------------------ 
+* Download request using streaming.
+
+0.3.1 (April 1st, 2019)
+------------------------ 
+* Fix signature issue for javascript implementation
+
+0.3.0 (March 29th, 2019)
+------------------------ 
+* New API to expose the decryption of the Secret Store and make it compatible with squid-js.
+* Upgrade squid-py to 0.5.9
+
 0.2.10 (March 26th, 2019)
 -------------------------
 * Upgrade to squid-py 0.5.7

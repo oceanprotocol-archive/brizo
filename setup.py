@@ -18,18 +18,23 @@ with open('CHANGELOG.md') as history_file:
 # or pip install -e .
 install_requirements = [
     # Install squid-py and all its dependencies first
-    'squid-py==0.5.13',  # gets PyYAML, coloredlogs, web3
+    'ocean-utils==0.1.0',  # gets PyYAML, coloredlogs, web3
+    'ocean-keeper==0.1.3',
+    'ocean-secret-store-client==0.0.1',
     'Flask==1.0.2',
     'Flask-Cors==3.0.6',
     'Flask-RESTful==0.3.6',
     'flask-swagger==0.2.13',
     'flask-swagger-ui==3.6.0',
+    'Jinja2>=2.10.1',
+    'requests>=2.21.0',
     'gunicorn==19.9.0',
     'osmosis-azure-driver==0.0.4',
     'osmosis-aws-driver==0.0.2',
-    'osmosis-driver-interface==0.0.6',
+    'osmosis-driver-interface==0.0.7',
     'osmosis-on-premise-driver==0.0.6',
-    'Werkzeug==0.14.1',
+    'osmosis-ipfs-driver==0.0.1',
+    'Werkzeug>=0.15.3',
 ]
 
 # Required to run setup.py:
@@ -82,6 +87,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/oceanprotocol/brizo',
-    version='0.3.4',
+    version='0.4.5',
     zip_safe=False,
 )

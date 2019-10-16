@@ -30,28 +30,16 @@ handlers:
         encoding: utf8
 
 loggers:
-    service_agreement:
-        level: DEBUG
+    brizo:
+        level: INFO
         handlers: [console]
         propagate: no
-    ddo:
-        level: DEBUG
+    brizo.routes:
+        level: INFO
         handlers: [console]
         propagate: no
-    ocean:
-        level: DEBUG
-        handlers: [console]
-        propagate: no
-    keeper:
-        level: DEBUG
-        handlers: [console]
-        propagate: no
-    keeper-events:
-        level: DEBUG
-        handlers: [console]
-        propagate: no
-    events:
-        level: DEBUG
+    brizo.util:
+        level: INFO
         handlers: [console]
         propagate: no
 

@@ -1,41 +1,37 @@
 #  Copyright 2018 Ocean Protocol Foundation
 #  SPDX-License-Identifier: Apache-2.0
 
-import io
 import json
 import logging
 
-from eth_utils import add_0x_prefix
-from flask import Blueprint, request, Response
-from osmosis_driver_interface.osmosis import Osmosis
-from squid_py import ConfigProvider
-from squid_py.config import Config
-from squid_py.did import id_to_did
-from squid_py.exceptions import OceanDIDNotFound
-from squid_py.http_requests.requests_session import get_requests_session
-from squid_py.keeper import Keeper
-from squid_py.ocean.ocean import Ocean
+from eth_utils import remove_0x_prefix
+from flask import Blueprint, request
+from ocean_utils.did import id_to_did
+from ocean_utils.did_resolver.did_resolver import DIDResolver
+from ocean_utils.http_requests.requests_session import get_requests_session
+from secret_store_client.client import RPCError
 
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.util import (check_required_attributes, get_provider_account)
+from brizo.util import (
+    check_required_attributes,
+    get_provider_account,
+    verify_signature,
+    get_asset_url_at_index,
+    get_download_url,
+    build_download_response,
+    is_access_granted,
+    do_secret_store_encrypt,
+    get_config,
+    keeper_instance, setup_keeper)
 
 setup_logging()
 services = Blueprint('services', __name__)
-
-config_file = app.config['CONFIG_FILE']
-config = Config(filename=config_file)
-ConfigProvider.set_config(config)
-# Prepare keeper contracts for on-chain access control
-# Prepare OceanDB
-ocn = Ocean()
+setup_keeper(app.config['CONFIG_FILE'])
+provider_acc = get_provider_account()
 requests_session = get_requests_session()
 
-logger = logging.getLogger('brizo')
-
-
-# TODO run in cases of brizo crash or you restart
-# ocn.execute_pending_service_agreements()
+logger = logging.getLogger(__name__)
 
 
 @services.route('/publish', methods=['POST'])
@@ -61,7 +57,7 @@ def publish():
           type: object
           required:
             - documentId
-            - signedDocumentId
+            - signature
             - document
             - publisherAddress:
           properties:
@@ -69,7 +65,7 @@ def publish():
               description: Identifier of the asset to be registered in ocean.
               type: string
               example: 'did:op:08a429b8529856d59867503f8056903a680935a76950bb9649785cc97869a43d'
-            signedDocumentId:
+            signature:
               description: Publisher signature of the documentId
               type: string
               example: ''
@@ -91,147 +87,50 @@ def publish():
     """
     required_attributes = [
         'documentId',
-        'signedDocumentId',
+        'signature',
         'document',
         'publisherAddress'
     ]
     data = request.json
+    if 'signedDocumentId' in data and 'signature' not in data:
+        data['signature'] = data['signedDocumentId']
+
     msg, status = check_required_attributes(required_attributes, data, 'publish')
     if msg:
         return msg, status
 
-    provider_acc = get_provider_account(ocn)
     did = data.get('documentId')
-    signed_did = data.get('signedDocumentId')
-    document = data.get('document')
+    signature = data.get('signature')
+    document = json.dumps(json.loads(data.get('document')), separators=(',', ':'))
     publisher_address = data.get('publisherAddress')
 
     try:
-        address = Keeper.get_instance().ec_recover(did, signed_did)
-        if address.lower() != publisher_address.lower():
-            msg = f'Invalid signature {signed_did} for ' \
+        if not verify_signature(keeper_instance(), publisher_address, signature, did):
+            msg = f'Invalid signature {signature} for ' \
                 f'publisherAddress {publisher_address} and documentId {did}.'
             raise ValueError(msg)
 
-        encrypted_document = ocn.secret_store.encrypt(did, document, provider_acc)
+        encrypted_document = do_secret_store_encrypt(
+            remove_0x_prefix(did),
+            document,
+            provider_acc,
+            get_config()
+        )
         logger.info(f'encrypted urls {encrypted_document}, '
                     f'publisher {publisher_address}, '
                     f'documentId {did}')
         return encrypted_document, 201
-    except Exception as e:
+
+    except (RPCError, Exception) as e:
         logger.error(
-            f'Error encrypting document: {e}. \nPayload was: documentId={did}, '
-            f'publisherAddress={publisher_address}',
+            f'SecretStore Error: {e}. \n'
+            f'providerAddress={provider_acc.address}\n'
+            f'Payload was: documentId={did}, '
+            f'publisherAddress={publisher_address},'
+            f'signature={signature}',
             exc_info=1
         )
-        return "Error: " + str(e), 500
-
-
-@services.route('/access/initialize', methods=['POST'])
-def initialize():
-    """Initialize the service agreement between the publisher and the consumer.
-
-    ---
-    tags:
-      - services
-    consumes:
-      - application/json
-    parameters:
-      - in: body
-        name: body
-        required: true
-        description: Service agreement initialization.
-        schema:
-          type: object
-          required:
-            - did
-            - serviceAgreementId
-            - serviceDefinitionId
-            - signature
-            - consumerAddress:
-          properties:
-            did:
-              description: Identifier of the asset registered in ocean.
-              type: string
-              example: 'did:op:08a429b8529856d59867503f8056903a680935a76950bb9649785cc97869a43d'
-            serviceAgreementId:
-              description: Identifier of the service agreement.
-              type: string
-              example: 'bb23s87856d59867503f80a690357406857698570b964ac8dcc9d86da4ada010'
-            serviceDefinitionId:
-              description: Identifier of the service definition.
-              type: string
-              example: '0'
-            signature:
-              description: Signature
-              type: string
-              example: 'cade376598342cdae231321a0097876aeda656a567a67c6767fd8710129a9dc1'
-            consumerAddress:
-              description: Consumer address.
-              type: string
-              example: '0x00a329c0648769A73afAc7F9381E08FB43dBEA72'
-    responses:
-      201:
-        description: Service agreement successfully initialized.
-      400:
-        description: One of the required attributes is missing.
-      401:
-        description: Error executing the service agreement.
-      422:
-        description: Ocean DID not found on chain.
-      500:
-        description: Error
-    """
-    required_attributes = [
-        'did',
-        'serviceAgreementId',
-        'serviceDefinitionId',
-        'signature',
-        'consumerAddress'
-    ]
-    data = request.json
-    msg, status = check_required_attributes(required_attributes, data, 'initialize')
-    if msg:
-        return msg, status
-    try:
-
-        logger.debug('Found ddo of did %s', data.get('did'))
-        service_agreement_id = add_0x_prefix(data.get('serviceAgreementId'))
-        # When you call execute agreement this start different listeners of the events to
-        # catch the paymentLocked.
-        did = data.get('did')
-        asset = ocn.assets.resolve(did)
-        provider_acc = get_provider_account(ocn)
-        if config.has_option('resources', 'validate.creator'):
-            if config.get('resources', 'validate.creator').lower() == 'true':
-                if provider_acc.address.lower() != asset.proof.get('creator', '').lower():
-                    raise ValueError('Cannot serve asset service request because owner of '
-                                     'requested asset is not recognized in this instance of Brizo.')
-
-        success = ocn.agreements.create(
-            did=did,
-            service_definition_id=data.get('serviceDefinitionId'),
-            agreement_id=service_agreement_id,
-            service_agreement_signature=data.get('signature'),
-            consumer_address=data.get('consumerAddress'),
-            publisher_account=provider_acc
-        )
-
-        logger.info('Done calling ocean.agreements.create, request payload was %s', data)
-        if not success:
-            msg = 'Failed to create agreement.'
-            logger.error(msg)
-            return msg, 401
-
-        logger.info('Success creating service agreement')
-        return "Service agreement successfully created", 201
-
-    except OceanDIDNotFound as e:
-        logger.error(e, exc_info=1)
-        return "Requested did is not found in the keeper network: {}".format(str(e)), 422
-    except Exception as e:
-        logger.error(e, exc_info=1)
-        return "Error: " + str(e), 500
+        return f'Error: {str(e)}', 500
 
 
 @services.route('/consume', methods=['GET'])
@@ -283,60 +182,42 @@ def consume():
         return f'Either `url` or `signature and index` are required in the call to "consume".', 400
 
     try:
-        provider_account = get_provider_account(ocn)
+        keeper = keeper_instance()
         agreement_id = data.get('serviceAgreementId')
         consumer_address = data.get('consumerAddress')
-        asset_id = ocn.agreements.get(agreement_id).did
+        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
         did = id_to_did(asset_id)
-        if ocn.agreements.is_access_granted(
+
+        if not is_access_granted(
                 agreement_id,
                 did,
-                consumer_address):
-            logger.info('Connecting through Osmosis to generate the sign url.')
-            url = data.get('url')
-            try:
-                if not url:
-                    signature = data.get('signature')
-                    index = int(data.get('index'))
-                    address = Keeper.get_instance().ec_recover(agreement_id, signature)
-                    if address.lower() != consumer_address.lower():
-                        msg = f'Invalid signature {signature} for ' \
-                            f'consumerAddress {consumer_address} and documentId {did}.'
-                        raise ValueError(msg)
-
-                    asset = ocn.assets.resolve(did)
-                    urls_str = ocn.secret_store.decrypt(
-                        asset_id, asset.encrypted_files, provider_account
-                    )
-                    urls = json.loads(urls_str)
-                    if index >= len(urls):
-                        raise ValueError(f'url index "{index}"" is invalid.')
-                    url = urls[index]['url']
-
-                osm = Osmosis(url, config_file)
-                download_url = osm.data_plugin.generate_url(url)
-                logger.debug("Osmosis generate the url: %s", download_url)
-                try:
-                    if request.range:
-                        headers = {"Range": request.headers.get('range')}
-                        response = requests_session.get(download_url, headers=headers, stream=True)
-                    else:
-                        headers = {"Content-Disposition":
-                                       f'attachment;filename={url.split("/")[-1]}'
-                                   }
-                        response = requests_session.get(download_url, headers=headers, stream=True)
-                    return Response(io.BytesIO(response.content).read(), response.status_code, headers=headers)
-                except Exception as e:
-                    logger.error(e)
-                    return "Error getting the url content: %s" % e, 401
-            except Exception as e:
-                logger.error(e)
-                return "Error generating url: %s" % e, 401
-        else:
-            msg = "Invalid consumer address and/or service agreement id, " \
-                  "or consumer address does not have permission to consume this asset."
+                consumer_address,
+                keeper):
+            msg = ('Checking access permissions failed. Either consumer address does not have '
+                   'permission to consume this asset or consumer address and/or service agreement '
+                   'id is invalid.')
             logger.warning(msg)
             return msg, 401
-    except Exception as e:
-        logger.error("Error- " + str(e))
-        return "Error : " + str(e), 500
+
+        asset = DIDResolver(keeper.did_registry).resolve(did)
+        content_type = None
+        url = data.get('url')
+        if not url:
+            signature = data.get('signature')
+            index = int(data.get('index'))
+            if not verify_signature(keeper, consumer_address, signature, agreement_id):
+                msg = f'Invalid signature {signature} for ' \
+                    f'publisherAddress {consumer_address} and documentId {agreement_id}.'
+                raise ValueError(msg)
+
+            file_attributes = asset.metadata['base']['files'][index]
+            content_type = file_attributes.get('contentType', None)
+            url = get_asset_url_at_index(index, asset, provider_acc)
+
+        download_url = get_download_url(url, app.config['CONFIG_FILE'])
+        logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
+                    f' url {download_url}')
+        return build_download_response(request, requests_session, url, download_url, content_type)
+    except (ValueError, Exception) as e:
+        logger.error(f'Error- {str(e)}', exc_info=1)
+        return f'Error : {str(e)}', 500

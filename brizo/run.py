@@ -6,11 +6,15 @@ import configparser
 from flask import jsonify
 from flask_swagger import swagger
 from flask_swagger_ui import get_swaggerui_blueprint
-from squid_py.config import Config
 
+from brizo.config import Config
 from brizo.constants import BaseURLs, ConfigSections, Metadata
 from brizo.myapp import app
 from brizo.routes import services
+from brizo.util import keeper_instance, get_provider_account
+
+config = Config(filename=app.config['CONFIG_FILE'])
+brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
 
 
 def get_version():
@@ -21,9 +25,30 @@ def get_version():
 
 @app.route("/")
 def version():
+    keeper = keeper_instance()
     info = dict()
     info['software'] = Metadata.TITLE
     info['version'] = get_version()
+    info['keeper-url'] = config.keeper_url
+    info['network'] = keeper.network_name
+    info['contracts'] = dict()
+    info['contracts'][
+        'AccessSecretStoreCondition'] = keeper.access_secret_store_condition.address
+    info['contracts']['AgreementStoreManager'] = keeper.agreement_manager.address
+    info['contracts']['ConditionStoreManager'] = keeper.condition_manager.address
+    info['contracts']['DIDRegistry'] = keeper.did_registry.address
+    if keeper.network_name != 'pacific':
+        info['contracts']['Dispenser'] = keeper.dispenser.address
+    info['contracts'][
+        'EscrowAccessSecretStoreTemplate'] = keeper.escrow_access_secretstore_template.address
+    info['contracts']['EscrowReward'] = keeper.escrow_reward_condition.address
+    info['contracts']['HashLockCondition'] = keeper.hash_lock_condition.address
+    info['contracts']['LockRewardCondition'] = keeper.lock_reward_condition.address
+    info['contracts']['SignCondition'] = keeper.sign_condition.address
+    info['contracts']['OceanToken'] = keeper.token.address
+    info['contracts']['TemplateStoreManager'] = keeper.template_manager.address
+    info['keeper-version'] = keeper.token.version
+    info['provider-address'] = get_provider_account().address
     return jsonify(info)
 
 
@@ -36,8 +61,6 @@ def spec():
     return jsonify(swag)
 
 
-config = Config(filename=app.config['CONFIG_FILE'])
-brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
 # Call factory function to create our blueprint
 swaggerui_blueprint = get_swaggerui_blueprint(
     BaseURLs.SWAGGER_URL,
