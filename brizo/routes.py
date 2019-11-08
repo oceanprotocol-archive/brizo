@@ -294,7 +294,10 @@ def execute_compute_job():
             get_config().operator_service_url + '/api/v1/operator/init',
             data=json.dumps(body),
             headers={'content-type': 'application/json'})
-        return jsonify({"workflowId": response.content.decode('utf-8')})
+        if response.status_code not in (200, 201):
+            return f'Failed to start the job: {response.content.decode("utf-8")}', response.status_code
+
+        return jsonify({"workflowId": response.content.decode('utf-8')}), 201
     except Exception as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
