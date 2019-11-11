@@ -30,7 +30,7 @@ install_requirements = [
     'requests>=2.21.0',
     'gunicorn==19.9.0',
     'osmosis-azure-driver==0.0.4',
-    'osmosis-aws-driver==0.0.2',
+    'osmosis-aws-driver==0.0.4',
     'osmosis-driver-interface==0.0.7',
     'osmosis-on-premise-driver==0.0.6',
     'osmosis-ipfs-driver==0.0.1',
@@ -87,6 +87,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/oceanprotocol/brizo',
-    version='0.4.6',
+    version='0.4.7',
     zip_safe=False,
 )
