@@ -27,7 +27,7 @@ from brizo.util import (check_auth_token, do_secret_store_decrypt, do_secret_sto
                         keeper_instance,
                         verify_signature,
                         web3,
-                        build_download_response)
+                        build_download_response, get_download_url)
 from tests.conftest import get_consumer_account, get_publisher_account, get_sample_ddo
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
@@ -246,7 +246,6 @@ def test_empty_payload(client):
 
 
 def test_publish(client):
-    keeper = keeper_instance()
     endpoint = BaseURLs.ASSETS_URL + '/publish'
     did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
