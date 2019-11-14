@@ -14,6 +14,7 @@ from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.ddo.ddo import DDO
 from ocean_utils.http_requests.requests_session import get_requests_session
+from plecos import plecos
 from werkzeug.utils import get_content_type
 
 from ocean_utils.ddo.metadata import MetadataMain
@@ -39,6 +40,7 @@ def dummy_callback(*_):
 
 
 def get_registered_ddo(account, providers=None):
+
     keeper = keeper_instance()
     aqua = Aquarius('http://localhost:5000')
     metadata = get_sample_ddo()['service'][0]['attributes']
@@ -93,6 +95,17 @@ def get_registered_ddo(account, providers=None):
     ddo.add_public_key(did, account.address)
 
     ddo.add_authentication(did, PUBLIC_KEY_TYPE_RSA)
+
+    try:
+        _oldddo = aqua.get_asset_ddo(ddo.did)
+        if _oldddo:
+            aqua.retire_asset_ddo(ddo.did)
+    except ValueError:
+        pass
+
+    if not plecos.is_valid_dict_local(ddo.metadata):
+        print(f'invalid metadata: {plecos.validate_dict_local(ddo.metadata)}')
+        assert False, f'invalid metadata: {plecos.validate_dict_local(ddo.metadata)}'
 
     encrypted_files = do_secret_store_encrypt(
         remove_0x_prefix(ddo.asset_id),

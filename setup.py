@@ -49,6 +49,7 @@ test_requirements = [
     'pytest',
     'pytest-watch',
     'tox',
+    'plecos'
 ]
 
 # Possibly required by developers of ocean-brizo:
