@@ -14,7 +14,6 @@ from ocean_keeper.contract_handler import ContractHandler
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg, get_account
 from ocean_keeper.web3_provider import Web3Provider
 from ocean_utils.did import did_to_id
-from ocean_utils.did_resolver.did_resolver import DIDResolver
 from osmosis_driver_interface.osmosis import Osmosis
 from secret_store_client.client import Client as SecretStore
 

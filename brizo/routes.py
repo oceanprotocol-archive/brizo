@@ -223,7 +223,7 @@ def consume():
 
 
 @services.route('/exec', methods=['POST'])
-def exec():
+def execute_compute_job():
     """Call the execution of a workflow.
 
     ---
