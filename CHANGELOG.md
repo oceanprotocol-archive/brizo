@@ -17,13 +17,21 @@ History
 --------------------------
 * Update ocean-utils to work with the new ddos structure.
 
+0.4.4 (Sep 16, 2019)
+------------------------
+* Support `ipfs` files by using the osmosis-ipfs-driver
+
 0.4.1 (September 2nd, 2019)
 ---------------------------
 * Upgrade the keeper contracts to v0.11.1
 
-0.4.0 (August 28th ,2019)
--------------------------
-* This release removes the events monitoring responsibility from Brizo which is now only responsible for serving agreement related endpoints.
+0.4.0 (Sep 10, 2019)
+------------------------
+* Keep only the proxy in Brizo and move events handling to a 
+separate stand-alone tool
+* Remove squid-py dependency, instead use the lower level ocean 
+libraries that were split out of squid-py (ocean-utils and ocean-keeper)
+* Remove support for the `initialize` endpoint
 
 0.3.14 (July 16th ,2019)
 -------------------------

@@ -2,6 +2,8 @@
 #  SPDX-License-Identifier: Apache-2.0
 
 import json
+import mimetypes
+from unittest.mock import Mock, MagicMock
 import uuid
 
 from eth_utils import add_0x_prefix, remove_0x_prefix
@@ -11,6 +13,10 @@ from ocean_utils.agreements.service_factory import ServiceDescriptor, ServiceFac
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.ddo.ddo import DDO
+from ocean_utils.http_requests.requests_session import get_requests_session
+from plecos import plecos
+from werkzeug.utils import get_content_type
+
 from ocean_utils.ddo.metadata import MetadataMain
 from ocean_utils.ddo.public_key_rsa import PUBLIC_KEY_TYPE_RSA
 from ocean_utils.did import DID, did_to_id, did_to_id_bytes
@@ -20,7 +26,9 @@ from brizo.constants import BaseURLs
 from brizo.util import (check_auth_token, do_secret_store_decrypt, do_secret_store_encrypt,
                         generate_token, get_config, get_provider_account, is_token_valid,
                         keeper_instance,
-                        verify_signature, web3)
+                        verify_signature,
+                        web3,
+                        build_download_response, get_download_url)
 from tests.conftest import get_consumer_account, get_publisher_account, get_sample_ddo
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
@@ -32,6 +40,7 @@ def dummy_callback(*_):
 
 
 def get_registered_ddo(account, providers=None):
+
     keeper = keeper_instance()
     aqua = Aquarius('http://localhost:5000')
     metadata = get_sample_ddo()['service'][0]['attributes']
@@ -87,6 +96,17 @@ def get_registered_ddo(account, providers=None):
 
     ddo.add_authentication(did, PUBLIC_KEY_TYPE_RSA)
 
+    try:
+        _oldddo = aqua.get_asset_ddo(ddo.did)
+        if _oldddo:
+            aqua.retire_asset_ddo(ddo.did)
+    except ValueError:
+        pass
+
+    if not plecos.is_valid_dict_local(ddo.metadata):
+        print(f'invalid metadata: {plecos.validate_dict_local(ddo.metadata)}')
+        assert False, f'invalid metadata: {plecos.validate_dict_local(ddo.metadata)}'
+
     encrypted_files = do_secret_store_encrypt(
         remove_0x_prefix(ddo.asset_id),
         json.dumps(metadata['main']['files']),
@@ -119,9 +139,9 @@ def place_order(publisher_account, ddo, consumer_account):
     agreement_id = ServiceAgreement.create_new_agreement_id()
     agreement_template = keeper.escrow_access_secretstore_template
     publisher_address = publisher_account.address
-    balance = keeper.token.get_token_balance(consumer_account.address) / (2 ** 18)
-    if balance < 20:
-        keeper.dispenser.request_tokens(100, consumer_account)
+    # balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
+    # if balance < 20:
+    #     keeper.dispenser.request_tokens(100, consumer_account)
 
     service_agreement = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
     condition_ids = service_agreement.generate_agreement_condition_ids(
@@ -184,6 +204,10 @@ def test_consume(client):
     )
     assert event, "Agreement event is not found, check the keeper node's logs"
 
+    consumer_balance = keeper.token.get_token_balance(cons_acc.address)
+    if consumer_balance < 50:
+        keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
+
     sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
     lock_reward(agreement_id, sa, cons_acc)
     event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
@@ -239,7 +263,6 @@ def test_empty_payload(client):
 
 
 def test_publish(client):
-    keeper = keeper_instance()
     endpoint = BaseURLs.ASSETS_URL + '/publish'
     did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
@@ -305,3 +328,52 @@ def test_auth_token():
 
 def test_exec_endpoint():
     pass
+
+
+def test_download_ipfs_file(client):
+    cid = 'QmQfpdcMWnLTXKKW9GPV7NgtEugghgD6HgzSF6gSrp2mL9'
+    url = f'ipfs://{cid}'
+    download_url = get_download_url(url, None)
+    requests_session = get_requests_session()
+
+    request = Mock()
+    request.range = None
+
+    print(f'got ipfs download url: {download_url}')
+    assert download_url and download_url.endswith(f'ipfs/{cid}')
+    response = build_download_response(request, requests_session, download_url, download_url, None)
+    assert response.data, f'got no data {response.data}'
+
+
+def test_build_download_response():
+    request = Mock()
+    request.range = None
+
+    class Dummy:
+        pass
+
+    response = Dummy()
+    response.content = b'asdsadf'
+    response.status_code = 200
+
+    requests_session = Dummy()
+    requests_session.get = MagicMock(return_value=response)
+
+    filename = '<<filename>>.xml'
+    content_type = mimetypes.guess_type(filename)[0]
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session, url, url, None)
+    assert response.headers["content-type"] == content_type
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename}'
+
+    filename = '<<filename>>'
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session, url, url, None)
+    assert response.headers["content-type"] == get_content_type(response.default_mimetype, response.charset)
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename}'
+
+    filename = '<<filename>>'
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session, url, url, content_type)
+    assert response.headers["content-type"] == content_type
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename+mimetypes.guess_extension(content_type)}'
