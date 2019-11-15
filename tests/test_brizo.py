@@ -204,6 +204,10 @@ def test_consume(client):
     )
     assert event, "Agreement event is not found, check the keeper node's logs"
 
+    consumer_balance = keeper.token.get_token_balance(cons_acc.address)
+    if consumer_balance < 50:
+        keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
+
     sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
     lock_reward(agreement_id, sa, cons_acc)
     event = keeper.lock_reward_condition.subscribe_condition_fulfilled(

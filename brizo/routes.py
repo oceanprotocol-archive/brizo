@@ -209,7 +209,7 @@ def consume():
                       f'publisherAddress {consumer_address} and documentId {agreement_id}.'
                 raise ValueError(msg)
 
-            file_attributes = asset.metadata['base']['files'][index]
+            file_attributes = asset.metadata['main']['files'][index]
             content_type = file_attributes.get('contentType', None)
             url = get_asset_url_at_index(index, asset, provider_acc)
 
