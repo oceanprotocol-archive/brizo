@@ -27,8 +27,8 @@ def setup_keeper(config_file=None):
     keeper_url = config.keeper_url
     artifacts_path = get_keeper_path(config)
 
-    ContractHandler.artifacts_path = artifacts_path
-    Web3Provider.get_web3(keeper_url)
+    ContractHandler.set_artifacts_path(artifacts_path)
+    Web3Provider.init_web3(keeper_url)
     init_account_envvars()
 
     account = get_account(0)
@@ -38,10 +38,12 @@ def setup_keeper(config_file=None):
                              f'variable `PROVIDER_ADDRESS`. Please set the following evnironment '
                              f'variables and try again: `PROVIDER_ADDRESS`, `PROVIDER_PASSWORD`, '
                              f'and `PROVIDER_KEYFILE`.')
-    if not account.password or not account.key_file:
+    if not account._private_key and not (account.password and account._encrypted_key):
         raise AssertionError(f'Brizo cannot run without a valid '
-                             f'ethereum account with a password and keyfile. Current account '
-                             f'has password {account.password} and keyfile {account.key_file}.')
+                             f'ethereum account with either a password and keyfile/encrypted-key-string '
+                             f'or private key. Current account has password {account.password}, '
+                             f'keyfile {account.key_file}, encrypted-key {account._encrypted_key} '
+                             f'and private-key {account._private_key}.')
 
 
 def init_account_envvars():
@@ -180,7 +182,7 @@ def get_keeper_path(config):
 def keeper_instance():
     # Init web3 before fetching keeper instance.
     web3()
-    return Keeper.get_instance(get_keeper_path(get_config()))
+    return Keeper.get_instance()
 
 
 def web3():
