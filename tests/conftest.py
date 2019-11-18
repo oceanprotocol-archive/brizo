@@ -33,8 +33,8 @@ def client():
 @pytest.fixture(autouse=True)
 def setup_all():
     config = get_config()
-    Web3Provider.get_web3(config.keeper_url)
-    ContractHandler.artifacts_path = get_keeper_path(config)
+    Web3Provider.init_web3(config.keeper_url)
+    ContractHandler.set_artifacts_path(get_keeper_path(config))
     init_account_envvars()
 
 
