@@ -47,7 +47,7 @@ def version():
     info['contracts']['SignCondition'] = keeper.sign_condition.address
     info['contracts']['OceanToken'] = keeper.token.address
     info['contracts']['TemplateStoreManager'] = keeper.template_manager.address
-    info['keeper-version'] = keeper.token.version
+    info['keeper-version'] = keeper.did_registry.version
     info['provider-address'] = get_provider_account().address
     return jsonify(info)
 
