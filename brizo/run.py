@@ -32,8 +32,7 @@ def version():
     info['keeper-url'] = config.keeper_url
     info['network'] = keeper.network_name
     info['contracts'] = dict()
-    info['contracts'][
-        'AccessSecretStoreCondition'] = keeper.access_secret_store_condition.address
+    info['contracts']['AccessSecretStoreCondition'] = keeper.access_secret_store_condition.address
     info['contracts']['AgreementStoreManager'] = keeper.agreement_manager.address
     info['contracts']['ConditionStoreManager'] = keeper.condition_manager.address
     info['contracts']['DIDRegistry'] = keeper.did_registry.address
