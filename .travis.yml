@@ -16,7 +16,7 @@ before_install:
   - cd barge
   - export KEEPER_VERSION=v0.13.1
   - export AQUARIUS_VERSION=v1.0.5
-  - bash -x start_ocean.sh --no-brizo --no-commons --local-spree-node 2>&1 > start_ocean.log &
+  - bash -x start_ocean.sh --no-faucet --no-dashboard --no-agent --no-events-handler --no-brizo --no-commons --local-spree-node 2>&1 > start_ocean.log &
   - cd ..
 
 install: pip install -U tox-travis
