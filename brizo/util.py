@@ -122,8 +122,12 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
 
 
 def was_compute_triggered(agreement_id, did, computer_consumer_address, keeper):
-    agreement_consumer = keeper.escrow_compute_execution_template.get_agreement_consumer(
-        agreement_id)
+    event_logs = _get_agreement_actor_event(keeper, agreement_id).get_all_entries()
+    if not event_logs:
+        return False
+
+    agreement_consumer = event_logs[0].args.actor
+
     if agreement_consumer is None:
         return False
 
