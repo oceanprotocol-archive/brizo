@@ -28,7 +28,7 @@ from brizo.util import (check_auth_token, do_secret_store_decrypt, do_secret_sto
                         keeper_instance,
                         verify_signature,
                         web3,
-                        build_download_response, get_download_url)
+                        build_download_response, get_download_url, get_latest_keeper_version)
 from tests.conftest import get_consumer_account, get_publisher_account, get_sample_ddo
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
@@ -40,31 +40,37 @@ def dummy_callback(*_):
 
 
 def get_registered_ddo(account, providers=None):
-
     keeper = keeper_instance()
     aqua = Aquarius('http://localhost:5000')
+
+    for did in aqua.list_assets():
+        aqua.retire_asset_ddo(did)
+
     metadata = get_sample_ddo()['service'][0]['attributes']
     metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
-
     ddo = DDO()
     ddo_service_endpoint = aqua.get_service_endpoint()
 
     metadata_service_desc = ServiceDescriptor.metadata_service_descriptor(metadata,
                                                                           ddo_service_endpoint)
 
-    access_service_attributes = {"main": {
-        "name": "dataAssetAccessServiceAgreement",
-        "creator": account.address,
-        "price": metadata[MetadataMain.KEY]['price'],
-        "timeout": 3600,
-        "datePublished": metadata[MetadataMain.KEY]['dateCreated']
-    }}
+    access_service_attributes = {
+        "main": {
+            "name": "dataAssetAccessServiceAgreement",
+            "creator": account.address,
+            "price": metadata[MetadataMain.KEY]['price'],
+            "timeout": 3600,
+            "datePublished": metadata[MetadataMain.KEY]['dateCreated']
+        }
+    }
 
     service_descriptors = [ServiceDescriptor.authorization_service_descriptor(
         'http://localhost:12001')]
+    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.ASSET_ACCESS]
     service_descriptors += [ServiceDescriptor.access_service_descriptor(
         access_service_attributes,
-        'http://localhost:8030'
+        'http://localhost:8030',
+        keeper.template_manager.create_template_id(template_name)
     )]
 
     service_descriptors = [metadata_service_desc] + service_descriptors
@@ -79,16 +85,14 @@ def get_registered_ddo(account, providers=None):
 
     did = ddo.assign_did(DID.did(ddo.proof['checksum']))
 
-    access_service = ServiceFactory.complete_access_service(did,
-                                                            'http://localhost:8030',
-                                                            access_service_attributes,
-                                                            keeper.escrow_access_secretstore_template.address,
-                                                            keeper.escrow_reward_condition.address)
+    stype_to_service = {s.type: s for s in services}
+    access_service = stype_to_service[ServiceTypes.ASSET_ACCESS]
+
+    name_to_address = {cname: cinst.address for cname, cinst in keeper.contract_name_to_instance.items()}
+    access_service.init_conditions_values(did, contract_name_to_address=name_to_address)
+    ddo.add_service(access_service)
     for service in services:
-        if service.type == 'access':
-            ddo.add_service(access_service)
-        else:
-            ddo.add_service(service)
+        ddo.add_service(service)
 
     ddo.proof['signatureValue'] = keeper.sign_hash(did_to_id_bytes(did), account)
 
@@ -134,10 +138,14 @@ def get_registered_ddo(account, providers=None):
     return ddo
 
 
+def get_template_actor_types(keeper, template_id):
+    actor_type_ids = keeper.template_manager.get_template(template_id).actor_type_ids
+    return [keeper.template_manager.get_template_actor_type_value(_id) for _id in actor_type_ids]
+
+
 def place_order(publisher_account, ddo, consumer_account):
     keeper = keeper_instance()
     agreement_id = ServiceAgreement.create_new_agreement_id()
-    agreement_template = keeper.escrow_access_secretstore_template
     publisher_address = publisher_account.address
     # balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
     # if balance < 20:
@@ -148,14 +156,20 @@ def place_order(publisher_account, ddo, consumer_account):
         agreement_id, ddo.asset_id, consumer_account.address, publisher_address, keeper)
     time_locks = service_agreement.conditions_timelocks
     time_outs = service_agreement.conditions_timeouts
-    agreement_template.create_agreement(
+
+    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.ASSET_ACCESS]
+    template_id = keeper.template_manager.create_template_id(template_name)
+    actor_map = {'consumer': consumer_account.address, 'provider': publisher_address}
+    actors = [actor_map[_type] for _type in get_template_actor_types(keeper, template_id)]
+
+    keeper_instance().agreement_manager.create_agreement(
         agreement_id,
         ddo.asset_id,
+        template_id,
         condition_ids,
-
         time_locks,
         time_outs,
-        consumer_account.address,
+        actors,
         consumer_account
     )
 
@@ -199,7 +213,7 @@ def test_consume(client):
     signature = keeper.sign_hash(agr_id_hash, cons_acc)
     index = 0
 
-    event = keeper.escrow_access_secretstore_template.subscribe_agreement_created(
+    event = keeper.agreement_manager.subscribe_agreement_created(
         agreement_id, 15, None, (), wait=True, from_block=0
     )
     assert event, "Agreement event is not found, check the keeper node's logs"
@@ -377,3 +391,8 @@ def test_build_download_response():
     response = build_download_response(request, requests_session, url, url, content_type)
     assert response.headers["content-type"] == content_type
     assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename+mimetypes.guess_extension(content_type)}'
+
+
+def test_latest_keeper_version():
+    version = get_latest_keeper_version()
+    assert version.startswith('v') and len(version.split('.')) == 3, ''

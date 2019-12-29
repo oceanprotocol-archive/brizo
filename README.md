@@ -77,6 +77,14 @@ pip install -r requirements_dev.txt
 export FLASK_APP=brizo/run.py
 export CONFIG_FILE=config.ini
 ./scripts/wait_for_migration_and_extract_keeper_artifacts.sh
+export PROVIDER_ADDRESS="your ethereum address goes here"
+# Set one of the following
+export PROVIDER_KEY="the private key"
+export PROVIDER_ENCRYPTED_KEY="The encrypted key json from the keyfile"
+export PROVIDER_KEYFILE="your ethereum address goes here"
+# and set the password if using either PROVIDER_KEYFILE or PROVIDER_ENCRYPTED_KEY
+export PROVIDER_PASSWORD="password to allow decrypting the encrypted key"
+
 flask run --port=8030
 ```
 
