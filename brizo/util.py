@@ -11,6 +11,7 @@ from eth_utils import remove_0x_prefix
 from flask import Response
 from ocean_keeper import Keeper
 from ocean_keeper.contract_handler import ContractHandler
+from ocean_keeper.event_filter import EventFilter
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg, get_account
 from ocean_keeper.web3_provider import Web3Provider
 from ocean_utils.did import did_to_id
@@ -84,9 +85,26 @@ def do_secret_store_decrypt(did_id, encrypted_document, provider_acc, config):
     )
 
 
+def _get_agreement_actor_event(keeper, agreement_id, from_block=0, to_block='latest'):
+    _filter = {'agreementId': Web3Provider.get_web3().toBytes(hexstr=agreement_id)}
+
+    event_filter = EventFilter(
+        keeper.agreement_manager.AGREEMENT_ACTOR_ADDED_EVENT,
+        keeper.agreement_manager._get_contract_agreement_actor_added_event(),
+        _filter,
+        from_block=from_block,
+        to_block=to_block
+    )
+    event_filter.set_poll_interval(0.5)
+    return event_filter
+
+
 def is_access_granted(agreement_id, did, consumer_address, keeper):
-    agreement_consumer = keeper.escrow_access_secretstore_template.get_agreement_consumer(
-        agreement_id)
+    event_logs = _get_agreement_actor_event(keeper, agreement_id).get_all_entries()
+    if not event_logs:
+        return False
+
+    agreement_consumer = event_logs[0].args.actor
 
     if agreement_consumer is None:
         return False
@@ -181,6 +199,15 @@ def get_keeper_path(config):
             path = os.path.join(site.PREFIXES[0], 'artifacts')
 
     return path
+
+
+def get_latest_keeper_version():
+    keeper = keeper_instance()
+    keeper_versions = sorted(
+        [tuple([int(v) for v in c.version[1:].split('.')]) for c in keeper.contract_name_to_instance.values() if c]
+    )
+    v_numbers = [str(n) for n in keeper_versions[-1]]
+    return 'v' + '.'.join(v_numbers)
 
 
 def keeper_instance():
