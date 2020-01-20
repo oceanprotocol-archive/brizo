@@ -298,7 +298,7 @@ def get_asset_url_at_index(url_index, asset, account):
 def get_asset_urls(asset, account):
     logger.debug(f'get_asset_url_at_index(): did={asset.did}, provider={account.address}')
     try:
-        allurls=dict()
+        allurls = list()
         files_str = do_secret_store_decrypt(
             remove_0x_prefix(asset.asset_id),
             asset.encrypted_files,
