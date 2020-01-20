@@ -226,7 +226,7 @@ def consume():
 
 @services.route('/compute', methods=['DELETE'])
 def compute_delete_job():
-    """Call the execution of a workflow.
+    """Deletes a workflow.
 
     ---
     tags:
@@ -300,7 +300,7 @@ def compute_delete_job():
 
 @services.route('/compute', methods=['PUT'])
 def compute_stop_job():
-    """Call the execution of a workflow.
+    """Stop the execution of a workflow.
 
     ---
     tags:
@@ -529,23 +529,23 @@ def compute_start_job():
         stage['compute']['maxtime']=3600
         #algorithm prop
         if data.get("algorithmDID") is None:
-          # use the metadata provided
-          algo=json.loads(data.get('algorithmMeta'))
-          stage['algorithm']['url']=algo.url
-          stage['algorithm']['rawcode']=algo.rawcode
-          stage['algorithm']['container']=dict()
-          stage['algorithm']['container']['image']=algo.container_image
-          stage['algorithm']['container']['tag']=algo.container_tag
-          stage['algorithm']['container']['entrypoint']=algo.container_entry_point
+            # use the metadata provided
+            algo=json.loads(data.get('algorithmMeta'))
+            stage['algorithm']['url']=algo.url
+            stage['algorithm']['rawcode']=algo.rawcode
+            stage['algorithm']['container']=dict()
+            stage['algorithm']['container']['image']=algo.container_image
+            stage['algorithm']['container']['tag']=algo.container_tag
+            stage['algorithm']['container']['entrypoint']=algo.container_entry_point
         else:
-          # use the DID
-          algoasset = DIDResolver(keeper_instance().did_registry).resolve(data.get('algorithmDID'))
-          stage['algorithm']['id']=data.get('algorithmDID')
-          stage['algorithm']['url']=get_asset_url_at_index(0,algoasset, provider_acc)
-          if not stage['algorithm']['url']:
-            #there is no url ??
-            return f'`cannot get url for the algorithmDID.', 400
-          stage['algorithm']['container']=algoasset.metadata['main']['algorithm']['container']
+            # use the DID
+            algoasset = DIDResolver(keeper_instance().did_registry).resolve(data.get('algorithmDID'))
+            stage['algorithm']['id']=data.get('algorithmDID')
+            stage['algorithm']['url']=get_asset_url_at_index(0,algoasset, provider_acc)
+            if not stage['algorithm']['url']:
+                #there is no url ??
+                return f'`cannot get url for the algorithmDID.', 400
+            stage['algorithm']['container']=algoasset.metadata['main']['algorithm']['container']
         #output prop
         # TODO  - replace with real values below
         stage['output']['nodeUri']="https://nile.dev-ocean.com"
