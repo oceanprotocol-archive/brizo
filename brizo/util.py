@@ -295,6 +295,30 @@ def get_asset_url_at_index(url_index, asset, account):
         logger.error(f'Error decrypting url at index {url_index} for asset {asset.did}: {str(e)}')
         raise
 
+def get_asset_urls(asset, account):
+    logger.debug(f'get_asset_url_at_index(): did={asset.did}, provider={account.address}')
+    try:
+        allurls=dict()
+        files_str = do_secret_store_decrypt(
+            remove_0x_prefix(asset.asset_id),
+            asset.encrypted_files,
+            account,
+            get_config()
+        )
+        logger.debug(f'Got decrypted files str {files_str}')
+        files_list = json.loads(files_str)
+        if not isinstance(files_list, list):
+            raise TypeError(f'Expected a files list, got {type(files_list)}.')
+        for afile in files_list:
+            if 'url' in afile:
+                allurls.append(afile['url'])
+        
+        return allurls
+
+    except Exception as e:
+        logger.error(f'Error decrypting urls for asset {asset.did}: {str(e)}')
+        raise
+
 
 def get_download_url(url, config_file):
     try:
