@@ -14,7 +14,7 @@ from secret_store_client.client import RPCError
 from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (build_download_response, check_required_attributes, do_secret_store_encrypt,
-                        get_asset_url_at_index, get_config, get_download_url, get_provider_account,
+                        get_asset_url_at_index, get_asset_urls, get_config, get_download_url, get_provider_account,
                         is_access_granted, keeper_instance, setup_keeper, verify_signature,
                         was_compute_triggered)
 
@@ -222,8 +222,10 @@ def consume():
         return f'Error : {str(e)}', 500
 
 
-@services.route('/exec', methods=['POST'])
-def execute_compute_job():
+# Compute delete job
+
+@services.route('/compute', methods=['DELETE'])
+def compute_delete_job():
     """Call the execution of a workflow.
 
     ---
@@ -232,23 +234,23 @@ def execute_compute_job():
     consumes:
       - application/json
     parameters:
-      - name: consumerAddress
+      - name: signature
         in: query
-        description: The consumer address.
-        required: true
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
         type: string
       - name: serviceAgreementId
         in: query
         description: The ID of the service agreement.
         required: true
         type: string
-      - name: signature
+      - name: consumerAddress
         in: query
-        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        description: The owner address.
+        required: true
         type: string
-      - name: workflowDID
+      - name: jobId
         in: query
-        description: DID of the workflow that is going to start to be executed.
+        description: JobId.
         type: string
     responses:
       200:
@@ -262,39 +264,310 @@ def execute_compute_job():
     """
     data = request.args
     required_attributes = [
-        'serviceAgreementId',
-        'consumerAddress',
-        'signature',
-        'workflowDID'
+        'signature'
     ]
-    msg, status = check_required_attributes(required_attributes, data, 'consume')
+    msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
         return msg, status
 
     if not (data.get('signature')):
         return f'`signature is required in the call to "consume".', 400
-
+    # TODO  - check incoming signature
     try:
         agreement_id = data.get('serviceAgreementId')
-        consumer_address = data.get('consumerAddress')
-        asset_id = keeper_instance().agreement_manager.get_agreement(agreement_id).did
-        did = id_to_did(asset_id)
-        if not was_compute_triggered(agreement_id, did, consumer_address, keeper_instance()):
-            msg = (
-                'Checking if the compute was triggered failed. Either consumer address does not '
-                'have permission to executre this workflow or consumer address and/or service '
-                'agreement id is invalid.')
-            logger.warning(msg)
-            return msg, 401
-
-        workflow = DIDResolver(keeper_instance().did_registry).resolve(data.get('workflowDID'))
-        body = {"serviceAgreementId": agreement_id, "workflow": workflow.as_dictionary()}
-
-        response = requests_session.post(
-            get_config().operator_service_url + '/api/v1/operator/init',
-            data=json.dumps(body),
+        owner = data.get('consumerAddress')
+        job_id=data.get('jobId')
+        body=dict()
+        if owner is not None:
+          body['owner']=owner
+        if job_id is not None:
+          body['jobId']=job_id
+        if agreement_id is not None:
+          body['agreementid']=agreement_id
+        # TODO - add signature so operator can check auth
+        response = requests_session.delete(
+            get_config().operator_service_url + '/api/v1/operator/compute',
+            params=body,
             headers={'content-type': 'application/json'})
-        return jsonify({"workflowId": response.content.decode('utf-8')})
+        return response.content
     except Exception as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
+
+
+
+# Compute stop job
+
+@services.route('/compute', methods=['PUT'])
+def compute_stop_job():
+    """Call the execution of a workflow.
+
+    ---
+    tags:
+      - services
+    consumes:
+      - application/json
+    parameters:
+      - name: signature
+        in: query
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        type: string
+      - name: serviceAgreementId
+        in: query
+        description: The ID of the service agreement.
+        required: true
+        type: string
+      - name: consumerAddress
+        in: query
+        description: The owner address.
+        required: true
+        type: string
+      - name: jobId
+        in: query
+        description: JobId.
+        type: string
+    responses:
+      200:
+        description: Call to the operator-service was successful.
+      400:
+        description: One of the required attributes is missing.
+      401:
+        description: Invalid asset data.
+      500:
+        description: Error
+    """
+    data = request.args
+    required_attributes = [
+        'signature'
+    ]
+    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    if msg:
+        return msg, status
+
+    if not (data.get('signature')):
+        return f'`signature is required in the call to "consume".', 400
+    # TODO  - check incoming signature
+    try:
+        agreement_id = data.get('serviceAgreementId')
+        owner = data.get('consumerAddress')
+        job_id=data.get('jobId')
+        body=dict()
+        if owner is not None:
+          body['owner']=owner
+        if job_id is not None:
+          body['jobId']=job_id
+        if agreement_id is not None:
+          body['agreementid']=agreement_id
+        # TODO - add signature so operator can check auth
+        response = requests_session.put(
+            get_config().operator_service_url + '/api/v1/operator/compute',
+            params=body,
+            headers={'content-type': 'application/json'})
+        return response.content
+    except Exception as e:
+        logger.error(f'Error- {str(e)}', exc_info=1)
+        return f'Error : {str(e)}', 500
+
+
+# Compute get status
+
+@services.route('/compute', methods=['GET'])
+def compute_get_status_job():
+    """Get status for a specific jobid/agreementId/owner
+
+    ---
+    tags:
+      - services
+    consumes:
+      - application/json
+    parameters:
+      - name: signature
+        in: query
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        type: string
+      - name: serviceAgreementId
+        in: query
+        description: The ID of the service agreement.
+        required: true
+        type: string
+      - name: consumerAddress
+        in: query
+        description: The owner address.
+        required: true
+        type: string
+      - name: jobId
+        in: query
+        description: JobId.
+        type: string
+    responses:
+      200:
+        description: Call to the operator-service was successful.
+      400:
+        description: One of the required attributes is missing.
+      401:
+        description: Invalid asset data.
+      500:
+        description: Error
+    """
+    data = request.args
+    required_attributes = [
+        'signature'
+    ]
+    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    if msg:
+        return msg, status
+
+    if not (data.get('signature')):
+        return f'`signature is required in the call to "consume".', 400
+    # TODO  - check incoming signature
+    try:
+        agreement_id = data.get('serviceAgreementId')
+        owner = data.get('consumerAddress')
+        job_id=data.get('jobId')
+        body=dict()
+        if owner is not None:
+          body['owner']=owner
+        if job_id is not None:
+          body['jobId']=job_id
+        if agreement_id is not None:
+          body['agreementid']=agreement_id
+        # TODO - add signature so operator can check auth
+        response = requests_session.get(
+            get_config().operator_service_url + '/api/v1/operator/compute',
+            params=body,
+            headers={'content-type': 'application/json'})
+        return response.content
+    except Exception as e:
+        logger.error(f'Error- {str(e)}', exc_info=1)
+        return f'Error : {str(e)}', 500
+
+
+# Compute start job
+
+@services.route('/compute', methods=['POST'])
+def compute_start_job():
+    """Call the execution of a workflow.
+
+    ---
+    tags:
+      - services
+    consumes:
+      - application/json
+    parameters:
+      - name: signature
+        in: query
+        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        type: string
+      - name: serviceAgreementId
+        in: query
+        description: The ID of the service agreement.
+        required: true
+        type: string
+      - name: consumerAddress
+        in: query
+        description: The consumer address.
+        required: true
+        type: string
+      - name: algorithmDID
+        in: query
+        description: hex str the did of the algorithm to be executed
+        required: false
+        type: string
+      - name: algorithmMeta
+        in: query
+        description: json object that define the algorithm attributes and url or raw code
+        required: false
+        type: string
+    responses:
+      200:
+        description: Call to the operator-service was successful.
+      400:
+        description: One of the required attributes is missing.
+      401:
+        description: Invalid asset data.
+      500:
+        description: Error
+    """
+    data = request.args
+    required_attributes = [
+        'signature',
+        'serviceAgreementId'
+    ]
+    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    if msg:
+        return msg, status
+    if not (data.get('signature')):
+        return f'`signature is required in the call to "consume".', 400
+    # TODO  - check incoming signature
+    try:
+        workflow = dict()
+        workflow['workflow']=dict()
+        workflow['workflow']['agreementId']=data.get("serviceAgreementId")
+        workflow['workflow']['owner']=data.get("consumerAddress")
+        workflow['workflow']['stages']=list()
+        #build a new stage
+        stage = dict()
+        stage['index']=0
+        stage['input']=list()
+        stage['compute']=dict()
+        stage['algorithm']=dict()
+        stage['output']=dict()
+        #input props
+        inputs=dict()
+        inputs['index']=0
+        asset = keeper_instance().agreement_manager.get_agreement(data.get("serviceAgreementId"))
+        did = id_to_did(asset.did)
+        inputs['id']=did
+        inputs['url']=get_asset_urls(asset, provider_acc)
+        if not inputs['url']:
+            #there are no urls ??
+            return f'`cannot get url(s) in input did.', 400
+        stage['input'].append(inputs)
+        #compute prop
+        stage['compute']['Instances']=1
+        stage['compute']['namespace']="ocean-compute"
+        stage['compute']['maxtime']=3600
+        #algorithm prop
+        if data.get("algorithmDID") is None:
+          # use the metadata provided
+          algo=json.loads(data.get('algorithmMeta'))
+          stage['algorithm']['url']=algo.url
+          stage['algorithm']['rawcode']=algo.rawcode
+          stage['algorithm']['container']=dict()
+          stage['algorithm']['container']['image']=algo.container_image
+          stage['algorithm']['container']['tag']=algo.container_tag
+          stage['algorithm']['container']['entrypoint']=algo.container_entry_point
+        else:
+          # use the DID
+          algoasset = DIDResolver(keeper_instance().did_registry).resolve(data.get('algorithmDID'))
+          stage['algorithm']['id']=data.get('algorithmDID')
+          stage['algorithm']['url']=get_asset_url_at_index(0,algoasset, provider_acc)
+          if not stage['algorithm']['url']:
+            #there is no url ??
+            return f'`cannot get url for the algorithmDID.', 400
+          stage['algorithm']['container']=algoasset.metadata['main']['algorithm']['container']
+        #output prop
+        # TODO  - replace with real values below
+        stage['output']['nodeUri']="https://nile.dev-ocean.com"
+        stage['output']['brizoUrl']="https://brizo.marketplace.dev-ocean.com"
+        stage['output']['brizoAddress']="0x4aaab179035dc57b35e2ce066919048686f82972"
+        stage['output']['metadata']=dict()
+        stage['output']['metadata']['name']="Workflow output"
+        stage['output']['metadataUrl']="https://aquarius.marketplace.dev-ocean.com"
+        stage['output']['secretStoreUrl']="https://secret-store.nile.dev-ocean.com"
+        stage['output']['owner']=data.get("consumerAddress")
+        stage['output']['publishoutput']=True
+        stage['output']['publishalgolog']=True
+        #push stage to workflow
+        workflow['workflow']['stages'].append(stage)
+        #workflow is ready, push it to operator
+        logger.info('Sending: %s', workflow)
+        # TODO - add signature so operator can check auth
+        response = requests_session.post(
+            get_config().operator_service_url + '/api/v1/operator/compute',
+            data=json.dumps(workflow),
+            headers={'content-type': 'application/json'})
+        return response.content
+    except Exception as e:
+        logger.error(f'Error- {str(e)}', exc_info=1)
+        return f'Error : {str(e)}', 500        
