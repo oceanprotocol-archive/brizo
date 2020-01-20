@@ -312,9 +312,7 @@ def get_asset_urls(asset, account):
         for afile in files_list:
             if 'url' in afile:
                 allurls.append(afile['url'])
-        
         return allurls
-
     except Exception as e:
         logger.error(f'Error decrypting urls for asset {asset.did}: {str(e)}')
         raise
