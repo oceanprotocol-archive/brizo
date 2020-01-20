@@ -2,7 +2,7 @@
 
 ## Create new job or restart an existing stopped job
 
-### POST /api/v1/compute
+### POST /api/v1/brizo/services/compute
 
 
 Start a new job
@@ -35,7 +35,7 @@ jobId: "0x1111:001"
 ## Status and Result
   
   
-### GET /api/v1/compute
+### GET /api/v1/brizo/services/compute
    
    
 Get all jobs and corresponding stats
@@ -45,7 +45,9 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-        
+    owner: String object containing owner's address (optional)
+
+    At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
 
 Returns
@@ -65,23 +67,17 @@ Each object will contain:
     publishlogURL: URL to get the publish log (for admins only)
     algologURL: URL to get the algo log (for user)
     outputsURL: Array of URLs for algo outputs
+    ddo: If published, the DDO
+    did: If published, the DID
 ```
 
-Status description:
+Status description: (see Operator-Service for full status list)
 
-| status   | Description        |
-|----------|--------------------|
-|  1       | Job started        |
-|  2       | Configuring volumes|
-|  3       | Running algorith   |
-|  4       | Filtering results  |
-|  5       | Publishing results |
-|  6       | Job completed      |
 
 
 Example:
 ```
-GET /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=012023
+GET /api/v1/brizo/services/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=012023
 ```
 
 Output:
@@ -129,7 +125,7 @@ Output:
 ## Stop
   
   
-### PUT /api/v1/compute
+### PUT /api/v1/brizo/services/compute
 
 Stop a running compute job.
 
@@ -138,8 +134,9 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-    
-    At least one parameter is required (can be any of them)
+    owner: String object containing owner's address (optional)
+
+    At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
 
 Returns
@@ -148,7 +145,7 @@ Status, whether or not the job was stopped successfully.
 
 Example:
 ```
-PUT /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=012023
+PUT /api/v1/brizo/services/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=012023
 ```
 
 Output:
@@ -158,7 +155,7 @@ OK
 
 ## Delete
 
-### DELETE /api/v1/compute
+### DELETE /api/v1/brizo/services/compute
 
 Delete a compute job and all resources associated with the job. If job is running it will be stopped first.
 
@@ -167,7 +164,9 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-        
+    owner: String object containing owner's address (optional)
+
+    At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
 
 Returns
@@ -176,7 +175,7 @@ Status, whether or not the job was removed successfully.
 
 Example:
 ```
-DELETE /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=012023
+DELETE /api/v1/brizo/services/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=012023
 ```
 
 Output:
