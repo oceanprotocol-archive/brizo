@@ -45,7 +45,7 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-    owner: String object containing owner's address (optional)
+    consumerAddress: String object containing owner's address (optional)
 
     At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
@@ -134,7 +134,7 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-    owner: String object containing owner's address (optional)
+    consumerAddress: String object containing owner's address (optional)
 
     At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
@@ -164,7 +164,7 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-    owner: String object containing owner's address (optional)
+    consumerAddress: String object containing owner's address (optional)
 
     At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
