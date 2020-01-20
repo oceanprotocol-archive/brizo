@@ -14,7 +14,7 @@ Parameters
     jobId: String object containing workflowID (optional)
     algorithmDID: hex str the did of the algorithm to be executed
     algorithmMeta: json object that define the algorithm attributes and url or raw code
-    
+    consumerAddress: String object containing owner's address
 ```
 
 Returns:
@@ -28,7 +28,7 @@ POST /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&algorithmDID
 
 Output:
 ```
-jobId: "0x1111:001"
+jobId: "0ba0140c2b8b49418315e2174fde3b71"
 ```
 
 
