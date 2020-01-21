@@ -55,16 +55,16 @@ cd brizo/
 
 Before running it locally we recommend to set up virtual environment:
 
-    ```bash
-    virtualenv venv -p python3.6
-    source venv/bin/activate 
-    ```
+```bash
+virtualenv venv -p python3.6
+source venv/bin/activate 
+```
 
 And install all the requirements:
 
-    ```
+```
     pip install -r requirements_dev.txt
-    ```
+```
 
 Then run some things that Brizo expects to be running:
 
