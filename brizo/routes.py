@@ -503,18 +503,22 @@ def compute_start_job():
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
         return msg, status
+
     agreement_id = data.get('serviceAgreementId')
     consumer_address = data.get('consumerAddress')
     signature = data.get('signature')
 
     try:
         verify_signature(keeper_instance(), consumer_address, signature, agreement_id)
+        keeper = keeper_instance()
+        asset_id = keeper.agreement_manager.get_agreement(data.get("serviceAgreementId")).did
+        did = id_to_did(asset_id)
+        asset = DIDResolver(keeper.did_registry).resolve(did)
 
         workflow = dict()
-        workflow['workflow'] = dict()
-        workflow['workflow']['agreementId'] = data.get("serviceAgreementId")
-        workflow['workflow']['owner'] = data.get("consumerAddress")
-        workflow['workflow']['stages'] = list()
+        workflow['agreementId'] = data.get("serviceAgreementId")
+        workflow['owner'] = data.get("consumerAddress")
+        workflow['stages'] = list()
 
         # build a new stage
         stage = dict()
@@ -525,16 +529,14 @@ def compute_start_job():
         stage['output'] = dict()
 
         # input props
-        inputs = dict()
-        inputs['index'] = 0
-        asset = keeper_instance().agreement_manager.get_agreement(data.get("serviceAgreementId"))
-        did = id_to_did(asset.did)
-        inputs['id'] = did
-        inputs['url'] = get_asset_urls(asset, provider_acc)
-        if not inputs['url']:
+        input_dict = dict()
+        input_dict['index'] = 0
+        input_dict['id'] = did
+        input_dict['url'] = get_asset_urls(asset, provider_acc, app.config['CONFIG_FILE'])
+        if not input_dict['url']:
             # there are no urls ??
             return f'`cannot get url(s) in input did.', 400
-        stage['input'].append(inputs)
+        stage['input'].append(input_dict)
 
         # compute prop
         stage['compute']['Instances'] = 1
@@ -576,7 +578,7 @@ def compute_start_job():
         stage['output']['publishalgolog'] = True
 
         # push stage to workflow
-        workflow['workflow']['stages'].append(stage)
+        workflow['stages'].append(stage)
 
         # workflow is ready, push it to operator
         logger.info('Sending: %s', workflow)

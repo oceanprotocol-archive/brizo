@@ -271,8 +271,7 @@ def build_download_response(request, requests_session, url, download_url, conten
         raise
 
 
-def get_asset_url_at_index(url_index, asset, account):
-    logger.debug(f'get_asset_url_at_index(): url_index={url_index}, did={asset.did}, provider={account.address}')
+def get_asset_files_list(asset, account):
     try:
         files_str = do_secret_store_decrypt(
             remove_0x_prefix(asset.asset_id),
@@ -284,6 +283,17 @@ def get_asset_url_at_index(url_index, asset, account):
         files_list = json.loads(files_str)
         if not isinstance(files_list, list):
             raise TypeError(f'Expected a files list, got {type(files_list)}.')
+
+        return files_list
+    except Exception as e:
+        logger.error(f'Error decrypting asset files for asset {asset.did}: {str(e)}')
+        raise
+
+
+def get_asset_url_at_index(url_index, asset, account):
+    logger.debug(f'get_asset_url_at_index(): url_index={url_index}, did={asset.did}, provider={account.address}')
+    try:
+        files_list = get_asset_files_list(asset, account)
         if url_index >= len(files_list):
             raise ValueError(f'url index "{url_index}"" is invalid.')
 
@@ -301,24 +311,24 @@ def get_asset_url_at_index(url_index, asset, account):
         logger.error(f'Error decrypting url at index {url_index} for asset {asset.did}: {str(e)}')
         raise
 
-def get_asset_urls(asset, account):
-    logger.debug(f'get_asset_url_at_index(): did={asset.did}, provider={account.address}')
+
+def get_asset_urls(asset, account, config_file):
+    logger.debug(f'get_asset_urls(): did={asset.did}, provider={account.address}')
     try:
-        allurls = list()
-        files_str = do_secret_store_decrypt(
-            remove_0x_prefix(asset.asset_id),
-            asset.encrypted_files,
-            account,
-            get_config()
-        )
-        logger.debug(f'Got decrypted files str {files_str}')
-        files_list = json.loads(files_str)
-        if not isinstance(files_list, list):
-            raise TypeError(f'Expected a files list, got {type(files_list)}.')
-        for afile in files_list:
-            if 'url' in afile:
-                allurls.append(afile['url'])
-        return allurls
+        files_list = get_asset_files_list(asset, account)
+        input_urls = []
+        for i, file_meta_dict in enumerate(files_list):
+            if not file_meta_dict or not isinstance(file_meta_dict, dict):
+                raise TypeError(f'Invalid file meta at index {i}, expected a dict, got a '
+                                f'{type(file_meta_dict)}.')
+            if 'url' not in file_meta_dict:
+                raise ValueError(f'The "url" key is not found in the '
+                                 f'file dict {file_meta_dict} at index {i}.')
+
+            url = file_meta_dict['url']
+            input_urls.append(get_download_url(url, config_file))
+
+        return input_urls
     except Exception as e:
         logger.error(f'Error decrypting urls for asset {asset.did}: {str(e)}')
         raise
