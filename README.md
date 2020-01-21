@@ -63,7 +63,7 @@ source venv/bin/activate
 And install all the requirements:
 
 ```
-    pip install -r requirements_dev.txt
+pip install -r requirements_dev.txt
 ```
 
 Then run some things that Brizo expects to be running:
@@ -71,7 +71,7 @@ Then run some things that Brizo expects to be running:
 ```bash
 git clone git@github.com:oceanprotocol/barge.git
 cd barge
-bash start_ocean.sh --no-brizo --no-pleuston --local-spree-node
+bash start_ocean.sh --no-brizo --no-commons
 ```
 
 Barge is the repository where all the Ocean Docker Compose files are located. 
