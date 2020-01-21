@@ -12,7 +12,7 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID
     jobId: String object containing workflowID (optional)
-    algorithmDID: hex str the did of the algorithm to be executed
+    algorithmDid: hex str the did of the algorithm to be executed
     algorithmMeta: json object that define the algorithm attributes and url or raw code
     consumerAddress: String object containing owner's address
 ```
@@ -23,7 +23,7 @@ A string containing jobId
 
 Example:
 ```
-POST /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&algorithmDID=0xa203e320008999099000
+POST /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&algorithmDid=0xa203e320008999099000
 ```
 
 Output:
@@ -63,10 +63,10 @@ Each object will contain:
     dateFinished:Unix timestamp when job finished
     status:  Int, see below for list
     statusText: String, see below
-    configlogURL: URL to get the configuration log (for admins only)
-    publishlogURL: URL to get the publish log (for admins only)
-    algologURL: URL to get the algo log (for user)
-    outputsURL: Array of URLs for algo outputs
+    configlogUrl: URL to get the configuration log (for admins only)
+    publishlogUrl: URL to get the publish log (for admins only)
+    algologUrl: URL to get the algo log (for user)
+    outputsUrl: Array of URLs for algo outputs
     ddo: If published, the DDO
     did: If published, the DID
 ```
@@ -91,14 +91,12 @@ Output:
         "dateFinished":"2020-10-01T01:00:00Z",
         "status":5,
         "statusText":"Job finished",
-        "configlogURL":"http://example.net/logs/config.log",
-        "publishlogURL":"http://example.net/logs/publish.log",
-        "algologURL":"http://example.net/logs/algo.log",
-        "outputsURL":[
-            {
+        "configlogUrl":"http://example.net/logs/config.log",
+        "publishlogUrl":"http://example.net/logs/publish.log",
+        "algologUrl":"http://example.net/logs/algo.log",
+        "outputsUrl":[
             "http://example.net/logs/output/0",
             "http://example.net/logs/output/1"
-            }
          ]
        },
        {
@@ -109,14 +107,12 @@ Output:
         "dateFinished":"2020-10-01T01:00:00Z",
         "status":5,
         "statusText":"Job finished",
-        "configlogURL":"http://example.net/logs2/config.log",
-        "publishlogURL":"http://example.net/logs2/cpublish.log",
-        "algologURL":"http://example.net/logs2/algo.log",
-        "outputsURL":[
-            {
+        "configlogUrl":"http://example.net/logs2/config.log",
+        "publishlogUrl":"http://example.net/logs2/cpublish.log",
+        "algologUrl":"http://example.net/logs2/algo.log",
+        "outputsUrl":[
             "http://example.net/logs2/output/0",
             "http://example.net/logs2/output/1"
-            }
          ]
        }
  ]
@@ -163,7 +159,7 @@ Parameters
 ```
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
-    jobId: String object containing workflowID (optional)
+    jobId: String object containing workflowId (optional)
     consumerAddress: String object containing owner's address (optional)
 
     At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
