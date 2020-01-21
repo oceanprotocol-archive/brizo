@@ -11,6 +11,7 @@ from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
 from secret_store_client.client import RPCError
 
+from brizo.exceptions import InvalidSignatureError
 from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (build_download_response, check_required_attributes, do_secret_store_encrypt,
@@ -98,10 +99,8 @@ def publish():
     publisher_address = data.get('publisherAddress')
 
     try:
-        if not verify_signature(keeper_instance(), publisher_address, signature, did):
-            msg = f'Invalid signature {signature} for ' \
-                  f'publisherAddress {publisher_address} and documentId {did}.'
-            raise ValueError(msg)
+        # Raises ValueError when signature is invalid
+        verify_signature(keeper_instance(), publisher_address, signature, did)
 
         encrypted_document = do_secret_store_encrypt(
             remove_0x_prefix(did),
@@ -113,6 +112,11 @@ def publish():
                     f'publisher {publisher_address}, '
                     f'documentId {did}')
         return encrypted_document, 201
+
+    except InvalidSignatureError as e:
+        msg = f'Publisher signature failed verification: {e}'
+        logger.error(msg, exc_info=1)
+        return msg, 401
 
     except (RPCError, Exception) as e:
         logger.error(
@@ -204,10 +208,7 @@ def consume():
         if not url:
             signature = data.get('signature')
             index = int(data.get('index'))
-            if not verify_signature(keeper, consumer_address, signature, agreement_id):
-                msg = f'Invalid signature {signature} for ' \
-                      f'publisherAddress {consumer_address} and documentId {agreement_id}.'
-                raise ValueError(msg)
+            verify_signature(keeper, consumer_address, signature, agreement_id)
 
             file_attributes = asset.metadata['main']['files'][index]
             content_type = file_attributes.get('contentType', None)
@@ -217,12 +218,16 @@ def consume():
         logger.info(f'Done processing consume request for asset {did}, agreementId {agreement_id},'
                     f' url {download_url}')
         return build_download_response(request, requests_session, url, download_url, content_type)
+
+    except InvalidSignatureError as e:
+        msg = f'Consumer signature failed verification: {e}'
+        logger.error(msg, exc_info=1)
+        return msg, 401
+
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
 
-
-# Compute delete job
 
 @services.route('/compute', methods=['DELETE'])
 def compute_delete_job():
@@ -272,31 +277,31 @@ def compute_delete_job():
 
     if not (data.get('signature')):
         return f'`signature is required in the call to "consume".', 400
+
     # TODO  - check incoming signature
     try:
         agreement_id = data.get('serviceAgreementId')
         owner = data.get('consumerAddress')
-        job_id=data.get('jobId')
-        body=dict()
+        job_id = data.get('jobId')
+        body = dict()
         if owner is not None:
-          body['owner']=owner
+            body['owner'] = owner
         if job_id is not None:
-          body['jobId']=job_id
+            body['jobId'] = job_id
         if agreement_id is not None:
-          body['agreementid']=agreement_id
+            body['agreementId'] = agreement_id
+
         # TODO - add signature so operator can check auth
         response = requests_session.delete(
             get_config().operator_service_url + '/api/v1/operator/compute',
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
-    except Exception as e:
+
+    except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
 
-
-
-# Compute stop job
 
 @services.route('/compute', methods=['PUT'])
 def compute_stop_job():
@@ -346,30 +351,30 @@ def compute_stop_job():
 
     if not (data.get('signature')):
         return f'`signature is required in the call to "consume".', 400
+
     # TODO  - check incoming signature
     try:
         agreement_id = data.get('serviceAgreementId')
         owner = data.get('consumerAddress')
-        job_id=data.get('jobId')
-        body=dict()
+        job_id = data.get('jobId')
+        body = dict()
         if owner is not None:
-          body['owner']=owner
+            body['owner'] = owner
         if job_id is not None:
-          body['jobId']=job_id
+            body['jobId'] = job_id
         if agreement_id is not None:
-          body['agreementid']=agreement_id
+            body['agreementId'] = agreement_id
         # TODO - add signature so operator can check auth
         response = requests_session.put(
             get_config().operator_service_url + '/api/v1/operator/compute',
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
-    except Exception as e:
+
+    except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
 
-
-# Compute get status
 
 @services.route('/compute', methods=['GET'])
 def compute_get_status_job():
@@ -419,30 +424,31 @@ def compute_get_status_job():
 
     if not (data.get('signature')):
         return f'`signature is required in the call to "consume".', 400
+
     # TODO  - check incoming signature
     try:
         agreement_id = data.get('serviceAgreementId')
         owner = data.get('consumerAddress')
-        job_id=data.get('jobId')
-        body=dict()
+        job_id = data.get('jobId')
+        body = dict()
         if owner is not None:
-          body['owner']=owner
+            body['owner'] = owner
         if job_id is not None:
-          body['jobId']=job_id
+            body['jobId'] = job_id
         if agreement_id is not None:
-          body['agreementid']=agreement_id
+            body['agreementId'] = agreement_id
+
         # TODO - add signature so operator can check auth
         response = requests_session.get(
             get_config().operator_service_url + '/api/v1/operator/compute',
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
-    except Exception as e:
+
+    except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
         return f'Error : {str(e)}', 500
 
-
-# Compute start job
 
 @services.route('/compute', methods=['POST'])
 def compute_start_job():
@@ -456,16 +462,16 @@ def compute_start_job():
     parameters:
       - name: signature
         in: query
-        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        description: Signature of the documentId to verify that the consumer has rights to run the compute service..
         type: string
       - name: serviceAgreementId
         in: query
-        description: The ID of the service agreement.
+        description: The ID of the service agreement on-chain
         required: true
         type: string
       - name: consumerAddress
         in: query
-        description: The consumer address.
+        description: The consumer ethereum address.
         required: true
         type: string
       - name: algorithmDID
@@ -491,83 +497,103 @@ def compute_start_job():
     data = request.args
     required_attributes = [
         'signature',
-        'serviceAgreementId'
+        'serviceAgreementId',
+        'consumerAddress'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
         return msg, status
-    if not (data.get('signature')):
-        return f'`signature is required in the call to "consume".', 400
-    # TODO  - check incoming signature
+    agreement_id = data.get('serviceAgreementId')
+    consumer_address = data.get('consumerAddress')
+    signature = data.get('signature')
+
     try:
+        verify_signature(keeper_instance(), consumer_address, signature, agreement_id)
+
         workflow = dict()
-        workflow['workflow']=dict()
-        workflow['workflow']['agreementId']=data.get("serviceAgreementId")
-        workflow['workflow']['owner']=data.get("consumerAddress")
-        workflow['workflow']['stages']=list()
-        #build a new stage
+        workflow['workflow'] = dict()
+        workflow['workflow']['agreementId'] = data.get("serviceAgreementId")
+        workflow['workflow']['owner'] = data.get("consumerAddress")
+        workflow['workflow']['stages'] = list()
+
+        # build a new stage
         stage = dict()
-        stage['index']=0
-        stage['input']=list()
-        stage['compute']=dict()
-        stage['algorithm']=dict()
-        stage['output']=dict()
-        #input props
-        inputs=dict()
-        inputs['index']=0
+        stage['index'] = 0
+        stage['input'] = list()
+        stage['compute'] = dict()
+        stage['algorithm'] = dict()
+        stage['output'] = dict()
+
+        # input props
+        inputs = dict()
+        inputs['index'] = 0
         asset = keeper_instance().agreement_manager.get_agreement(data.get("serviceAgreementId"))
         did = id_to_did(asset.did)
-        inputs['id']=did
-        inputs['url']=get_asset_urls(asset, provider_acc)
+        inputs['id'] = did
+        inputs['url'] = get_asset_urls(asset, provider_acc)
         if not inputs['url']:
-            #there are no urls ??
+            # there are no urls ??
             return f'`cannot get url(s) in input did.', 400
         stage['input'].append(inputs)
-        #compute prop
-        stage['compute']['Instances']=1
-        stage['compute']['namespace']="ocean-compute"
-        stage['compute']['maxtime']=3600
-        #algorithm prop
+
+        # compute prop
+        stage['compute']['Instances'] = 1
+        stage['compute']['namespace'] = "ocean-compute"
+        stage['compute']['maxtime'] = 3600
+
+        # algorithm prop
         if data.get("algorithmDID") is None:
             # use the metadata provided
-            algo=json.loads(data.get('algorithmMeta'))
-            stage['algorithm']['url']=algo.url
-            stage['algorithm']['rawcode']=algo.rawcode
-            stage['algorithm']['container']=dict()
-            stage['algorithm']['container']['image']=algo.container_image
-            stage['algorithm']['container']['tag']=algo.container_tag
-            stage['algorithm']['container']['entrypoint']=algo.container_entry_point
+            algo = json.loads(data.get('algorithmMeta'))
+            stage['algorithm']['url'] = algo.url
+            stage['algorithm']['rawcode'] = algo.rawcode
+            stage['algorithm']['container'] = {}
+            stage['algorithm']['container']['image'] = algo.container_image
+            stage['algorithm']['container']['tag'] = algo.container_tag
+            stage['algorithm']['container']['entrypoint'] = algo.container_entry_point
+
         else:
             # use the DID
             algoasset = DIDResolver(keeper_instance().did_registry).resolve(data.get('algorithmDID'))
-            stage['algorithm']['id']=data.get('algorithmDID')
-            stage['algorithm']['url']=get_asset_url_at_index(0,algoasset, provider_acc)
+            stage['algorithm']['id'] = data.get('algorithmDID')
+            stage['algorithm']['url'] = get_asset_url_at_index(0, algoasset, provider_acc)
             if not stage['algorithm']['url']:
-                #there is no url ??
+                # there is no url ??
                 return f'`cannot get url for the algorithmDID.', 400
-            stage['algorithm']['container']=algoasset.metadata['main']['algorithm']['container']
-        #output prop
+            stage['algorithm']['container'] = algoasset.metadata['main']['algorithm']['container']
+
+        # output prop
         # TODO  - replace with real values below
-        stage['output']['nodeUri']="https://nile.dev-ocean.com"
-        stage['output']['brizoUrl']="https://brizo.marketplace.dev-ocean.com"
-        stage['output']['brizoAddress']="0x4aaab179035dc57b35e2ce066919048686f82972"
-        stage['output']['metadata']=dict()
-        stage['output']['metadata']['name']="Workflow output"
-        stage['output']['metadataUrl']="https://aquarius.marketplace.dev-ocean.com"
-        stage['output']['secretStoreUrl']="https://secret-store.nile.dev-ocean.com"
-        stage['output']['owner']=data.get("consumerAddress")
-        stage['output']['publishoutput']=True
-        stage['output']['publishalgolog']=True
-        #push stage to workflow
+        stage['output']['nodeUri'] = "https://nile.dev-ocean.com"
+        stage['output']['brizoUrl'] = "https://brizo.marketplace.dev-ocean.com"
+        stage['output']['brizoAddress'] = "0x4aaab179035dc57b35e2ce066919048686f82972"
+        stage['output']['metadata'] = dict()
+        stage['output']['metadata']['name'] = "Workflow output"
+        stage['output']['metadataUrl'] = "https://aquarius.marketplace.dev-ocean.com"
+        stage['output']['secretStoreUrl'] = "https://secret-store.nile.dev-ocean.com"
+        stage['output']['owner'] = data.get("consumerAddress")
+        stage['output']['publishoutput'] = True
+        stage['output']['publishalgolog'] = True
+
+        # push stage to workflow
         workflow['workflow']['stages'].append(stage)
-        #workflow is ready, push it to operator
+
+        # workflow is ready, push it to operator
         logger.info('Sending: %s', workflow)
+
         # TODO - add signature so operator can check auth
+
         response = requests_session.post(
             get_config().operator_service_url + '/api/v1/operator/compute',
             data=json.dumps(workflow),
             headers={'content-type': 'application/json'})
         return response.content
-    except Exception as e:
+
+    except InvalidSignatureError as e:
+        msg = f'Consumer signature failed verification: {e}'
+        logger.error(msg, exc_info=1)
+        return msg, 401
+
+    except (ValueError, KeyError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
-        return f'Error : {str(e)}', 500        
+        return f'Error : {str(e)}', 500

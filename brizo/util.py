@@ -19,6 +19,7 @@ from osmosis_driver_interface.osmosis import Osmosis
 from secret_store_client.client import Client as SecretStore
 
 from brizo.config import Config
+from brizo.exceptions import InvalidSignatureError
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +181,12 @@ def verify_signature(keeper, signer_address, signature, original_msg):
     else:
         address = keeper.personal_ec_recover(original_msg, signature)
 
-    return address.lower() == signer_address.lower()
+    if address.lower() == signer_address.lower():
+        return
+
+    msg = f'Invalid signature {signature} for ' \
+          f'ethereum address {signer_address} and documentId {original_msg}.'
+    raise InvalidSignatureError(msg)
 
 
 def get_provider_account():
