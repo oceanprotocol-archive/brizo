@@ -1,4 +1,8 @@
-# Brizo Endpoints
+# Brizo Endpoints Specification
+
+This document specifies the endpoints for Brizo to be implemented by the core developers. The final implementation and its documentation happens in Swagger inline code comments and the latest implemented API documentation can be accessed via:
+
+- [Docs: Brizo API Reference](https://docs.oceanprotocol.com/references/brizo/)
 
 ## Create new job or restart an existing stopped job
 
