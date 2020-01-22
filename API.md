@@ -4,7 +4,6 @@
 
 ### POST /api/v1/compute
 
-
 Start a new job
 
 Parameters
@@ -18,7 +17,7 @@ Parameters
 ```
 
 Returns:
-A string containing jobId
+`status` object
 
 
 Example:
@@ -27,13 +26,18 @@ POST /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&algorithmDID
 ```
 
 Output:
-```
-jobId: "0x1111:001"
+
+```json
+{
+  "jobId": "0x1111:001",
+  "status": 1,
+  "statusText": "Job started",
+  ...
+}
 ```
 
 
 ## Status and Result
-  
   
 ### GET /api/v1/compute
    
@@ -69,14 +73,16 @@ Each object will contain:
 
 Status description:
 
-| status   | Description        |
-|----------|--------------------|
-|  1       | Job started        |
-|  2       | Configuring volumes|
-|  3       | Running algorith   |
-|  4       | Filtering results  |
-|  5       | Publishing results |
-|  6       | Job completed      |
+| status   | Description               |
+|----------|---------------------------|
+|  1       | Job started               |
+|  2       | Configuring volumes       |
+|  3       | Running algorith          |
+|  4       | Filtering results         |
+|  5       | Publishing results        |
+|  6       | Job completed             |
+|  7       | Job stopped               |
+|  8       | Job deleted successfully  |
 
 
 Example:
@@ -152,8 +158,14 @@ PUT /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=012023
 ```
 
 Output:
-```
-OK
+
+```json
+{
+  ...,
+  "status": 7,
+  "statusText": "Job stopped",
+  ...
+}
 ```
 
 ## Delete
@@ -167,7 +179,6 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-        
 ```
 
 Returns
@@ -180,6 +191,11 @@ DELETE /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&jobId=0120
 ```
 
 Output:
-```
-OK
+```json
+{
+  ...,
+  "status": 8,
+  "statusText": "Job deleted successfully",
+  ...
+}
 ```
