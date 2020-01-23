@@ -26,15 +26,11 @@ def test_compute(client):
     keeper = keeper_instance()
 
     ddo = get_registered_ddo(pub_acc, providers=[pub_acc.address])
-
-    did = DID.did({"0": str(uuid.uuid4())})
-    asset_id = did_to_id(did)
-    asset_id_hash = add_ethereum_prefix_and_hash_msg(asset_id)    
     
     # initialize an agreement
     agreement_id = place_order(pub_acc, ddo, cons_acc)
     signature = keeper.sign_hash(agreement_id, cons_acc)
-    
+
     payload = dict({
         'signature': signature, 
         'serviceAgreementId': agreement_id,
