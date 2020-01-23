@@ -29,7 +29,8 @@ from brizo.util import (check_auth_token, do_secret_store_decrypt, do_secret_sto
                         verify_signature,
                         web3,
                         build_download_response, get_download_url, get_latest_keeper_version)
-from tests.conftest import get_consumer_account, get_publisher_account, get_sample_ddo
+from tests.conftest import get_consumer_account, get_publisher_account, get_sample_ddo, get_sample_ddo_with_compute_service, \
+    get_sample_algorithm_ddo
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
@@ -39,21 +40,8 @@ def dummy_callback(*_):
     pass
 
 
-def get_registered_ddo(account, providers=None):
-    keeper = keeper_instance()
-    aqua = Aquarius('http://localhost:5000')
-
-    for did in aqua.list_assets():
-        aqua.retire_asset_ddo(did)
-
-    metadata = get_sample_ddo()['service'][0]['attributes']
-    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
-    ddo = DDO()
-    ddo_service_endpoint = aqua.get_service_endpoint()
-
-    metadata_service_desc = ServiceDescriptor.metadata_service_descriptor(metadata,
-                                                                          ddo_service_endpoint)
-
+def get_access_service_descriptor(keeper, account, metadata):
+    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.ASSET_ACCESS]
     access_service_attributes = {
         "main": {
             "name": "dataAssetAccessServiceAgreement",
@@ -64,14 +52,73 @@ def get_registered_ddo(account, providers=None):
         }
     }
 
-    service_descriptors = [ServiceDescriptor.authorization_service_descriptor(
-        'http://localhost:12001')]
-    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.ASSET_ACCESS]
-    service_descriptors += [ServiceDescriptor.access_service_descriptor(
+    return ServiceDescriptor.access_service_descriptor(
         access_service_attributes,
         'http://localhost:8030',
         keeper.template_manager.create_template_id(template_name)
-    )]
+    )
+
+
+def get_compute_service_descriptor(keeper, account, price, metadata):
+    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.CLOUD_COMPUTE]
+    compute_service_attributes = {
+        "main": {
+            "name": "dataAssetComputeServiceAgreement",
+            "creator": account.address,
+            "price": price,
+            "timeout": 3600,
+            "datePublished": metadata[MetadataMain.KEY]['dateCreated']
+        }
+    }
+
+    return ServiceDescriptor.compute_service_descriptor(
+        compute_service_attributes,
+        'http://localhost:8030/services/compute',
+        keeper.template_manager.create_template_id(template_name)
+
+    )
+
+
+def get_dataset_ddo_with_access_service(account, providers=None):
+    keeper = keeper_instance()
+    metadata = get_sample_ddo()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_access_service_descriptor(keeper, account, metadata)
+    return get_registered_ddo(account, metadata, service_descriptor, providers)
+
+
+def get_dataset_ddo_with_compute_service(account, providers=None):
+    keeper = keeper_instance()
+    metadata = get_sample_ddo_with_compute_service()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_compute_service_descriptor(
+        keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
+    return get_registered_ddo(account, metadata, service_descriptor, providers)
+
+
+def get_algorithm_ddo(account, providers=None):
+    keeper = keeper_instance()
+    metadata = get_sample_algorithm_ddo()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_access_service_descriptor(keeper, account, metadata)
+    return get_registered_ddo(account, metadata, service_descriptor, providers)
+
+
+def get_registered_ddo(account, metadata, service_descriptor, providers=None):
+    keeper = keeper_instance()
+    aqua = Aquarius('http://localhost:5000')
+
+    for did in aqua.list_assets():
+        aqua.retire_asset_ddo(did)
+
+    ddo = DDO()
+    ddo_service_endpoint = aqua.get_service_endpoint()
+
+    metadata_service_desc = ServiceDescriptor.metadata_service_descriptor(
+        metadata, ddo_service_endpoint
+    )
+    service_descriptors = list([ServiceDescriptor.authorization_service_descriptor('http://localhost:12001')])
+    service_descriptors.append(service_descriptor)
 
     service_descriptors = [metadata_service_desc] + service_descriptors
 
