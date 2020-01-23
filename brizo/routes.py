@@ -546,14 +546,18 @@ def compute_start_job():
         # algorithm prop
         if data.get("algorithmDID") is None:
             # use the metadata provided
-            algo = json.loads(data.get('algorithmMeta'))
-            stage['algorithm']['url'] = algo.url
-            stage['algorithm']['rawcode'] = algo.rawcode
-            stage['algorithm']['container'] = {}
-            stage['algorithm']['container']['image'] = algo.container_image
-            stage['algorithm']['container']['tag'] = algo.container_tag
-            stage['algorithm']['container']['entrypoint'] = algo.container_entry_point
-
+            try:
+                algo = json.loads(data.get('algorithmMeta'))
+                stage['algorithm']['url'] = algo.url
+                stage['algorithm']['rawcode'] = algo.rawcode
+                stage['algorithm']['container'] = {}
+                stage['algorithm']['container']['image'] = algo.container_image
+                stage['algorithm']['container']['tag'] = algo.container_tag
+                stage['algorithm']['container']['entrypoint'] = algo.container_entry_point
+            except:
+                msg = f'`algorithmMeta is missing'
+                logger.error(msg, exc_info=1)
+                return msg, 400
         else:
             # use the DID
             algoasset = DIDResolver(keeper_instance().did_registry).resolve(data.get('algorithmDID'))
