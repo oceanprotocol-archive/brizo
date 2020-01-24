@@ -40,7 +40,7 @@ def dummy_callback(*_):
     pass
 
 
-def get_access_service_descriptor(keeper, account, metadata):
+def get_access_service_descriptor(keeper, account, metadget_sample_ddo_with_compute_serviceata):
     template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.ASSET_ACCESS]
     access_service_attributes = {
         "main": {
@@ -133,7 +133,9 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     did = ddo.assign_did(DID.did(ddo.proof['checksum']))
 
     stype_to_service = {s.type: s for s in services}
-    access_service = stype_to_service[ServiceTypes.ASSET_ACCESS]
+    # TODO: add metadata/asset_access handler 
+    # access_service = stype_to_service[ServiceTypes.ASSET_ACCESS]
+    access_service = stype_to_service[ServiceTypes.METADATA]
 
     name_to_address = {cname: cinst.address for cname, cinst in keeper.contract_name_to_instance.items()}
     access_service.init_conditions_values(did, contract_name_to_address=name_to_address)
