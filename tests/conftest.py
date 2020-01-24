@@ -65,7 +65,7 @@ def get_sample_algorithm_ddo():
 
 def get_sample_ddo_with_compute_service():
     # :TODO: modify this to load ddo that has compute service
-    path = get_resource_path('ddo', 'ddo_sample_algorithm.json')  # 'ddo_sa_sample.json')
+    path = get_resource_path('ddo', 'ddo_with_compute_service.json')  # 'ddo_sa_sample.json')
     assert path.exists(), f"{path} does not exist!"
     with open(path, 'r') as file_handle:
         metadata = file_handle.read()

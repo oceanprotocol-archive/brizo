@@ -96,16 +96,6 @@
               "contentType": "text/plain",
               "encoding": "UTF-8",
               "compression": "zip"
-            },
-            {
-              "name": "",
-              "url": "",
-              "index": 0,
-              "checksum": "efb2c764274b745f5fc37f97c6b0e761",
-              "contentLength": "4535431",
-              "contentType": "text/plain",
-              "encoding": "UTF-8",
-              "compression": "zip"
             }
           ]
         },
