@@ -5,7 +5,7 @@ import json
 import logging
 
 from eth_utils import remove_0x_prefix
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response
 from ocean_utils.did import id_to_did
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
@@ -508,6 +508,9 @@ def compute_start_job():
     consumer_address = data.get('consumerAddress')
     signature = data.get('signature')
 
+    # :TODO: validate inputs
+    # agreementId, consumerAddress, signature, algorithmDID, and algorithmMeta
+
     try:
         verify_signature(keeper_instance(), consumer_address, signature, agreement_id)
         keeper = keeper_instance()
@@ -535,7 +538,7 @@ def compute_start_job():
         input_dict['url'] = get_asset_urls(asset, provider_acc, app.config['CONFIG_FILE'])
         if not input_dict['url']:
             # there are no urls ??
-            return f'`cannot get url(s) in input did.', 400
+            return f'cannot get url(s) in input did.', 400
         stage['input'].append(input_dict)
 
         # compute prop
@@ -571,6 +574,7 @@ def compute_start_job():
         # output prop
         # TODO  - replace with real values below
         stage['output']['nodeUri'] = "https://nile.dev-ocean.com"
+        # brizoUrl should come from the asset's compute service endpoint
         stage['output']['brizoUrl'] = "https://brizo.marketplace.dev-ocean.com"
         stage['output']['brizoAddress'] = "0x4aaab179035dc57b35e2ce066919048686f82972"
         stage['output']['metadata'] = dict()
@@ -588,12 +592,16 @@ def compute_start_job():
         logger.info('Sending: %s', workflow)
 
         # TODO - add signature so operator can check auth
-
         response = requests_session.post(
             get_config().operator_service_url + '/api/v1/operator/compute',
             data=json.dumps(workflow),
             headers={'content-type': 'application/json'})
-        return response.content
+
+        return Response(
+            response.content,
+            response.status_code,
+            headers={'content-type': 'application/json'}
+        )
 
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
