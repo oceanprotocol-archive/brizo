@@ -133,7 +133,7 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     did = ddo.assign_did(DID.did(ddo.proof['checksum']))
 
     stype_to_service = {s.type: s for s in services}
-    # TODO: add metadata/asset_access handler 
+    # TODO: add metadata/asset_access handler
     # access_service = stype_to_service[ServiceTypes.ASSET_ACCESS]
     access_service = stype_to_service[ServiceTypes.METADATA]
 
@@ -192,7 +192,7 @@ def get_template_actor_types(keeper, template_id):
     return [keeper.template_manager.get_template_actor_type_value(_id) for _id in actor_type_ids]
 
 
-def place_order(publisher_account, ddo, consumer_account):
+def place_order(publisher_account, ddo, consumer_account, service_type):
     keeper = keeper_instance()
     agreement_id = ServiceAgreement.create_new_agreement_id()
     publisher_address = publisher_account.address
@@ -200,13 +200,13 @@ def place_order(publisher_account, ddo, consumer_account):
     # if balance < 20:
     #     keeper.dispenser.request_tokens(100, consumer_account)
 
-    service_agreement = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
+    service_agreement = ServiceAgreement.from_ddo(service_type, ddo)
     condition_ids = service_agreement.generate_agreement_condition_ids(
         agreement_id, ddo.asset_id, consumer_account.address, publisher_address, keeper)
     time_locks = service_agreement.conditions_timelocks
     time_outs = service_agreement.conditions_timeouts
 
-    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.ASSET_ACCESS]
+    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[service_type]
     template_id = keeper.template_manager.create_template_id(template_name)
     actor_map = {'consumer': consumer_account.address, 'provider': publisher_address}
     actors = [actor_map[_type] for _type in get_template_actor_types(keeper, template_id)]
@@ -251,7 +251,7 @@ def test_consume(client):
     ddo = get_registered_ddo(pub_acc, providers=[pub_acc.address])
 
     # initialize an agreement
-    agreement_id = place_order(pub_acc, ddo, cons_acc)
+    agreement_id = place_order(pub_acc, ddo, cons_acc, ServiceTypes.ASSET_ACCESS)
     payload = dict({
         'serviceAgreementId': agreement_id,
         'consumerAddress': cons_acc.address
