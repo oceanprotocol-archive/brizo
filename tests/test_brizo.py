@@ -40,7 +40,7 @@ def dummy_callback(*_):
     pass
 
 
-def get_access_service_descriptor(keeper, account, metadget_sample_ddo_with_compute_serviceata):
+def get_access_service_descriptor(keeper, account, metadata):
     template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.ASSET_ACCESS]
     access_service_attributes = {
         "main": {
