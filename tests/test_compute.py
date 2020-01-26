@@ -9,7 +9,8 @@ from brizo.constants import BaseURLs
 from brizo.util import keeper_instance
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 
-from tests.test_brizo import (
+# TODO: move imports to `test_helpers.py`
+from tests.test_helpers import (
     get_publisher_account,
     get_consumer_account,
     place_order,
