@@ -15,20 +15,28 @@ from werkzeug.utils import get_content_type
 
 from ocean_utils.did import DID, did_to_id
 
-from tests.conftest import get_sample_ddo
-
 from brizo.constants import BaseURLs
-from brizo.util import (check_auth_token, do_secret_store_decrypt, do_secret_store_encrypt,
-                        generate_token, get_config, get_provider_account, is_token_valid,
-                        keeper_instance,
-                        verify_signature,
-                        web3,
-                        build_download_response, get_download_url, get_latest_keeper_version)
-
-from tests.conftest import get_consumer_account, get_publisher_account
-
-from tests.test_helpers import (get_access_service_descriptor, get_compute_service_descriptor, get_dataset_ddo_with_access_service, \
-                                get_registered_ddo, get_dataset_ddo_with_compute_service, lock_reward, place_order, grant_access)
+from brizo.util import (
+    check_auth_token,
+    do_secret_store_decrypt,
+    generate_token,
+    get_config,
+    get_provider_account,
+    is_token_valid,
+    keeper_instance,
+    verify_signature,
+    web3,
+    build_download_response,
+    get_download_url,
+    get_latest_keeper_version
+)
+from tests.test_helpers import (
+    get_dataset_ddo_with_access_service,
+    lock_reward, place_order,
+    grant_access,
+    get_consumer_account,
+    get_publisher_account
+)
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
@@ -36,6 +44,7 @@ SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
 
 def dummy_callback(*_):
     pass
+
 
 def test_consume(client):
     endpoint = BaseURLs.ASSETS_URL + '/consume'
@@ -64,7 +73,7 @@ def test_consume(client):
 
     consumer_balance = keeper.token.get_token_balance(cons_acc.address)
     if consumer_balance < 50:
-        keeper.request_tokens(50-consumer_balance, cons_acc)
+        keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
 
     sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
     lock_reward(agreement_id, sa, cons_acc)

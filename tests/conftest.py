@@ -7,7 +7,6 @@ import json
 
 import pytest
 from ocean_keeper.contract_handler import ContractHandler
-from ocean_keeper.utils import get_account
 from ocean_keeper.web3_provider import Web3Provider
 
 from brizo.run import app
@@ -38,34 +37,8 @@ def setup_all():
     init_account_envvars()
 
 
-def get_publisher_account():
-    return get_account(0)
-
-
-def get_consumer_account():
-    return get_account(0)
-
-
 def get_sample_ddo():
     path = get_resource_path('ddo', 'ddo_sa_sample.json')
-    assert path.exists(), f"{path} does not exist!"
-    with open(path, 'r') as file_handle:
-        metadata = file_handle.read()
-    return json.loads(metadata)
-
-
-def get_sample_algorithm_ddo():
-    # :TODO: modify this to load ddo with algorithm type metadata
-    path = get_resource_path('ddo', 'ddo_sample_algorithm.json')
-    assert path.exists(), f"{path} does not exist!"
-    with open(path, 'r') as file_handle:
-        metadata = file_handle.read()
-    return json.loads(metadata)
-
-
-def get_sample_ddo_with_compute_service():
-    # :TODO: modify this to load ddo that has compute service
-    path = get_resource_path('ddo', 'ddo_with_compute_service.json')  # 'ddo_sa_sample.json')
     assert path.exists(), f"{path} does not exist!"
     with open(path, 'r') as file_handle:
         metadata = file_handle.read()

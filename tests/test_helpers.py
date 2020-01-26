@@ -2,16 +2,16 @@
 #  SPDX-License-Identifier: Apache-2.0
 
 import json
+import time
 import uuid
 
 
 from eth_utils import remove_0x_prefix
-
+from ocean_keeper.utils import get_account
 
 from brizo.util import do_secret_store_encrypt, get_config, web3, keeper_instance
 
-from tests.conftest import get_sample_ddo, get_sample_ddo_with_compute_service,\
-                           get_sample_algorithm_ddo
+from tests.conftest import get_sample_ddo, get_resource_path
 
 from plecos import plecos
 from ocean_utils.ddo.ddo import DDO
@@ -23,6 +23,32 @@ from ocean_utils.ddo.public_key_rsa import PUBLIC_KEY_TYPE_RSA
 from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_factory import ServiceDescriptor, ServiceFactory
 from ocean_utils.agreements.service_types import ServiceTypes
+
+
+def get_publisher_account():
+    return get_account(0)
+
+
+def get_consumer_account():
+    return get_account(1)
+
+
+def get_sample_algorithm_ddo():
+    # :TODO: modify this to load ddo with algorithm type metadata
+    path = get_resource_path('ddo', 'ddo_sample_algorithm.json')
+    assert path.exists(), f"{path} does not exist!"
+    with open(path, 'r') as file_handle:
+        metadata = file_handle.read()
+    return json.loads(metadata)
+
+
+def get_sample_ddo_with_compute_service():
+    # :TODO: modify this to load ddo that has compute service
+    path = get_resource_path('ddo', 'ddo_with_compute_service.json')  # 'ddo_sa_sample.json')
+    assert path.exists(), f"{path} does not exist!"
+    with open(path, 'r') as file_handle:
+        metadata = file_handle.read()
+    return json.loads(metadata)
 
 
 def get_access_service_descriptor(keeper, account, metadata):
@@ -71,6 +97,7 @@ def get_dataset_ddo_with_access_service(account, providers=None):
     service_descriptor = get_access_service_descriptor(keeper, account, metadata)
     return get_registered_ddo(account, metadata, service_descriptor, providers)
 
+
 def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     keeper = keeper_instance()
     aqua = Aquarius('http://localhost:5000')
@@ -86,6 +113,7 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     )
     service_descriptors = list([ServiceDescriptor.authorization_service_descriptor('http://localhost:12001')])
     service_descriptors.append(service_descriptor)
+    service_type = service_descriptor[0]
 
     service_descriptors = [metadata_service_desc] + service_descriptors
 
@@ -100,11 +128,10 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     did = ddo.assign_did(DID.did(ddo.proof['checksum']))
 
     stype_to_service = {s.type: s for s in services}
-    access_service = stype_to_service[ServiceTypes.ASSET_ACCESS]
+    _service = stype_to_service[service_type]
 
     name_to_address = {cname: cinst.address for cname, cinst in keeper.contract_name_to_instance.items()}
-    access_service.init_conditions_values(did, contract_name_to_address=name_to_address)
-    ddo.add_service(access_service)
+    _service.init_conditions_values(did, contract_name_to_address=name_to_address)
     for service in services:
         ddo.add_service(service)
 
@@ -176,6 +203,8 @@ def place_order(publisher_account, ddo, consumer_account, service_type):
     actor_map = {'consumer': consumer_account.address, 'provider': publisher_address}
     actors = [actor_map[_type] for _type in get_template_actor_types(keeper, template_id)]
 
+    assert keeper.template_manager.contract_concise.isTemplateIdApproved(template_id), f'template {template_id} is not approved.'
+
     keeper_instance().agreement_manager.create_agreement(
         agreement_id,
         ddo.asset_id,
@@ -197,6 +226,7 @@ def get_algorithm_ddo(account, providers=None):
     service_descriptor = get_access_service_descriptor(keeper, account, metadata)
     return get_registered_ddo(account, metadata, service_descriptor, providers)
 
+
 def get_dataset_ddo_with_compute_service(account, providers=None):
     keeper = keeper_instance()
     metadata = get_sample_ddo_with_compute_service()['service'][0]['attributes']
@@ -205,10 +235,12 @@ def get_dataset_ddo_with_compute_service(account, providers=None):
         keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
     return get_registered_ddo(account, metadata, service_descriptor, providers)
 
+
 def lock_reward(agreement_id, service_agreement, consumer_account):
     keeper = keeper_instance()
     price = service_agreement.get_price()
     keeper.token.token_approve(keeper.lock_reward_condition.address, price, consumer_account)
+    time.sleep(3)
     tx_hash = keeper.lock_reward_condition.fulfill(
         agreement_id, keeper.escrow_reward_condition.address, price, consumer_account)
     keeper.lock_reward_condition.get_tx_receipt(tx_hash)
@@ -220,4 +252,11 @@ def grant_access(agreement_id, ddo, consumer_account, publisher_account):
         agreement_id, ddo.asset_id, consumer_account.address, publisher_account
     )
     keeper.access_secret_store_condition.get_tx_receipt(tx_hash)
-    
+
+
+def grant_compute(agreement_id, asset_id, consumer_account, publisher_account):
+    keeper = keeper_instance()
+    tx_hash = keeper.compute_execution_condition.fulfill(
+        agreement_id, asset_id, consumer_account.address, publisher_account
+    )
+    keeper.compute_execution_condition.get_tx_receipt(tx_hash)

@@ -3,6 +3,7 @@
 
 import json
 
+from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_types import ServiceTypes
 
 from brizo.constants import BaseURLs
@@ -11,12 +12,12 @@ from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 
 # TODO: move imports to `test_helpers.py`
 from tests.test_helpers import (
-    get_publisher_account,
-    get_consumer_account,
     place_order,
     get_algorithm_ddo,
     get_dataset_ddo_with_compute_service,
-)
+    get_publisher_account,
+    get_consumer_account,
+    lock_reward, grant_compute)
 
 
 def dummy_callback(*_):
@@ -42,8 +43,6 @@ def test_compute(client):
     # signature, serviceAgreementId, consumerAddress, and algorithmDID or algorithmMeta
 
     # initialize an agreement
-    # :TODO: place_order handles an agreement for a `access` service agreement,
-    # but we need to order a service agreement for service type `compute`
     agreement_id = place_order(pub_acc, dataset_ddo_w_compute_service, cons_acc, ServiceTypes.CLOUD_COMPUTE)
     # CHECKPOINT 2
 
@@ -52,12 +51,25 @@ def test_compute(client):
     )
     assert event, "Agreement event is not found, check the keeper node's logs"
 
-    # submit payment/reward and fulfill lock reward condition
+    consumer_balance = keeper.token.get_token_balance(cons_acc.address)
+    if consumer_balance < 50:
+        keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
 
-    # :TODO: wait for lockRewardCondition FULFILLED EVENT
+    sa = ServiceAgreement.from_ddo(ServiceTypes.CLOUD_COMPUTE, dataset_ddo_w_compute_service)
+    lock_reward(agreement_id, sa, cons_acc)
+    event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event, "Lock reward condition fulfilled event is not found, check the keeper node's logs"
 
-    # grant compute permission (fulfilling the ComputeExecutionCondition condition)
-    # :TODO: wait for escrowAccess...Condition FULFILLED EVENT
+    grant_compute(agreement_id, dataset_ddo_w_compute_service.asset_id, cons_acc, pub_acc)
+    event = keeper.compute_execution_condition.subscribe_condition_fulfilled(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event or keeper.compute_execution_condition.was_compute_triggered(
+        dataset_ddo_w_compute_service.asset_id, cons_acc.address
+    ), f'Failed to compute: agreement_id={agreement_id}, ' \
+       f'did={dataset_ddo_w_compute_service.did}, consumer={cons_acc.address}'
 
     # prepare consumer signature on agreement_id
     agreement_id_hash = add_ethereum_prefix_and_hash_msg(agreement_id)    
@@ -67,7 +79,8 @@ def test_compute(client):
         'signature': signature, 
         'serviceAgreementId': agreement_id,
         'consumerAddress': cons_acc.address,
-        'algorithmDID': alg_ddo.did
+        'algorithmDID': alg_ddo.did,
+        'algorithmMeta': {}
     })
 
     response = client.post(
@@ -75,4 +88,4 @@ def test_compute(client):
         data=json.dumps(payload),
         content_type='application/json'
     )
-    assert response.status == '200 OK'
+    assert response.status == '200 OK', f'Failed: {response}'
