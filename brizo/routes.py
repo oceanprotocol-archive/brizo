@@ -564,12 +564,7 @@ def compute_start_job():
 
         #########################
         # WORKFLOW
-        workflow = dict({
-            'agreementId': agreement_id,
-            'signature': keeper.sign_hash(agreement_id, provider_acc),
-            'owner': consumer_address,
-            'stages': list([stage])
-        })
+        workflow = dict({'stages': list([stage])})
 
         # workflow is ready, push it to operator
         logger.info('Sending: %s', workflow)
@@ -577,6 +572,8 @@ def compute_start_job():
         payload = {
             "workflow": workflow,
             "signature": keeper.sign_hash(agreement_id, provider_acc),
+            'agreementId': agreement_id,
+            'owner': consumer_address,
         }
         response = requests_session.post(
             get_compute_endpoint(),
