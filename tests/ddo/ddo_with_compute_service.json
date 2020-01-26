@@ -94,7 +94,7 @@
         "additionalInformation": {}
       },
       "serviceAgreementTemplate": {
-        "contractName": "ServiceExecutionTemplate",
+        "contractName": "EscrowComputeExecutionTemplate",
         "events": [
           {
             "name": "AgreementCreated",
@@ -154,7 +154,7 @@
             "name": "serviceExecution",
             "timelock": 0,
             "timeout": 0,
-            "contractName": "ServiceExecCondition",
+            "contractName": "ComputeExecutionCondition",
             "functionName": "fulfill",
             "parameters": [
               {

@@ -13,6 +13,7 @@ NAME_KEEPER_PATH = 'keeper.path'
 NAME_AUTH_TOKEN_MESSAGE = 'auth_token_message'
 NAME_AUTH_TOKEN_EXPIRATION = 'auth_token_expiration'
 
+NAME_AQUARIUS_URL = 'aquarius.url'
 NAME_SECRET_STORE_URL = 'secret_store.url'
 NAME_PARITY_URL = 'parity.url'
 NAME_OPERATOR_SERVICE_URL = 'operator_service.url'
@@ -25,6 +26,7 @@ environ_names = {
     NAME_AUTH_TOKEN_EXPIRATION: ['AUTH_TOKEN_EXPIRATION',
                                  'Auth token expiration time expressed in seconds'],
     NAME_SECRET_STORE_URL: ['SECRET_STORE_URL', 'Secret Store URL'],
+    NAME_AQUARIUS_URL: ['AQUARIUS_URL', 'Aquarius url (metadata store)'],
     NAME_PARITY_URL: ['PARITY_URL', 'Parity URL'],
     NAME_OPERATOR_SERVICE_URL: ['OPERATOR_SERVICE_URL', 'Operator service URL'],
 }
@@ -89,6 +91,10 @@ class Config(configparser.ConfigParser):
     def keeper_url(self):
         """URL of the keeper. (e.g.): http://mykeeper:8545."""
         return self.get(self._section_name, NAME_KEEPER_URL, fallback=None)
+
+    @property
+    def aquarius_url(self):
+        return self.get('resources', NAME_AQUARIUS_URL, fallback=None)
 
     @property
     def secret_store_url(self):

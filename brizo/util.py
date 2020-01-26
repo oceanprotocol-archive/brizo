@@ -14,7 +14,9 @@ from ocean_keeper.contract_handler import ContractHandler
 from ocean_keeper.event_filter import EventFilter
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg, get_account
 from ocean_keeper.web3_provider import Web3Provider
+from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.did import did_to_id
+from ocean_utils.did_resolver.did_resolver import DIDResolver
 from osmosis_driver_interface.osmosis import Osmosis
 from secret_store_client.client import Client as SecretStore
 
@@ -346,6 +348,10 @@ def get_download_url(url, config_file):
         raise
 
 
+def get_compute_endpoint():
+    return get_config().operator_service_url + '/api/v1/operator/compute'
+
+
 def check_required_attributes(required_attributes, data, method):
     assert isinstance(data, dict), 'invalid payload format.'
     logger.info('got %s request: %s' % (method, data))
@@ -357,3 +363,71 @@ def check_required_attributes(required_attributes, data, method):
             logger.error('%s request failed: required attr %s missing.' % (method, attr))
             return '"%s" is required in the call to %s' % (attr, method), 400
     return None, None
+
+
+def validate_algorithm_dict(algorithm_dict, algorithm_did):
+    if algorithm_did and not algorithm_dict['url']:
+        return f'cannot get url for the algorithmDID {algorithm_did}', 400
+
+    if not algorithm_dict['url'] and not algorithm_dict['rawcode']:
+        return f'`algorithmMeta` must define one of `url` or `rawcode`, but both seem missing.', 400
+
+    container = algorithm_dict['container']
+    # Validate `container` data
+    if not (container.get('entrypoint') and container.get('image') and container.get('tag')):
+        return f'algorithm `container` must specify values for all of entrypoint, image and tag.', 400
+
+    return None, None
+
+
+def build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_account):
+    if algorithm_did is not None:
+        # use the DID
+        algo_asset = DIDResolver(keeper_instance().did_registry).resolve(algorithm_did)
+        algo_id = algorithm_did
+        raw_code = ''
+        algo_url = get_asset_url_at_index(0, algo_asset, provider_account)
+        container = algo_asset.metadata['main']['algorithm']['container']
+    else:
+        algo_id = ''
+        algo_url = algorithm_meta.get('url')
+        raw_code = algorithm_meta.get('rawcode')
+        container = algorithm_meta.get('container')
+
+    return dict({
+        'id': algo_id,
+        'url': algo_url,
+        'rawcode': raw_code,
+        'container': container
+    })
+
+
+def build_stage_output_dict(asset, owner, provider_account):
+    config = get_config()
+    return dict({
+        'nodeUri': config.keeper_url,
+        'brizoUrl': asset.get_service(ServiceTypes.CLOUD_COMPUTE).service_endpoint,
+        'brizoAddress': provider_account.address,
+        'metadata': dict({
+            'name': "Workflow output"
+        }),
+        'metadataUrl': config.aquarius_url,
+        'secretStoreUrl': config.secret_store_url,
+        'owner': owner,
+        'publishOutput': True,
+        'publishAlgorithmLog': True
+    })
+
+
+def build_stage_dict(input_dict, algorithm_dict, output_dict):
+    return dict({
+        'index': 0,
+        'input': [input_dict],
+        'compute': {
+            'Instances': 1,
+            'namespace': "ocean-compute",
+            'maxtime': 3600
+        },
+        'algorithm': algorithm_dict,
+        'output': output_dict
+    })

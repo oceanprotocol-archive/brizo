@@ -14,10 +14,21 @@ from secret_store_client.client import RPCError
 from brizo.exceptions import InvalidSignatureError
 from brizo.log import setup_logging
 from brizo.myapp import app
-from brizo.util import (build_download_response, check_required_attributes, do_secret_store_encrypt,
-                        get_asset_url_at_index, get_asset_urls, get_config, get_download_url, get_provider_account,
-                        is_access_granted, keeper_instance, setup_keeper, verify_signature,
-                        was_compute_triggered)
+from brizo.util import (
+    build_download_response,
+    check_required_attributes,
+    do_secret_store_encrypt,
+    get_asset_url_at_index,
+    get_asset_urls,
+    get_config,
+    get_download_url,
+    get_provider_account,
+    is_access_granted,
+    keeper_instance,
+    setup_keeper,
+    verify_signature,
+    get_compute_endpoint,
+    build_stage_algorithm_dict, build_stage_output_dict, build_stage_dict, validate_algorithm_dict)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -293,7 +304,7 @@ def compute_delete_job():
 
         # TODO - add signature so operator can check auth
         response = requests_session.delete(
-            get_config().operator_service_url + '/api/v1/operator/compute',
+            get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
@@ -366,7 +377,7 @@ def compute_stop_job():
             body['agreementId'] = agreement_id
         # TODO - add signature so operator can check auth
         response = requests_session.put(
-            get_config().operator_service_url + '/api/v1/operator/compute',
+            get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
@@ -438,9 +449,9 @@ def compute_get_status_job():
         if agreement_id is not None:
             body['agreementId'] = agreement_id
 
-        # TODO - add signature so operator can check auth
+        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.get(
-            get_config().operator_service_url + '/api/v1/operator/compute',
+            get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
@@ -507,94 +518,69 @@ def compute_start_job():
     agreement_id = data.get('serviceAgreementId')
     consumer_address = data.get('consumerAddress')
     signature = data.get('signature')
-
-    # :TODO: validate inputs
-    # agreementId, consumerAddress, signature, algorithmDID, and algorithmMeta
+    algorithm_did = data.get('algorithmDID')
+    algorithm_meta = data.get('algorithmMeta')
 
     try:
-        verify_signature(keeper_instance(), consumer_address, signature, agreement_id)
         keeper = keeper_instance()
-        asset_id = keeper.agreement_manager.get_agreement(data.get("serviceAgreementId")).did
+        # Validate algorithm info
+        if not (algorithm_meta or algorithm_did):
+            msg = f'Need an `algorithmMeta` or `algorithmDID` to run, otherwise don\'t bother.'
+            logger.error(msg, exc_info=1)
+            return jsonify(error=msg), 400
+
+        # Consumer signature
+        verify_signature(keeper, consumer_address, signature, agreement_id)
+
+        #########################
+        # ALGORITHM
+        algorithm_dict = build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_acc)
+        error_msg, status_code = validate_algorithm_dict(algorithm_dict, algorithm_did)
+        if error_msg:
+            return jsonify(error=error_msg), status_code
+
+        #########################
+        # INPUT
+        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
         did = id_to_did(asset_id)
         asset = DIDResolver(keeper.did_registry).resolve(did)
+        asset_urls = get_asset_urls(asset, provider_acc, app.config['CONFIG_FILE'])
+        if not asset_urls:
+            return jsonify(error=f'cannot get url(s) in input did {did}.'), 400
 
-        workflow = dict()
-        workflow['agreementId'] = data.get("serviceAgreementId")
-        workflow['owner'] = data.get("consumerAddress")
-        workflow['stages'] = list()
+        input_dict = dict({
+            'index': 0,
+            'id': did,
+            'url': asset_urls
+        })
 
-        # build a new stage
-        stage = dict()
-        stage['index'] = 0
-        stage['input'] = list()
-        stage['compute'] = dict()
-        stage['algorithm'] = dict()
-        stage['output'] = dict()
+        #########################
+        # OUTPUT
+        output_dict = build_stage_output_dict(asset, consumer_address, provider_acc)
 
-        # input props
-        input_dict = dict()
-        input_dict['index'] = 0
-        input_dict['id'] = did
-        input_dict['url'] = get_asset_urls(asset, provider_acc, app.config['CONFIG_FILE'])
-        if not input_dict['url']:
-            # there are no urls ??
-            return f'cannot get url(s) in input did.', 400
-        stage['input'].append(input_dict)
+        #########################
+        # STAGE
+        stage = build_stage_dict(input_dict, algorithm_dict, output_dict)
 
-        # compute prop
-        stage['compute']['Instances'] = 1
-        stage['compute']['namespace'] = "ocean-compute"
-        stage['compute']['maxtime'] = 3600
-
-        # algorithm prop
-        if data.get("algorithmDID") is None:
-            # use the metadata provided
-            try:
-                algo = json.loads(data.get('algorithmMeta'))
-                stage['algorithm']['url'] = algo.url
-                stage['algorithm']['rawcode'] = algo.rawcode
-                stage['algorithm']['container'] = {}
-                stage['algorithm']['container']['image'] = algo.container_image
-                stage['algorithm']['container']['tag'] = algo.container_tag
-                stage['algorithm']['container']['entrypoint'] = algo.container_entry_point
-            except:
-                msg = f'`algorithmMeta is missing'
-                logger.error(msg, exc_info=1)
-                return msg, 400
-        else:
-            # use the DID
-            algoasset = DIDResolver(keeper_instance().did_registry).resolve(data.get('algorithmDID'))
-            stage['algorithm']['id'] = data.get('algorithmDID')
-            stage['algorithm']['url'] = get_asset_url_at_index(0, algoasset, provider_acc)
-            if not stage['algorithm']['url']:
-                # there is no url ??
-                return f'`cannot get url for the algorithmDID.', 400
-            stage['algorithm']['container'] = algoasset.metadata['main']['algorithm']['container']
-
-        # output prop
-        # TODO  - replace with real values below
-        stage['output']['nodeUri'] = "https://nile.dev-ocean.com"
-        # brizoUrl should come from the asset's compute service endpoint
-        stage['output']['brizoUrl'] = "https://brizo.marketplace.dev-ocean.com"
-        stage['output']['brizoAddress'] = "0x4aaab179035dc57b35e2ce066919048686f82972"
-        stage['output']['metadata'] = dict()
-        stage['output']['metadata']['name'] = "Workflow output"
-        stage['output']['metadataUrl'] = "https://aquarius.marketplace.dev-ocean.com"
-        stage['output']['secretStoreUrl'] = "https://secret-store.nile.dev-ocean.com"
-        stage['output']['owner'] = data.get("consumerAddress")
-        stage['output']['publishoutput'] = True
-        stage['output']['publishalgolog'] = True
-
-        # push stage to workflow
-        workflow['stages'].append(stage)
+        #########################
+        # WORKFLOW
+        workflow = dict({
+            'agreementId': agreement_id,
+            'signature': keeper.sign_hash(agreement_id, provider_acc),
+            'owner': consumer_address,
+            'stages': list([stage])
+        })
 
         # workflow is ready, push it to operator
         logger.info('Sending: %s', workflow)
 
-        # TODO - add signature so operator can check auth
+        payload = {
+            "workflow": workflow,
+            "signature": keeper.sign_hash(agreement_id, provider_acc),
+        }
         response = requests_session.post(
-            get_config().operator_service_url + '/api/v1/operator/compute',
-            data=json.dumps(workflow),
+            get_compute_endpoint(),
+            data=json.dumps(payload),
             headers={'content-type': 'application/json'})
 
         return Response(
