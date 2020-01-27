@@ -99,7 +99,7 @@ def get_algorithm_ddo(account, providers=None):
 def get_dataset_ddo_with_compute_service(account, providers=None):
     keeper = keeper_instance()
     metadata = get_sample_ddo_with_compute_service()['service'][0]['attributes']
-    # metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
     service_descriptor = get_compute_service_descriptor(
         keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
     return get_registered_ddo(account, metadata, service_descriptor, providers)
