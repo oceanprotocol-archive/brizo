@@ -34,7 +34,6 @@ def get_consumer_account():
 
 
 def get_sample_algorithm_ddo():
-    # :TODO: modify this to load ddo with algorithm type metadata
     path = get_resource_path('ddo', 'ddo_sample_algorithm.json')
     assert path.exists(), f"{path} does not exist!"
     with open(path, 'r') as file_handle:
@@ -43,7 +42,6 @@ def get_sample_algorithm_ddo():
 
 
 def get_sample_ddo_with_compute_service():
-    # :TODO: modify this to load ddo that has compute service
     path = get_resource_path('ddo', 'ddo_with_compute_service.json')  # 'ddo_sa_sample.json')
     assert path.exists(), f"{path} does not exist!"
     with open(path, 'r') as file_handle:
@@ -90,6 +88,23 @@ def get_compute_service_descriptor(keeper, account, price, metadata):
     )
 
 
+def get_algorithm_ddo(account, providers=None):
+    keeper = keeper_instance()
+    metadata = get_sample_algorithm_ddo()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_access_service_descriptor(keeper, account, metadata)
+    return get_registered_ddo(account, metadata, service_descriptor, providers)
+
+
+def get_dataset_ddo_with_compute_service(account, providers=None):
+    keeper = keeper_instance()
+    metadata = get_sample_ddo_with_compute_service()['service'][0]['attributes']
+    # metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_compute_service_descriptor(
+        keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
+    return get_registered_ddo(account, metadata, service_descriptor, providers)
+
+
 def get_dataset_ddo_with_access_service(account, providers=None):
     keeper = keeper_instance()
     metadata = get_sample_ddo()['service'][0]['attributes']
@@ -126,6 +141,8 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     ddo.add_proof(checksums, account)
 
     did = ddo.assign_did(DID.did(ddo.proof['checksum']))
+    ddo_service_endpoint.replace('{did}', did)
+    services[0].set_service_endpoint(ddo_service_endpoint)
 
     stype_to_service = {s.type: s for s in services}
     _service = stype_to_service[service_type]
@@ -175,7 +192,13 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
         account=account,
         providers=providers
     )
-    aqua.publish_asset_ddo(ddo)
+
+    try:
+        response = aqua.publish_asset_ddo(ddo)
+    except Exception as e:
+        print(f'error publishing ddo {ddo.did} in Aquarius: {e}')
+        raise
+
     return ddo
 
 
@@ -217,23 +240,6 @@ def place_order(publisher_account, ddo, consumer_account, service_type):
     )
 
     return agreement_id
-
-
-def get_algorithm_ddo(account, providers=None):
-    keeper = keeper_instance()
-    metadata = get_sample_algorithm_ddo()['service'][0]['attributes']
-    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
-    service_descriptor = get_access_service_descriptor(keeper, account, metadata)
-    return get_registered_ddo(account, metadata, service_descriptor, providers)
-
-
-def get_dataset_ddo_with_compute_service(account, providers=None):
-    keeper = keeper_instance()
-    metadata = get_sample_ddo_with_compute_service()['service'][0]['attributes']
-    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
-    service_descriptor = get_compute_service_descriptor(
-        keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
-    return get_registered_ddo(account, metadata, service_descriptor, providers)
 
 
 def lock_reward(agreement_id, service_agreement, consumer_account):

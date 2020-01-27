@@ -88,4 +88,4 @@ def test_compute(client):
         data=json.dumps(payload),
         content_type='application/json'
     )
-    assert response.status == '200 OK', f'Failed: {response.content}'
+    assert response.status == '200 OK', f'Failed: {response.data}'
