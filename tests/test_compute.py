@@ -5,6 +5,7 @@ import json
 
 from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_types import ServiceTypes
+from ocean_utils.aquarius.aquarius import Aquarius
 
 from brizo.constants import BaseURLs
 from brizo.util import keeper_instance
@@ -25,6 +26,9 @@ def dummy_callback(*_):
 
 
 def test_compute(client):
+    aqua = Aquarius('http://localhost:5000')
+    for did in aqua.list_assets():
+        aqua.retire_asset_ddo(did)
 
     endpoint = BaseURLs.ASSETS_URL + '/compute'
     pub_acc = get_publisher_account()

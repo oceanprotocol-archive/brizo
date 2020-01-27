@@ -10,6 +10,7 @@ from eth_utils import add_0x_prefix
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_types import ServiceTypes
+from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.http_requests.requests_session import get_requests_session
 from werkzeug.utils import get_content_type
 
@@ -47,6 +48,10 @@ def dummy_callback(*_):
 
 
 def test_consume(client):
+    aqua = Aquarius('http://localhost:5000')
+    for did in aqua.list_assets():
+        aqua.retire_asset_ddo(did)
+
     endpoint = BaseURLs.ASSETS_URL + '/consume'
 
     pub_acc = get_publisher_account()

@@ -8,6 +8,7 @@ import uuid
 
 from eth_utils import remove_0x_prefix
 from ocean_keeper.utils import get_account
+from ocean_utils.did_resolver.did_resolver import DIDResolver
 
 from brizo.util import do_secret_store_encrypt, get_config, web3, keeper_instance
 
@@ -117,9 +118,6 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     keeper = keeper_instance()
     aqua = Aquarius('http://localhost:5000')
 
-    for did in aqua.list_assets():
-        aqua.retire_asset_ddo(did)
-
     ddo = DDO()
     ddo_service_endpoint = aqua.get_service_endpoint()
 
@@ -194,7 +192,7 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     )
 
     try:
-        response = aqua.publish_asset_ddo(ddo)
+        aqua.publish_asset_ddo(ddo)
     except Exception as e:
         print(f'error publishing ddo {ddo.did} in Aquarius: {e}')
         raise

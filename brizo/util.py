@@ -107,12 +107,11 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
     if not event_logs:
         return False
 
-    agreement_consumer = event_logs[0].args.actor
-
-    if agreement_consumer is None:
+    actors = [log.args.actor for log in event_logs]
+    if not actors:
         return False
 
-    if agreement_consumer != consumer_address:
+    if consumer_address not in actors:
         logger.warning(f'Invalid consumer address {consumer_address} and/or '
                        f'service agreement id {agreement_id} (did {did})'
                        f', agreement consumer is {agreement_consumer}')

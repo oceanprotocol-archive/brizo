@@ -569,28 +569,22 @@ def compute_start_job():
         # workflow is ready, push it to operator
         logger.info('Sending: %s', workflow)
 
+        payload = {
+            "workflow": workflow,
+            "signature": keeper.sign_hash(agreement_id, provider_acc),
+            'agreementId': agreement_id,
+            'owner': consumer_address,
+        }
+        response = requests_session.post(
+            get_compute_endpoint(),
+            data=json.dumps(payload),
+            headers={'content-type': 'application/json'})
+
         return Response(
-            json.dumps({"jobId": 1123}),
-            200,
+            response.content,
+            response.status_code,
             headers={'content-type': 'application/json'}
         )
-
-        # payload = {
-        #     "workflow": workflow,
-        #     "signature": keeper.sign_hash(agreement_id, provider_acc),
-        #     'agreementId': agreement_id,
-        #     'owner': consumer_address,
-        # }
-        # response = requests_session.post(
-        #     get_compute_endpoint(),
-        #     data=json.dumps(payload),
-        #     headers={'content-type': 'application/json'})
-        #
-        # return Response(
-        #     response.content,
-        #     response.status_code,
-        #     headers={'content-type': 'application/json'}
-        # )
 
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
