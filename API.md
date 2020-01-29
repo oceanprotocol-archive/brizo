@@ -63,12 +63,9 @@ Each object will contain:
     dateFinished:Unix timestamp when job finished
     status:  Int, see below for list
     statusText: String, see below
-    configlogUrl: URL to get the configuration log (for admins only)
-    publishlogUrl: URL to get the publish log (for admins only)
     algologUrl: URL to get the algo log (for user)
     outputsUrl: Array of URLs for algo outputs
-    ddo: If published, the DDO
-    did: If published, the DID
+    resultsDid: If published, the DID
 ```
 
 Status description: (see Operator-Service for full status list)
@@ -91,13 +88,12 @@ Output:
         "dateFinished":"2020-10-01T01:00:00Z",
         "status":5,
         "statusText":"Job finished",
-        "configlogUrl":"http://example.net/logs/config.log",
-        "publishlogUrl":"http://example.net/logs/publish.log",
         "algologUrl":"http://example.net/logs/algo.log",
         "outputsUrl":[
             "http://example.net/logs/output/0",
             "http://example.net/logs/output/1"
-         ]
+         ],
+         "resultsDid":"did:op:87bdaabb33354d2eb014af5091c604fb4b0f67dc6cca4d18a96547bffdc27bcf"
        },
        {
         "owner":"0x1111",
@@ -107,13 +103,12 @@ Output:
         "dateFinished":"2020-10-01T01:00:00Z",
         "status":5,
         "statusText":"Job finished",
-        "configlogUrl":"http://example.net/logs2/config.log",
-        "publishlogUrl":"http://example.net/logs2/cpublish.log",
         "algologUrl":"http://example.net/logs2/algo.log",
         "outputsUrl":[
             "http://example.net/logs2/output/0",
             "http://example.net/logs2/output/1"
-         ]
+         ],
+         "resultsDid":""
        }
  ]
  ```
