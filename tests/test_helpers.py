@@ -7,9 +7,10 @@ import uuid
 
 
 from eth_utils import remove_0x_prefix
-from ocean_keeper.utils import get_account
+from ocean_keeper.utils import get_account, add_ethereum_prefix_and_hash_msg
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 
+from brizo.constants import BaseURLs
 from brizo.util import do_secret_store_encrypt, get_config, web3, keeper_instance
 
 from tests.conftest import get_sample_ddo, get_resource_path
@@ -264,3 +265,67 @@ def grant_compute(agreement_id, asset_id, consumer_account, publisher_account):
         agreement_id, asset_id, consumer_account.address, publisher_account
     )
     keeper.compute_execution_condition.get_tx_receipt(tx_hash)
+
+
+def get_possible_compute_job_status_text():
+    return {
+        'Job started',
+        'Publishing results',
+        'Starting job',
+        'Job finished',
+        'Configuring volumes'
+    }
+
+
+def get_compute_job_info(client, endpoint, params):
+    response = client.get(
+        endpoint + '?' + '&'.join([f'{k}={v}' for k, v in params.items()]),
+        data=json.dumps(params),
+        content_type='application/json'
+    )
+    assert response.status == '200 OK' and response.data, \
+        f'get compute job info failed: status {response.status}, data {response.data}'
+
+    job_info = response.json if response.json else json.loads(response.data)
+    if not job_info:
+        print(f'There is a problem with the job info response: {response.data}')
+        return None, None
+
+    return job_info[0]
+
+
+def _check_job_id(client, job_id, agreement_id):
+    endpoint = BaseURLs.ASSETS_URL + '/compute'
+    cons_acc = get_consumer_account()
+
+    keeper = keeper_instance()
+    agreement_id_hash = add_ethereum_prefix_and_hash_msg(agreement_id)
+    signature = keeper.sign_hash(agreement_id_hash, cons_acc)
+    payload = dict({
+        'signature': signature,
+        'serviceAgreementId': agreement_id,
+        'consumerAddress': cons_acc.address,
+        'jobId': job_id,
+    })
+
+    job_info = get_compute_job_info(client, endpoint, payload)
+    assert job_info, f'Failed to get job info for jobId {job_id}'
+    print(f'got info for compute job {job_id}: {job_info}')
+    assert job_info['statusText'] in get_possible_compute_job_status_text()
+    did = None
+    # get did of results
+    for i in range(160):
+        job_info = get_compute_job_info(client, endpoint, payload)
+        did = job_info['did']
+        if did:
+            break
+        time.sleep(0.25)
+
+    assert did, f'Compute job has no results, job info {job_info}.'
+    # check results ddo
+    ddo = DIDResolver(keeper.did_registry).resolve(did)
+    assert ddo, f'Failed to resolve ddo for did {did}'
+    consumer_permission = keeper.did_registry.get_permission(did, cons_acc.address)
+    assert consumer_permission is True, \
+        f'Consumer address {cons_acc.address} has no permissions on the results ' \
+        f'did {did}. This is required, the consumer must be able to access the results'

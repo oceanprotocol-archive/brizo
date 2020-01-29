@@ -28,7 +28,7 @@ from brizo.util import (
     setup_keeper,
     verify_signature,
     get_compute_endpoint,
-    build_stage_algorithm_dict, build_stage_output_dict, build_stage_dict, validate_algorithm_dict)
+    build_stage_algorithm_dict, build_stage_output_dict, build_stage_dict, validate_algorithm_dict, get_request_data)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -96,7 +96,7 @@ def publish():
         'document',
         'publisherAddress'
     ]
-    data = request.json
+    data = get_request_data(request)
     if 'signedDocumentId' in data and 'signature' not in data:
         data['signature'] = data['signedDocumentId']
 
@@ -183,7 +183,7 @@ def consume():
       500:
         description: Error
     """
-    data = request.args
+    data = get_request_data(request)
     required_attributes = [
         'serviceAgreementId',
         'consumerAddress'
@@ -278,7 +278,7 @@ def compute_delete_job():
       500:
         description: Error
     """
-    data = request.args
+    data = get_request_data(request)
     required_attributes = [
         'signature'
     ]
@@ -352,7 +352,7 @@ def compute_stop_job():
       500:
         description: Error
     """
-    data = request.args
+    data = get_request_data(request)
     required_attributes = [
         'signature'
     ]
@@ -425,7 +425,7 @@ def compute_get_status_job():
       500:
         description: Error
     """
-    data = request.args
+    data = get_request_data(request)
     required_attributes = [
         'signature'
     ]
@@ -505,7 +505,7 @@ def compute_start_job():
       500:
         description: Error
     """
-    data = request.json
+    data = get_request_data(request)
     required_attributes = [
         'signature',
         'serviceAgreementId',

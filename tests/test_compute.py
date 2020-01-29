@@ -2,10 +2,12 @@
 #  SPDX-License-Identifier: Apache-2.0
 
 import json
+import time
 
 from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
+from squid_py.did_resolver.did_resolver import DIDResolver
 
 from brizo.constants import BaseURLs
 from brizo.util import keeper_instance
@@ -18,7 +20,7 @@ from tests.test_helpers import (
     get_dataset_ddo_with_compute_service,
     get_publisher_account,
     get_consumer_account,
-    lock_reward, grant_compute)
+    lock_reward, grant_compute, get_compute_job_info, get_possible_compute_job_status_text, _check_job_id)
 
 
 def dummy_callback(*_):
@@ -30,7 +32,6 @@ def test_compute(client):
     for did in aqua.list_assets():
         aqua.retire_asset_ddo(did)
 
-    endpoint = BaseURLs.ASSETS_URL + '/compute'
     pub_acc = get_publisher_account()
     cons_acc = get_consumer_account()
 
@@ -79,6 +80,7 @@ def test_compute(client):
     agreement_id_hash = add_ethereum_prefix_and_hash_msg(agreement_id)    
     signature = keeper.sign_hash(agreement_id_hash, cons_acc)
 
+    # Start the compute job
     payload = dict({
         'signature': signature, 
         'serviceAgreementId': agreement_id,
@@ -87,9 +89,58 @@ def test_compute(client):
         'algorithmMeta': {}
     })
 
+    endpoint = BaseURLs.ASSETS_URL + '/compute'
     response = client.post(
         endpoint,
         data=json.dumps(payload),
         content_type='application/json'
     )
-    assert response.status == '200 OK', f'Failed: {response.data}'
+    assert response.status == '200 OK', f'start compute job failed: {response.data}'
+    job_info = response.json[0]
+    print(f'got response from starting compute job: {job_info}')
+    job_id = job_info.get('jobId')
+
+    payload = dict({
+        'signature': signature,
+        'serviceAgreementId': agreement_id,
+        'consumerAddress': cons_acc.address,
+        'jobId': job_id,
+    })
+
+    job_info = get_compute_job_info(client, endpoint, payload)
+    assert job_info, f'Failed to get job info for jobId {job_id}'
+    print(f'got info for compute job {job_id}: {job_info}')
+    assert job_info['statusText'] in get_possible_compute_job_status_text()
+    did = None
+    # get did of results
+    for i in range(200):
+        job_info = get_compute_job_info(client, endpoint, payload)
+        did = job_info['did']
+        if did:
+            break
+        time.sleep(0.25)
+
+    assert did, f'Compute job has no results, job info {job_info}.'
+    # check results ddo
+    ddo = DIDResolver(keeper.did_registry).resolve(did)
+    assert ddo, f'Failed to resolve ddo for did {did}'
+    consumer_permission = keeper.did_registry.get_permission(did, cons_acc.address)
+    assert consumer_permission is True, \
+        f'Consumer address {cons_acc.address} has no permissions on the results ' \
+        f'did {did}. This is required, the consumer must be able to access the results'
+
+    # # Try the stop job endpoint
+    # response = client.put(
+    #     endpoint + '?' + '&'.join([f'{k}={v}' for k, v in payload.items()]),
+    #     data=json.dumps(payload),
+    #     content_type='application/json'
+    # )
+    # assert response.status == '200 OK', f'stop compute job failed: {response.data}'
+    #
+    # # Try the delete job endpoint
+    # response = client.delete(
+    #     endpoint + '?' + '&'.join([f'{k}={v}' for k, v in payload.items()]),
+    #     data=json.dumps(payload),
+    #     content_type='application/json'
+    # )
+    # assert response.status == '200 OK', f'delete compute job failed: {response.data}'

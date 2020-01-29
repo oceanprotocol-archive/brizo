@@ -65,6 +65,12 @@ def get_config():
     return Config(filename=config_file)
 
 
+def get_request_data(request, url_params_only=False):
+    if url_params_only:
+        return request.args
+    return request.args if request.args else request.json
+
+
 def do_secret_store_encrypt(did_id, document, provider_acc, config):
     secret_store = SecretStore(
         config.secret_store_url,
