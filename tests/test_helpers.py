@@ -65,7 +65,7 @@ def get_access_service_descriptor(keeper, account, metadata):
 
     return ServiceDescriptor.access_service_descriptor(
         access_service_attributes,
-        'http://localhost:8030',
+        f'http://localhost:8030{BaseURLs.ASSETS_URL}/consume',
         keeper.template_manager.create_template_id(template_name)
     )
 
@@ -84,9 +84,8 @@ def get_compute_service_descriptor(keeper, account, price, metadata):
 
     return ServiceDescriptor.compute_service_descriptor(
         compute_service_attributes,
-        'http://localhost:8030/services/compute',
+        f'http://localhost:8030{BaseURLs.ASSETS_URL}/compute',
         keeper.template_manager.create_template_id(template_name)
-
     )
 
 
@@ -174,7 +173,7 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
         account,
         get_config()
     )
-    _files = metadata['main']['files']
+
     # only assign if the encryption worked
     if encrypted_files:
         index = 0

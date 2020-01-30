@@ -21,6 +21,7 @@ from osmosis_driver_interface.osmosis import Osmosis
 from secret_store_client.client import Client as SecretStore
 
 from brizo.config import Config
+from brizo.constants import BaseURLs
 from brizo.exceptions import InvalidSignatureError
 
 logger = logging.getLogger(__name__)
@@ -409,9 +410,13 @@ def build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_account):
 
 def build_stage_output_dict(asset, owner, provider_account):
     config = get_config()
+    service_endpoint = asset.get_service(ServiceTypes.CLOUD_COMPUTE).service_endpoint
+    if BaseURLs.ASSETS_URL in service_endpoint:
+        service_endpoint = service_endpoint.split(BaseURLs.ASSETS_URL)[0]
+
     return dict({
         'nodeUri': config.keeper_url,
-        'brizoUrl': asset.get_service(ServiceTypes.CLOUD_COMPUTE).service_endpoint,
+        'brizoUrl': service_endpoint,
         'brizoAddress': provider_account.address,
         'metadata': dict({
             'name': "Workflow output"
@@ -419,8 +424,8 @@ def build_stage_output_dict(asset, owner, provider_account):
         'metadataUrl': config.aquarius_url,
         'secretStoreUrl': config.secret_store_url,
         'owner': owner,
-        'publishOutput': True,
-        'publishAlgorithmLog': True
+        'publishOutput': 1,
+        'publishAlgorithmLog': 1
     })
 
 

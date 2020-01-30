@@ -262,7 +262,7 @@ To debug Brizo using PyCharm, follow the next instructions:
     ```
 
    The option `OBJC_DISABLE_INITIALIZE_FORK_SAFETY` is needed if you run in last versions of MacOS.
-7. Now you can configure your breakpoints and debug brizo or squid-py.
+7. Now you can configure your breakpoints and debug brizo.
 
 ## New Version
 

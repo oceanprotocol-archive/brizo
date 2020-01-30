@@ -17,7 +17,7 @@ with open('CHANGELOG.md') as history_file:
 # Installed by pip install ocean-brizo
 # or pip install -e .
 install_requirements = [
-    # Install squid-py and all its dependencies first
+    # Install ocean-keeper and ocean-utils first
     'ocean-utils==0.3.4',  # gets PyYAML, coloredlogs, web3
     'ocean-keeper==0.3.3',
     'ocean-secret-store-client==0.0.2',
