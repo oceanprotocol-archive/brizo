@@ -43,7 +43,7 @@ def test_compute(client):
     # CHECKPOINT 1
 
     # prepare parameter values for the compute endpoint
-    # signature, serviceAgreementId, consumerAddress, and algorithmDID or algorithmMeta
+    # signature, serviceAgreementId, consumerAddress, and algorithmDid or algorithmMeta
 
     # initialize an agreement
     agreement_id = place_order(pub_acc, dataset_ddo_w_compute_service, cons_acc, ServiceTypes.CLOUD_COMPUTE)
@@ -83,7 +83,7 @@ def test_compute(client):
         'signature': signature, 
         'serviceAgreementId': agreement_id,
         'consumerAddress': cons_acc.address,
-        'algorithmDID': alg_ddo.did,
+        'algorithmDid': alg_ddo.did,
         'algorithmMeta': {}
     })
 

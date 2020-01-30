@@ -261,7 +261,7 @@ def compute_delete_job():
         type: string
       - name: consumerAddress
         in: query
-        description: The owner address.
+        description: The consumer address.
         required: true
         type: string
       - name: jobId
@@ -335,7 +335,7 @@ def compute_stop_job():
         type: string
       - name: consumerAddress
         in: query
-        description: The owner address.
+        description: The consumer address.
         required: true
         type: string
       - name: jobId
@@ -408,7 +408,7 @@ def compute_get_status_job():
         type: string
       - name: consumerAddress
         in: query
-        description: The owner address.
+        description: The consumer address.
         required: true
         type: string
       - name: jobId
@@ -485,7 +485,7 @@ def compute_start_job():
         description: The consumer ethereum address.
         required: true
         type: string
-      - name: algorithmDID
+      - name: algorithmDid
         in: query
         description: hex str the did of the algorithm to be executed
         required: false
@@ -518,14 +518,14 @@ def compute_start_job():
     agreement_id = data.get('serviceAgreementId')
     consumer_address = data.get('consumerAddress')
     signature = data.get('signature')
-    algorithm_did = data.get('algorithmDID')
+    algorithm_did = data.get('algorithmDid')
     algorithm_meta = data.get('algorithmMeta')
 
     try:
         keeper = keeper_instance()
         # Validate algorithm info
         if not (algorithm_meta or algorithm_did):
-            msg = f'Need an `algorithmMeta` or `algorithmDID` to run, otherwise don\'t bother.'
+            msg = f'Need an `algorithmMeta` or `algorithmDid` to run, otherwise don\'t bother.'
             logger.error(msg, exc_info=1)
             return jsonify(error=msg), 400
 

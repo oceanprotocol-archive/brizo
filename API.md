@@ -14,7 +14,7 @@ Parameters
     jobId: String object containing workflowID (optional)
     algorithmDid: hex str the did of the algorithm to be executed
     algorithmMeta: json object that define the algorithm attributes and url or raw code
-    consumerAddress: String object containing owner's address
+    consumerAddress: String object containing consumer's ethereum address
 ```
 
 Returns:
@@ -45,7 +45,7 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-    consumerAddress: String object containing owner's address (optional)
+    consumerAddress: String object containing consumer's address (optional)
 
     At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
@@ -125,7 +125,7 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowID (optional)
-    consumerAddress: String object containing owner's address (optional)
+    consumerAddress: String object containing consumer's address (optional)
 
     At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```
@@ -155,7 +155,7 @@ Parameters
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID (optional)
     jobId: String object containing workflowId (optional)
-    consumerAddress: String object containing owner's address (optional)
+    consumerAddress: String object containing consumer's address (optional)
 
     At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
 ```

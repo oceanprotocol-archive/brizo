@@ -373,7 +373,7 @@ def check_required_attributes(required_attributes, data, method):
 
 def validate_algorithm_dict(algorithm_dict, algorithm_did):
     if algorithm_did and not algorithm_dict['url']:
-        return f'cannot get url for the algorithmDID {algorithm_did}', 400
+        return f'cannot get url for the algorithmDid {algorithm_did}', 400
 
     if not algorithm_dict['url'] and not algorithm_dict['rawcode']:
         return f'`algorithmMeta` must define one of `url` or `rawcode`, but both seem missing.', 400
