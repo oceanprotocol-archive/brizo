@@ -495,6 +495,11 @@ def compute_start_job():
         description: json object that define the algorithm attributes and url or raw code
         required: false
         type: string
+      - name: output
+        in: query
+        description: json object that define the output section 
+        required: true
+        type: string
     responses:
       200:
         description: Call to the operator-service was successful.
@@ -520,6 +525,7 @@ def compute_start_job():
     signature = data.get('signature')
     algorithm_did = data.get('algorithmDid')
     algorithm_meta = data.get('algorithmMeta')
+    output = data.get('output')
 
     try:
         keeper = keeper_instance()
@@ -555,12 +561,8 @@ def compute_start_job():
         })
 
         #########################
-        # OUTPUT
-        output_dict = build_stage_output_dict(asset, consumer_address, provider_acc)
-
-        #########################
         # STAGE
-        stage = build_stage_dict(input_dict, algorithm_dict, output_dict)
+        stage = build_stage_dict(input_dict, algorithm_dict, output)
 
         #########################
         # WORKFLOW
