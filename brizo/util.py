@@ -416,13 +416,13 @@ def build_stage_output_dict(asset, owner, provider_account):
 
     return dict({
         'nodeUri': config.keeper_url,
-        'brizoUrl': service_endpoint,
+        'brizoUri': service_endpoint,
         'brizoAddress': provider_account.address,
         'metadata': dict({
             'name': "Workflow output"
         }),
-        'metadataUrl': config.aquarius_url,
-        'secretStoreUrl': config.secret_store_url,
+        'metadataUri': config.aquarius_url,
+        'secretStoreUri': config.secret_store_url,
         'owner': owner,
         'publishOutput': 1,
         'publishAlgorithmLog': 1
