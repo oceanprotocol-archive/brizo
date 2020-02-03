@@ -14,11 +14,15 @@ from ocean_keeper.contract_handler import ContractHandler
 from ocean_keeper.event_filter import EventFilter
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg, get_account
 from ocean_keeper.web3_provider import Web3Provider
+from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.did import did_to_id
+from ocean_utils.did_resolver.did_resolver import DIDResolver
 from osmosis_driver_interface.osmosis import Osmosis
 from secret_store_client.client import Client as SecretStore
 
 from brizo.config import Config
+from brizo.constants import BaseURLs
+from brizo.exceptions import InvalidSignatureError
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +64,12 @@ def init_account_envvars():
 def get_config():
     config_file = os.getenv('CONFIG_FILE', 'config.ini')
     return Config(filename=config_file)
+
+
+def get_request_data(request, url_params_only=False):
+    if url_params_only:
+        return request.args
+    return request.args if request.args else request.json
 
 
 def do_secret_store_encrypt(did_id, document, provider_acc, config):
@@ -104,12 +114,11 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
     if not event_logs:
         return False
 
-    agreement_consumer = event_logs[0].args.actor
-
-    if agreement_consumer is None:
+    actors = [log.args.actor for log in event_logs]
+    if not actors:
         return False
 
-    if agreement_consumer != consumer_address:
+    if consumer_address not in actors:
         logger.warning(f'Invalid consumer address {consumer_address} and/or '
                        f'service agreement id {agreement_id} (did {did})'
                        f', agreement consumer is {agreement_consumer}')
@@ -180,7 +189,12 @@ def verify_signature(keeper, signer_address, signature, original_msg):
     else:
         address = keeper.personal_ec_recover(original_msg, signature)
 
-    return address.lower() == signer_address.lower()
+    if address.lower() == signer_address.lower():
+        return True
+
+    msg = f'Invalid signature {signature} for ' \
+          f'ethereum address {signer_address} and documentId {original_msg}.'
+    raise InvalidSignatureError(msg)
 
 
 def get_provider_account():
@@ -265,8 +279,7 @@ def build_download_response(request, requests_session, url, download_url, conten
         raise
 
 
-def get_asset_url_at_index(url_index, asset, account):
-    logger.debug(f'get_asset_url_at_index(): url_index={url_index}, did={asset.did}, provider={account.address}')
+def get_asset_files_list(asset, account):
     try:
         files_str = do_secret_store_decrypt(
             remove_0x_prefix(asset.asset_id),
@@ -278,6 +291,17 @@ def get_asset_url_at_index(url_index, asset, account):
         files_list = json.loads(files_str)
         if not isinstance(files_list, list):
             raise TypeError(f'Expected a files list, got {type(files_list)}.')
+
+        return files_list
+    except Exception as e:
+        logger.error(f'Error decrypting asset files for asset {asset.did}: {str(e)}')
+        raise
+
+
+def get_asset_url_at_index(url_index, asset, account):
+    logger.debug(f'get_asset_url_at_index(): url_index={url_index}, did={asset.did}, provider={account.address}')
+    try:
+        files_list = get_asset_files_list(asset, account)
         if url_index >= len(files_list):
             raise ValueError(f'url index "{url_index}"" is invalid.')
 
@@ -296,6 +320,28 @@ def get_asset_url_at_index(url_index, asset, account):
         raise
 
 
+def get_asset_urls(asset, account, config_file):
+    logger.debug(f'get_asset_urls(): did={asset.did}, provider={account.address}')
+    try:
+        files_list = get_asset_files_list(asset, account)
+        input_urls = []
+        for i, file_meta_dict in enumerate(files_list):
+            if not file_meta_dict or not isinstance(file_meta_dict, dict):
+                raise TypeError(f'Invalid file meta at index {i}, expected a dict, got a '
+                                f'{type(file_meta_dict)}.')
+            if 'url' not in file_meta_dict:
+                raise ValueError(f'The "url" key is not found in the '
+                                 f'file dict {file_meta_dict} at index {i}.')
+
+            url = file_meta_dict['url']
+            input_urls.append(get_download_url(url, config_file))
+
+        return input_urls
+    except Exception as e:
+        logger.error(f'Error decrypting urls for asset {asset.did}: {str(e)}')
+        raise
+
+
 def get_download_url(url, config_file):
     try:
         logger.info('Connecting through Osmosis to generate the signed url.')
@@ -306,6 +352,10 @@ def get_download_url(url, config_file):
     except Exception as e:
         logger.error(f'Error generating url (using Osmosis): {str(e)}')
         raise
+
+
+def get_compute_endpoint():
+    return get_config().operator_service_url + '/api/v1/operator/compute'
 
 
 def check_required_attributes(required_attributes, data, method):
@@ -319,3 +369,75 @@ def check_required_attributes(required_attributes, data, method):
             logger.error('%s request failed: required attr %s missing.' % (method, attr))
             return '"%s" is required in the call to %s' % (attr, method), 400
     return None, None
+
+
+def validate_algorithm_dict(algorithm_dict, algorithm_did):
+    if algorithm_did and not algorithm_dict['url']:
+        return f'cannot get url for the algorithmDid {algorithm_did}', 400
+
+    if not algorithm_dict['url'] and not algorithm_dict['rawcode']:
+        return f'`algorithmMeta` must define one of `url` or `rawcode`, but both seem missing.', 400
+
+    container = algorithm_dict['container']
+    # Validate `container` data
+    if not (container.get('entrypoint') and container.get('image') and container.get('tag')):
+        return f'algorithm `container` must specify values for all of entrypoint, image and tag.', 400
+
+    return None, None
+
+
+def build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_account):
+    if algorithm_did is not None:
+        # use the DID
+        algo_asset = DIDResolver(keeper_instance().did_registry).resolve(algorithm_did)
+        algo_id = algorithm_did
+        raw_code = ''
+        algo_url = get_asset_url_at_index(0, algo_asset, provider_account)
+        container = algo_asset.metadata['main']['algorithm']['container']
+    else:
+        algo_id = ''
+        algo_url = algorithm_meta.get('url')
+        raw_code = algorithm_meta.get('rawcode')
+        container = algorithm_meta.get('container')
+
+    return dict({
+        'id': algo_id,
+        'url': algo_url,
+        'rawcode': raw_code,
+        'container': container
+    })
+
+
+def build_stage_output_dict(asset, owner, provider_account):
+    config = get_config()
+    service_endpoint = asset.get_service(ServiceTypes.CLOUD_COMPUTE).service_endpoint
+    if BaseURLs.ASSETS_URL in service_endpoint:
+        service_endpoint = service_endpoint.split(BaseURLs.ASSETS_URL)[0]
+
+    return dict({
+        'nodeUri': config.keeper_url,
+        'brizoUri': service_endpoint,
+        'brizoAddress': provider_account.address,
+        'metadata': dict({
+            'name': "Workflow output"
+        }),
+        'metadataUri': config.aquarius_url,
+        'secretStoreUri': config.secret_store_url,
+        'owner': owner,
+        'publishOutput': 1,
+        'publishAlgorithmLog': 1
+    })
+
+
+def build_stage_dict(input_dict, algorithm_dict, output_dict):
+    return dict({
+        'index': 0,
+        'input': [input_dict],
+        'compute': {
+            'Instances': 1,
+            'namespace': "ocean-compute",
+            'maxtime': 3600
+        },
+        'algorithm': algorithm_dict,
+        'output': output_dict
+    })
