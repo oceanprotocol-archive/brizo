@@ -11,14 +11,17 @@ from brizo.constants import BaseURLs
 from brizo.util import keeper_instance
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 
-# TODO: move imports to `test_helpers.py`
 from tests.test_helpers import (
     place_order,
     get_algorithm_ddo,
     get_dataset_ddo_with_compute_service,
     get_publisher_account,
     get_consumer_account,
-    lock_reward, grant_compute, get_compute_job_info, get_possible_compute_job_status_text, _check_job_id)
+    lock_reward,
+    grant_compute,
+    get_compute_job_info,
+    get_possible_compute_job_status_text
+)
 
 
 def dummy_callback(*_):
@@ -71,8 +74,10 @@ def test_compute(client):
     )
     assert event or keeper.compute_execution_condition.was_compute_triggered(
         dataset_ddo_w_compute_service.asset_id, cons_acc.address
-    ), f'Failed to compute: agreement_id={agreement_id}, ' \
-       f'did={dataset_ddo_w_compute_service.did}, consumer={cons_acc.address}'
+    ), (
+        f'Failed to compute: agreement_id={agreement_id}, '
+        f'did={dataset_ddo_w_compute_service.did}, consumer={cons_acc.address}'
+    )
 
     # prepare consumer signature on agreement_id
     agreement_id_hash = add_ethereum_prefix_and_hash_msg(agreement_id)    

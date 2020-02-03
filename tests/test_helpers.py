@@ -293,7 +293,7 @@ def get_compute_job_info(client, endpoint, params):
     return job_info[0]
 
 
-def _check_job_id(client, job_id, agreement_id):
+def _check_job_id(client, job_id, agreement_id, wait_time=20):
     endpoint = BaseURLs.ASSETS_URL + '/compute'
     cons_acc = get_consumer_account()
 
@@ -313,7 +313,7 @@ def _check_job_id(client, job_id, agreement_id):
     assert job_info['statusText'] in get_possible_compute_job_status_text()
     did = None
     # get did of results
-    for i in range(160):
+    for _ in range(wait_time*4):
         job_info = get_compute_job_info(client, endpoint, payload)
         did = job_info['did']
         if did:
