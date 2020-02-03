@@ -268,12 +268,16 @@ def grant_compute(agreement_id, asset_id, consumer_account, publisher_account):
 
 def get_possible_compute_job_status_text():
     return {
-        'Job started',
-        'Publishing results',
-        'Starting job',
-        'Job finished',
-        'Configuring volumes'
-    }
+        10: 'Job started',
+        20: 'Configuring volumes',
+        30: 'Provisioning success',
+        31: 'Data provisioning failed',
+        32: 'Algorithm provisioning failed',
+        40: 'Running algorith',
+        50: 'Filtering results',
+        60: 'Publishing results',
+        70: 'Job completed',
+    }.values()
 
 
 def get_compute_job_info(client, endpoint, params):
