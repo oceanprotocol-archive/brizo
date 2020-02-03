@@ -190,7 +190,7 @@ def verify_signature(keeper, signer_address, signature, original_msg):
         address = keeper.personal_ec_recover(original_msg, signature)
 
     if address.lower() == signer_address.lower():
-        return
+        return True
 
     msg = f'Invalid signature {signature} for ' \
           f'ethereum address {signer_address} and documentId {original_msg}.'
