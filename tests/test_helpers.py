@@ -273,7 +273,7 @@ def get_possible_compute_job_status_text():
         30: 'Provisioning success',
         31: 'Data provisioning failed',
         32: 'Algorithm provisioning failed',
-        40: 'Running algorith',
+        40: 'Running algorithm',
         50: 'Filtering results',
         60: 'Publishing results',
         70: 'Job completed',
