@@ -281,15 +281,12 @@ def compute_delete_job():
     data = get_request_data(request)
     required_attributes = [
         'signature'
+        'consumerAddress'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
         return msg, status
 
-    if not (data.get('signature')):
-        return f'`signature is required in the call to "consume".', 400
-
-    # TODO  - check incoming signature
     try:
         agreement_id = data.get('serviceAgreementId')
         owner = data.get('consumerAddress')
@@ -302,12 +299,21 @@ def compute_delete_job():
         if agreement_id is not None:
             body['agreementId'] = agreement_id
 
-        # TODO - add signature so operator can check auth
+        # Consumer signature
+        signature = data.get('signature')
+        verify_signature(keeper_instance(), owner, signature, agreement_id)
+
+        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.delete(
             get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
+
+    except InvalidSignatureError as e:
+        msg = f'Consumer signature failed verification: {e}'
+        logger.error(msg, exc_info=1)
+        return msg, 401
 
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
@@ -355,15 +361,12 @@ def compute_stop_job():
     data = get_request_data(request)
     required_attributes = [
         'signature'
+        'consumerAddress'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
         return msg, status
 
-    if not (data.get('signature')):
-        return f'`signature is required in the call to "consume".', 400
-
-    # TODO  - check incoming signature
     try:
         agreement_id = data.get('serviceAgreementId')
         owner = data.get('consumerAddress')
@@ -375,12 +378,22 @@ def compute_stop_job():
             body['jobId'] = job_id
         if agreement_id is not None:
             body['agreementId'] = agreement_id
-        # TODO - add signature so operator can check auth
+
+        # Consumer signature
+        signature = data.get('signature')
+        verify_signature(keeper_instance(), owner, signature, agreement_id)
+
+        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.put(
             get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
+
+    except InvalidSignatureError as e:
+        msg = f'Consumer signature failed verification: {e}'
+        logger.error(msg, exc_info=1)
+        return msg, 401
 
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
@@ -427,16 +440,13 @@ def compute_get_status_job():
     """
     data = get_request_data(request)
     required_attributes = [
-        'signature'
+        'signature',
+        'consumerAddress'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
         return msg, status
 
-    if not (data.get('signature')):
-        return f'`signature is required in the call to "consume".', 400
-
-    # TODO  - check incoming signature
     try:
         agreement_id = data.get('serviceAgreementId')
         owner = data.get('consumerAddress')
@@ -449,12 +459,21 @@ def compute_get_status_job():
         if agreement_id is not None:
             body['agreementId'] = agreement_id
 
+        # Consumer signature
+        signature = data.get('signature')
+        verify_signature(keeper_instance(), owner, signature, agreement_id)
+
         body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.get(
             get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
         return response.content
+
+    except InvalidSignatureError as e:
+        msg = f'Consumer signature failed verification: {e}'
+        logger.error(msg, exc_info=1)
+        return msg, 401
 
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
