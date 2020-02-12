@@ -53,12 +53,25 @@ git clone git@github.com:oceanprotocol/brizo.git
 cd brizo/
 ```
 
+Before running it locally we recommend to set up virtual environment:
+
+```bash
+virtualenv venv -p python3.6
+source venv/bin/activate 
+```
+
+And install all the requirements:
+
+```
+pip install -r requirements_dev.txt
+```
+
 Then run some things that Brizo expects to be running:
 
 ```bash
 git clone git@github.com:oceanprotocol/barge.git
 cd barge
-bash start_ocean.sh --no-brizo --no-pleuston --local-spree-node
+bash start_ocean.sh --no-brizo --no-commons
 ```
 
 Barge is the repository where all the Ocean Docker Compose files are located. 
@@ -249,7 +262,7 @@ To debug Brizo using PyCharm, follow the next instructions:
     ```
 
    The option `OBJC_DISABLE_INITIALIZE_FORK_SAFETY` is needed if you run in last versions of MacOS.
-7. Now you can configure your breakpoints and debug brizo or squid-py.
+7. Now you can configure your breakpoints and debug brizo.
 
 ## New Version
 

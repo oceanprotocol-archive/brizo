@@ -7,7 +7,6 @@ import json
 
 import pytest
 from ocean_keeper.contract_handler import ContractHandler
-from ocean_keeper.utils import get_account
 from ocean_keeper.web3_provider import Web3Provider
 
 from brizo.run import app
@@ -36,14 +35,6 @@ def setup_all():
     Web3Provider.init_web3(config.keeper_url)
     ContractHandler.set_artifacts_path(get_keeper_path(config))
     init_account_envvars()
-
-
-def get_publisher_account():
-    return get_account(0)
-
-
-def get_consumer_account():
-    return get_account(0)
 
 
 def get_sample_ddo():
