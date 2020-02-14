@@ -285,7 +285,7 @@ def compute_delete_job():
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
-        return msg, status
+        return jsonify(error=msg), status
 
     try:
         agreement_id = data.get('serviceAgreementId')
@@ -308,16 +308,20 @@ def compute_delete_job():
             get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
-        return response.content
+        return Response(
+            response.content,
+            response.status_code,
+            headers={'content-type': 'application/json'}
+        )
 
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
         logger.error(msg, exc_info=1)
-        return msg, 401
+        return jsonify(error=msg), 401
 
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
-        return f'Error : {str(e)}', 500
+        return jsonify(error=f'Error : {str(e)}'), 500
 
 
 @services.route('/compute', methods=['PUT'])
@@ -365,7 +369,7 @@ def compute_stop_job():
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
-        return msg, status
+        return jsonify(error=msg), status
 
     try:
         agreement_id = data.get('serviceAgreementId')
@@ -388,16 +392,20 @@ def compute_stop_job():
             get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
-        return response.content
+        return Response(
+            response.content,
+            response.status_code,
+            headers={'content-type': 'application/json'}
+        )
 
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
         logger.error(msg, exc_info=1)
-        return msg, 401
+        return jsonify(error=msg), 401
 
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
-        return f'Error : {str(e)}', 500
+        return jsonify(error=f'Error : {str(e)}'), 500
 
 
 @services.route('/compute', methods=['GET'])
@@ -445,7 +453,7 @@ def compute_get_status_job():
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
-        return msg, status
+        return jsonify(error=msg), status
 
     try:
         agreement_id = data.get('serviceAgreementId')
@@ -468,16 +476,20 @@ def compute_get_status_job():
             get_compute_endpoint(),
             params=body,
             headers={'content-type': 'application/json'})
-        return response.content
+        return Response(
+            response.content,
+            response.status_code,
+            headers={'content-type': 'application/json'}
+        )
 
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
         logger.error(msg, exc_info=1)
-        return msg, 401
+        return jsonify(error=msg), 401
 
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
-        return f'Error : {str(e)}', 500
+        return jsonify(error=f'Error : {str(e)}'), 500
 
 
 @services.route('/compute', methods=['POST'])
@@ -532,7 +544,7 @@ def compute_start_job():
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
-        return msg, status
+        return jsonify(error=msg), status
 
     agreement_id = data.get('serviceAgreementId')
     consumer_address = data.get('consumerAddress')
@@ -608,8 +620,8 @@ def compute_start_job():
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
         logger.error(msg, exc_info=1)
-        return msg, 401
+        return jsonify(error=msg), 401
 
     except (ValueError, KeyError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
-        return f'Error : {str(e)}', 500
+        return jsonify(error=f'Error : {str(e)}'), 500

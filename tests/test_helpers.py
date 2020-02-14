@@ -286,7 +286,7 @@ def get_compute_job_info(client, endpoint, params):
         data=json.dumps(params),
         content_type='application/json'
     )
-    assert response.status == '200 OK' and response.data, \
+    assert response.status_code == 200 and response.data, \
         f'get compute job info failed: status {response.status}, data {response.data}'
 
     job_info = response.json if response.json else json.loads(response.data)
