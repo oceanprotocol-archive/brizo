@@ -416,14 +416,14 @@ def build_stage_output_dict(output_def, asset, owner, provider_account):
 
     return dict({
         'nodeUri': output_def.get('nodeUri', config.keeper_url),
-        'brizoUri': output_def('brizoUri', service_endpoint),
-        'brizoAddress': output_def('brizoAddress', provider_account.address),
+        'brizoUri': output_def.get('brizoUri', service_endpoint),
+        'brizoAddress': output_def.get('brizoAddress', provider_account.address),
         'metadata': output_def.get('metadata', dict({
             'name': "Workflow output"
         })),
         'metadataUri': output_def.get('metadataUri', config.aquarius_url),
-        'secretStoreUri': output_def('secretStoreUri', config.secret_store_url),
-        'owner': output_def['owner'] or owner,
+        'secretStoreUri': output_def.get('secretStoreUri', config.secret_store_url),
+        'owner': output_def.get('owner', owner),
         'publishOutput': output_def.get('publishOutput', 1),
         'publishAlgorithmLog': output_def.get('publishAlgorithmLog', 1)
     })

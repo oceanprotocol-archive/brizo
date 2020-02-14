@@ -8,7 +8,7 @@ from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
 
 from brizo.constants import BaseURLs
-from brizo.util import keeper_instance
+from brizo.util import keeper_instance, build_stage_output_dict
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 
 from tests.test_helpers import (
@@ -89,7 +89,8 @@ def test_compute(client):
         'serviceAgreementId': agreement_id,
         'consumerAddress': cons_acc.address,
         'algorithmDid': alg_ddo.did,
-        'algorithmMeta': {}
+        'algorithmMeta': {},
+        'output': build_stage_output_dict(dict())
     })
 
     endpoint = BaseURLs.ASSETS_URL + '/compute'
