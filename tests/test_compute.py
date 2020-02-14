@@ -90,7 +90,9 @@ def test_compute(client):
         'consumerAddress': cons_acc.address,
         'algorithmDid': alg_ddo.did,
         'algorithmMeta': {},
-        'output': build_stage_output_dict(dict())
+        'output': build_stage_output_dict(
+            dict(), dataset_ddo_w_compute_service, cons_acc.address, pub_acc
+        )
     })
 
     endpoint = BaseURLs.ASSETS_URL + '/compute'
