@@ -597,6 +597,8 @@ def compute_start_job():
 
         #########################
         # OUTPUT
+        if output_def:
+            output_def = json.loads(output_def) if isinstance(output_def, str) else output_def
         output_dict = build_stage_output_dict(output_def, asset, consumer_address, provider_acc)
 
         #########################
