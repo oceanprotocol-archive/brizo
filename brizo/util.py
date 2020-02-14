@@ -408,24 +408,24 @@ def build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_account):
     })
 
 
-def build_stage_output_dict(asset, owner, provider_account):
+def build_stage_output_dict(output_def, asset, owner, provider_account):
     config = get_config()
     service_endpoint = asset.get_service(ServiceTypes.CLOUD_COMPUTE).service_endpoint
     if BaseURLs.ASSETS_URL in service_endpoint:
         service_endpoint = service_endpoint.split(BaseURLs.ASSETS_URL)[0]
 
     return dict({
-        'nodeUri': config.keeper_url,
-        'brizoUri': service_endpoint,
-        'brizoAddress': provider_account.address,
-        'metadata': dict({
+        'nodeUri': output_def.get('nodeUri', config.keeper_url),
+        'brizoUri': output_def('brizoUri', service_endpoint),
+        'brizoAddress': output_def('brizoAddress', provider_account.address),
+        'metadata': output_def.get('metadata', dict({
             'name': "Workflow output"
-        }),
-        'metadataUri': config.aquarius_url,
-        'secretStoreUri': config.secret_store_url,
-        'owner': owner,
-        'publishOutput': 1,
-        'publishAlgorithmLog': 1
+        })),
+        'metadataUri': output_def.get('metadataUri', config.aquarius_url),
+        'secretStoreUri': output_def('secretStoreUri', config.secret_store_url),
+        'owner': output_def['owner'] or owner,
+        'publishOutput': output_def.get('publishOutput', 1),
+        'publishAlgorithmLog': output_def.get('publishAlgorithmLog', 1)
     })
 
 
