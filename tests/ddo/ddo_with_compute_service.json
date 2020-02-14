@@ -101,9 +101,8 @@
             }
           }
         },
-        "additionalInformation": {}
-      },
-      "serviceAgreementTemplate": {
+        "additionalInformation": {},
+        "serviceAgreementTemplate": {
           "contractName": "EscrowComputeExecutionTemplate",
           "events": [
             {
@@ -246,6 +245,7 @@
             }
           ]
         }
+      }
     }
   ]
 }
