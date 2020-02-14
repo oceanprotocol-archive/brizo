@@ -425,7 +425,8 @@ def build_stage_output_dict(output_def, asset, owner, provider_account):
         'secretStoreUri': output_def.get('secretStoreUri', config.secret_store_url),
         'owner': output_def.get('owner', owner),
         'publishOutput': output_def.get('publishOutput', 1),
-        'publishAlgorithmLog': output_def.get('publishAlgorithmLog', 1)
+        'publishAlgorithmLog': output_def.get('publishAlgorithmLog', 1),
+        'whitelist': output_def.get('whitelist', '')
     })
 
 
