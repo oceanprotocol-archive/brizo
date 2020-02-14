@@ -100,7 +100,7 @@ def _get_agreement_actor_event(keeper, agreement_id, from_block=0, to_block='lat
 
     event_filter = EventFilter(
         keeper.agreement_manager.AGREEMENT_ACTOR_ADDED_EVENT,
-        keeper.agreement_manager._get_contract_agreement_actor_added_event(),
+        keeper.agreement_manager.get_event_filter_for_agreement_actor(None).event,
         _filter,
         from_block=from_block,
         to_block=to_block
@@ -121,7 +121,7 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
     if consumer_address not in actors:
         logger.warning(f'Invalid consumer address {consumer_address} and/or '
                        f'service agreement id {agreement_id} (did {did})'
-                       f', agreement consumer is {agreement_consumer}')
+                       f', agreement actors are {actors}')
         return False
 
     document_id = did_to_id(did)
