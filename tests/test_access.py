@@ -17,6 +17,7 @@ from werkzeug.utils import get_content_type
 from ocean_utils.did import DID, did_to_id
 
 from brizo.constants import BaseURLs
+from brizo.exceptions import InvalidSignatureError
 from brizo.util import (
     check_auth_token,
     do_secret_store_decrypt,
@@ -194,8 +195,11 @@ def test_auth_token():
                                                                f'' \
                                                                f'' \
                                                                f'expected {pub_address}'
-    good = verify_signature(keeper_instance(), pub_address, token, doc_id)
-    assert good, f'invalid signature/auth-token {token}, {pub_address}, {doc_id}'
+
+    try:
+        verify_signature(keeper_instance(), pub_address, token, doc_id)
+    except InvalidSignatureError as e:
+        assert False, f'invalid signature/auth-token {token}, {pub_address}, {doc_id}: {e}'
 
 
 def test_exec_endpoint():

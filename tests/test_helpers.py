@@ -268,12 +268,16 @@ def grant_compute(agreement_id, asset_id, consumer_account, publisher_account):
 
 def get_possible_compute_job_status_text():
     return {
-        'Job started',
-        'Publishing results',
-        'Starting job',
-        'Job finished',
-        'Configuring volumes'
-    }
+        10: 'Job started',
+        20: 'Configuring volumes',
+        30: 'Provisioning success',
+        31: 'Data provisioning failed',
+        32: 'Algorithm provisioning failed',
+        40: 'Running algorithm',
+        50: 'Filtering results',
+        60: 'Publishing results',
+        70: 'Job completed',
+    }.values()
 
 
 def get_compute_job_info(client, endpoint, params):
@@ -282,7 +286,7 @@ def get_compute_job_info(client, endpoint, params):
         data=json.dumps(params),
         content_type='application/json'
     )
-    assert response.status == '200 OK' and response.data, \
+    assert response.status_code == 200 and response.data, \
         f'get compute job info failed: status {response.status}, data {response.data}'
 
     job_info = response.json if response.json else json.loads(response.data)
@@ -293,7 +297,7 @@ def get_compute_job_info(client, endpoint, params):
     return job_info[0]
 
 
-def _check_job_id(client, job_id, agreement_id):
+def _check_job_id(client, job_id, agreement_id, wait_time=20):
     endpoint = BaseURLs.ASSETS_URL + '/compute'
     cons_acc = get_consumer_account()
 
@@ -313,7 +317,7 @@ def _check_job_id(client, job_id, agreement_id):
     assert job_info['statusText'] in get_possible_compute_job_status_text()
     did = None
     # get did of results
-    for i in range(160):
+    for _ in range(wait_time*4):
         job_info = get_compute_job_info(client, endpoint, payload)
         did = job_info['did']
         if did:

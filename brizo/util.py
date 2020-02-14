@@ -190,7 +190,7 @@ def verify_signature(keeper, signer_address, signature, original_msg):
         address = keeper.personal_ec_recover(original_msg, signature)
 
     if address.lower() == signer_address.lower():
-        return
+        return True
 
     msg = f'Invalid signature {signature} for ' \
           f'ethereum address {signer_address} and documentId {original_msg}.'
@@ -416,13 +416,13 @@ def build_stage_output_dict(asset, owner, provider_account):
 
     return dict({
         'nodeUri': config.keeper_url,
-        'brizoUrl': service_endpoint,
+        'brizoUri': service_endpoint,
         'brizoAddress': provider_account.address,
         'metadata': dict({
             'name': "Workflow output"
         }),
-        'metadataUrl': config.aquarius_url,
-        'secretStoreUrl': config.secret_store_url,
+        'metadataUri': config.aquarius_url,
+        'secretStoreUri': config.secret_store_url,
         'owner': owner,
         'publishOutput': 1,
         'publishAlgorithmLog': 1
