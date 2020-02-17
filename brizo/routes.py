@@ -303,7 +303,7 @@ def compute_delete_job():
         signature = data.get('signature')
         verify_signature(keeper_instance(), owner, signature, agreement_id)
 
-        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.delete(
             get_compute_endpoint(),
             params=body,
@@ -387,7 +387,7 @@ def compute_stop_job():
         signature = data.get('signature')
         verify_signature(keeper_instance(), owner, signature, agreement_id)
 
-        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.put(
             get_compute_endpoint(),
             params=body,
@@ -471,7 +471,7 @@ def compute_get_status_job():
         signature = data.get('signature')
         verify_signature(keeper_instance(), owner, signature, agreement_id)
 
-        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.get(
             get_compute_endpoint(),
             params=body,
@@ -613,8 +613,8 @@ def compute_start_job():
         logger.info('Sending: %s', workflow)
 
         payload = {
-            "workflow": workflow,
-            "signature": keeper.sign_hash(agreement_id, provider_acc),
+            'workflow': workflow,
+            'providerSignature': keeper.sign_hash(agreement_id, provider_acc),
             'agreementId': agreement_id,
             'owner': consumer_address,
         }
