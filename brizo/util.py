@@ -100,7 +100,7 @@ def _get_agreement_actor_event(keeper, agreement_id, from_block=0, to_block='lat
 
     event_filter = EventFilter(
         keeper.agreement_manager.AGREEMENT_ACTOR_ADDED_EVENT,
-        keeper.agreement_manager._get_contract_agreement_actor_added_event(),
+        keeper.agreement_manager.get_event_filter_for_agreement_actor(None).event,
         _filter,
         from_block=from_block,
         to_block=to_block
@@ -121,7 +121,7 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
     if consumer_address not in actors:
         logger.warning(f'Invalid consumer address {consumer_address} and/or '
                        f'service agreement id {agreement_id} (did {did})'
-                       f', agreement consumer is {agreement_consumer}')
+                       f', agreement actors are {actors}')
         return False
 
     document_id = did_to_id(did)
@@ -408,24 +408,30 @@ def build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_account):
     })
 
 
-def build_stage_output_dict(asset, owner, provider_account):
+def build_stage_output_dict(output_def, asset, owner, provider_account):
     config = get_config()
     service_endpoint = asset.get_service(ServiceTypes.CLOUD_COMPUTE).service_endpoint
     if BaseURLs.ASSETS_URL in service_endpoint:
         service_endpoint = service_endpoint.split(BaseURLs.ASSETS_URL)[0]
 
     return dict({
-        'nodeUri': config.keeper_url,
-        'brizoUri': service_endpoint,
-        'brizoAddress': provider_account.address,
-        'metadata': dict({
-            'name': "Workflow output"
-        }),
-        'metadataUri': config.aquarius_url,
-        'secretStoreUri': config.secret_store_url,
-        'owner': owner,
-        'publishOutput': 1,
-        'publishAlgorithmLog': 1
+        'nodeUri': output_def.get('nodeUri', config.keeper_url),
+        'brizoUri': output_def.get('brizoUri', service_endpoint),
+        'brizoAddress': output_def.get('brizoAddress', provider_account.address),
+        'metadata': output_def.get('metadata', dict({
+            'main': {
+                'name': 'Compute job output'
+            },
+            'additionalInformation': {
+                'description': 'Output from running the compute job.'
+            }
+        })),
+        'metadataUri': output_def.get('metadataUri', config.aquarius_url),
+        'secretStoreUri': output_def.get('secretStoreUri', config.secret_store_url),
+        'owner': output_def.get('owner', owner),
+        'publishOutput': output_def.get('publishOutput', 1),
+        'publishAlgorithmLog': output_def.get('publishAlgorithmLog', 1),
+        'whitelist': output_def.get('whitelist', [])
     })
 
 

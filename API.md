@@ -39,6 +39,22 @@ Status description (`statusText`): (see Operator-Service for full status list)
 |  8       | Job deleted successfully  |
 
 
+The `output` section required in creating a new compute job looks like this:
+```json
+{
+    "nodeUri": "https://node.oceanprotocol.com",
+    "brizoUri": "https://brizo-service..oceanprotocol.com",
+    "brizoAddress": "0x01011010101101010993433",
+    "metadata": {"name": "Workflow output"},
+    "metadataUri": "https://aquarius-service.oceanprotocol.com",
+    "secretStoreUri": "https://secret-store.oceanprotocol.com",
+    "owner": "0x24f432aab0e22",
+    "publishOutput": 1,
+    "publishAlgorithmLog": 1
+}
+```
+
+
 ## Create new job or restart an existing stopped job
 
 ### POST /api/v1/brizo/services/compute
@@ -49,10 +65,13 @@ Parameters
 ```
     signature: String object containg user signature (signed message)
     serviceAgreementId: String object containing agreementID
-    jobId: String object containing workflowID (optional)
+    consumerAddress: String object containing consumer's ethereum address
+    output: json object that define the output section, i.e. attributes of the compute results
     algorithmDid: hex str the did of the algorithm to be executed
     algorithmMeta: json object that define the algorithm attributes and url or raw code
-    consumerAddress: String object containing consumer's ethereum address
+    jobId: String object containing workflowID (optional)
+
+    One of `algorithmDid` or `algorithmMeta` is required, `algorithmDid` takes precedence
 ```
 
 Returns:
@@ -61,7 +80,7 @@ Array of `status` objects as described above, in this case the array will have o
 
 Example:
 ```
-POST /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&algorithmDid=0xa203e320008999099000
+POST /api/v1/compute?signature=0x00110011&serviceAgreementId=0x1111&algorithmDid=0xa203e320008999099000&consumerAddress=0x990922334
 ```
 
 Response:
@@ -93,7 +112,7 @@ Parameters
     jobId: String object containing workflowID (optional)
     consumerAddress: String object containing consumer's address (optional)
 
-    At least one parameter from serviceAgreementId,jobId and owner is required (can be any of them)
+    At least one parameter from serviceAgreementId, jobId and owner is required (can be any of them)
 ```
 
 Returns

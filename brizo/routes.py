@@ -303,7 +303,7 @@ def compute_delete_job():
         signature = data.get('signature')
         verify_signature(keeper_instance(), owner, signature, agreement_id)
 
-        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.delete(
             get_compute_endpoint(),
             params=body,
@@ -387,7 +387,7 @@ def compute_stop_job():
         signature = data.get('signature')
         verify_signature(keeper_instance(), owner, signature, agreement_id)
 
-        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.put(
             get_compute_endpoint(),
             params=body,
@@ -471,7 +471,7 @@ def compute_get_status_job():
         signature = data.get('signature')
         verify_signature(keeper_instance(), owner, signature, agreement_id)
 
-        body["signature"] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.get(
             get_compute_endpoint(),
             params=body,
@@ -525,7 +525,12 @@ def compute_start_job():
         in: query
         description: json object that define the algorithm attributes and url or raw code
         required: false
-        type: string
+        type: json string
+      - name: output
+        in: query
+        description: json object that define the output section 
+        required: true
+        type: json string
     responses:
       200:
         description: Call to the operator-service was successful.
@@ -540,7 +545,8 @@ def compute_start_job():
     required_attributes = [
         'signature',
         'serviceAgreementId',
-        'consumerAddress'
+        'consumerAddress',
+        'output'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
     if msg:
@@ -551,6 +557,7 @@ def compute_start_job():
     signature = data.get('signature')
     algorithm_did = data.get('algorithmDid')
     algorithm_meta = data.get('algorithmMeta')
+    output_def = data.get('output', dict())
 
     try:
         keeper = keeper_instance()
@@ -565,6 +572,9 @@ def compute_start_job():
 
         #########################
         # ALGORITHM
+        if algorithm_meta:
+            algorithm_meta = json.loads(algorithm_meta) if isinstance(algorithm_meta, str) else algorithm_meta
+
         algorithm_dict = build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_acc)
         error_msg, status_code = validate_algorithm_dict(algorithm_dict, algorithm_did)
         if error_msg:
@@ -587,7 +597,9 @@ def compute_start_job():
 
         #########################
         # OUTPUT
-        output_dict = build_stage_output_dict(asset, consumer_address, provider_acc)
+        if output_def:
+            output_def = json.loads(output_def) if isinstance(output_def, str) else output_def
+        output_dict = build_stage_output_dict(output_def, asset, consumer_address, provider_acc)
 
         #########################
         # STAGE
@@ -601,8 +613,8 @@ def compute_start_job():
         logger.info('Sending: %s', workflow)
 
         payload = {
-            "workflow": workflow,
-            "signature": keeper.sign_hash(agreement_id, provider_acc),
+            'workflow': workflow,
+            'providerSignature': keeper.sign_hash(agreement_id, provider_acc),
             'agreementId': agreement_id,
             'owner': consumer_address,
         }
