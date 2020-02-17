@@ -419,7 +419,12 @@ def build_stage_output_dict(output_def, asset, owner, provider_account):
         'brizoUri': output_def.get('brizoUri', service_endpoint),
         'brizoAddress': output_def.get('brizoAddress', provider_account.address),
         'metadata': output_def.get('metadata', dict({
-            'name': "Workflow output"
+            'main': {
+                'name': 'Compute job output'
+            },
+            'additionalInformation': {
+                'description': 'Output from running the compute job.'
+            }
         })),
         'metadataUri': output_def.get('metadataUri', config.aquarius_url),
         'secretStoreUri': output_def.get('secretStoreUri', config.secret_store_url),
