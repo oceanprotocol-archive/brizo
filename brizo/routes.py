@@ -280,7 +280,7 @@ def compute_delete_job():
     """
     data = get_request_data(request)
     required_attributes = [
-        'signature'
+        'signature',
         'consumerAddress'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
@@ -364,7 +364,7 @@ def compute_stop_job():
     """
     data = get_request_data(request)
     required_attributes = [
-        'signature'
+        'signature',
         'consumerAddress'
     ]
     msg, status = check_required_attributes(required_attributes, data, 'compute')
