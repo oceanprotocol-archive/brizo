@@ -39,11 +39,10 @@ def version():
     if keeper.network_name != 'pacific':
         info['contracts']['Dispenser'] = keeper.dispenser.address
     info['contracts']['EscrowReward'] = keeper.escrow_reward_condition.address
-    info['contracts']['HashLockCondition'] = keeper.hash_lock_condition.address
     info['contracts']['LockRewardCondition'] = keeper.lock_reward_condition.address
-    info['contracts']['SignCondition'] = keeper.sign_condition.address
     info['contracts']['OceanToken'] = keeper.token.address
     info['contracts']['TemplateStoreManager'] = keeper.template_manager.address
+    info['contracts']['ComputeExecutionCondition'] = keeper.compute_execution_condition.address
     info['keeper-version'] = get_latest_keeper_version()
     info['provider-address'] = get_provider_account().address
     return jsonify(info)
