@@ -4,6 +4,7 @@ import logging
 import mimetypes
 import os
 import site
+from cgi import parse_header
 from datetime import datetime
 from os import getenv
 
@@ -249,10 +250,31 @@ def get_metadata(ddo):
 
 def build_download_response(request, requests_session, url, download_url, content_type):
     try:
-        if request.range:
-            headers = {"Range": request.headers.get('range')}
-        else:
+        download_request_headers = {}
+        download_response_headers = {}
+
+        is_range_request = bool(request.range)
+
+        if is_range_request:
+            download_request_headers = {"Range": request.headers.get('range')}
+            download_response_headers = download_request_headers
+
+        response = requests_session.get(download_url, headers=download_request_headers, stream=True)
+
+        if not is_range_request:
             filename = url.split("/")[-1]
+
+            content_disposition_header = response.headers.get('content-disposition')
+            if content_disposition_header:
+                _, content_disposition_params = parse_header(content_disposition_header)
+                content_filename = content_disposition_params.get('filename')
+                if content_filename:
+                    filename = content_filename
+
+            content_type_header = response.headers.get('content-type')
+            if content_type_header:
+                content_type = content_type_header
+
             file_ext = os.path.splitext(filename)[1]
             if file_ext and not content_type:
                 content_type = mimetypes.guess_type(filename)[0]
@@ -262,16 +284,15 @@ def build_download_response(request, requests_session, url, download_url, conten
                 if extension:
                     filename = filename + extension
 
-            headers = {
+            download_response_headers = {
                 "Content-Disposition": f'attachment;filename={filename}',
                 "Access-Control-Expose-Headers": f'Content-Disposition'
             }
 
-        response = requests_session.get(download_url, headers=headers, stream=True)
         return Response(
             io.BytesIO(response.content).read(),
             response.status_code,
-            headers=headers,
+            headers=download_response_headers,
             content_type=content_type
         )
     except Exception as e:

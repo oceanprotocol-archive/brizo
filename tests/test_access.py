@@ -3,6 +3,7 @@
 
 import json
 import mimetypes
+from copy import deepcopy
 from unittest.mock import Mock, MagicMock
 import uuid
 
@@ -228,12 +229,13 @@ def test_build_download_response():
     class Dummy:
         pass
 
-    response = Dummy()
-    response.content = b'asdsadf'
-    response.status_code = 200
+    mocked_response = Dummy()
+    mocked_response.content = b'asdsadf'
+    mocked_response.status_code = 200
+    mocked_response.headers = {}
 
     requests_session = Dummy()
-    requests_session.get = MagicMock(return_value=response)
+    requests_session.get = MagicMock(return_value=mocked_response)
 
     filename = '<<filename>>.xml'
     content_type = mimetypes.guess_type(filename)[0]
@@ -253,6 +255,31 @@ def test_build_download_response():
     response = build_download_response(request, requests_session, url, url, content_type)
     assert response.headers["content-type"] == content_type
     assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename+mimetypes.guess_extension(content_type)}'
+
+    mocked_response_with_attachment = deepcopy(mocked_response)
+    attachment_file_name = 'test.xml'
+    mocked_response_with_attachment.headers = {'content-disposition': f'attachment;filename={attachment_file_name}'}
+
+    requests_session_with_attachment = Dummy()
+    requests_session_with_attachment.get = MagicMock(return_value=mocked_response_with_attachment)
+
+    url = 'https://source-lllllll.cccc/not-a-filename'
+    response = build_download_response(request, requests_session_with_attachment, url, url, None)
+    assert response.headers["content-type"] == mimetypes.guess_type(attachment_file_name)[0]
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={attachment_file_name}'
+
+    mocked_response_with_content_type = deepcopy(mocked_response)
+    response_content_type = 'text/csv'
+    mocked_response_with_content_type.headers = {'content-type': response_content_type}
+
+    requests_session_with_content_type = Dummy()
+    requests_session_with_content_type.get = MagicMock(return_value=mocked_response_with_content_type)
+
+    filename = 'filename.txt'
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session_with_content_type, url, url, None)
+    assert response.headers["content-type"] == response_content_type
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename}'
 
 
 def test_latest_keeper_version():
