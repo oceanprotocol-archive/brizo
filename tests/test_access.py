@@ -3,13 +3,17 @@
 
 import json
 import mimetypes
+import time
 from copy import deepcopy
+from datetime import datetime
 from unittest.mock import Mock, MagicMock
 import uuid
 
+import pytest
 from eth_utils import add_0x_prefix
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_utils.agreements.service_agreement import ServiceAgreement
+from ocean_utils.agreements.service_factory import ServiceFactory
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
 from ocean_utils.http_requests.requests_session import get_requests_session
@@ -18,7 +22,7 @@ from werkzeug.utils import get_content_type
 from ocean_utils.did import DID, did_to_id
 
 from brizo.constants import BaseURLs
-from brizo.exceptions import InvalidSignatureError
+from brizo.exceptions import InvalidSignatureError, ServiceAgreementExpired
 from brizo.util import (
     check_auth_token,
     do_secret_store_decrypt,
@@ -31,15 +35,16 @@ from brizo.util import (
     web3,
     build_download_response,
     get_download_url,
-    get_latest_keeper_version
-)
+    get_latest_keeper_version,
+    validate_agreement_expiry)
+from tests.conftest import get_sample_ddo
 from tests.test_helpers import (
     get_dataset_ddo_with_access_service,
     lock_reward, place_order,
     grant_access,
     get_consumer_account,
-    get_publisher_account
-)
+    get_publisher_account,
+    get_access_service_descriptor)
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
@@ -285,3 +290,19 @@ def test_build_download_response():
 def test_latest_keeper_version():
     version = get_latest_keeper_version()
     assert version.startswith('v') and len(version.split('.')) == 3, ''
+
+
+def test_agreement_expiry():
+    pub_acc = get_publisher_account()
+    keeper = keeper_instance()
+    metadata = get_sample_ddo()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_access_service_descriptor(keeper, pub_acc, metadata)
+    service_descriptor[1]['attributes']['main']['timeout'] = 2
+    agreement = ServiceFactory.build_service(service_descriptor)
+    start_time = datetime.now().timestamp()
+    not_expired = validate_agreement_expiry(agreement, start_time)
+    assert not_expired, 'Agreement should not be expired at this point.'
+    time.sleep(3)
+    with pytest.raises(ServiceAgreementExpired):
+        validate_agreement_expiry(agreement, start_time)

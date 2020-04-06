@@ -23,7 +23,7 @@ from secret_store_client.client import Client as SecretStore
 
 from brizo.config import Config
 from brizo.constants import BaseURLs
-from brizo.exceptions import InvalidSignatureError
+from brizo.exceptions import InvalidSignatureError, ServiceAgreementExpired
 
 logger = logging.getLogger(__name__)
 
@@ -246,6 +246,27 @@ def get_metadata(ddo):
                 return service['metadata']
     except Exception as e:
         logger.error("Error getting the metatada: %s" % e)
+
+
+def get_agreement_block_time(agreement_id):
+    # get starting time from the on-chain agreement's blocknumber
+    keeper = keeper_instance()
+    w3 = Web3Provider.get_web3()
+    agreement = keeper.agreement_manager.get_agreement(agreement_id)
+    block_time = w3.eth.getBlock(agreement.block_number_updated).timestamp
+    return int(block_time)
+
+
+def validate_agreement_expiry(service_agreement, start_time):
+    timeout = int(service_agreement.attributes['main'].get('timeout', 3600 * 24))
+    expiry_time = start_time + timeout
+    current_time = datetime.now().timestamp()
+    if current_time > expiry_time:
+        agreement_exp = datetime.fromtimestamp(expiry_time).replace(microsecond=0).isoformat()
+        msg = f'Service agreement has expired at {agreement_exp}.'
+        raise ServiceAgreementExpired(msg)
+
+    return True
 
 
 def build_download_response(request, requests_session, url, download_url, content_type):

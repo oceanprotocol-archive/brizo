@@ -1,17 +1,17 @@
 #  Copyright 2018 Ocean Protocol Foundation
 #  SPDX-License-Identifier: Apache-2.0
-
 import json
 import logging
 
 from eth_utils import remove_0x_prefix
 from flask import Blueprint, jsonify, request, Response
+from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.did import id_to_did
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
 from secret_store_client.client import RPCError
 
-from brizo.exceptions import InvalidSignatureError
+from brizo.exceptions import InvalidSignatureError, ServiceAgreementExpired
 from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (
@@ -28,7 +28,14 @@ from brizo.util import (
     setup_keeper,
     verify_signature,
     get_compute_endpoint,
-    build_stage_algorithm_dict, build_stage_output_dict, build_stage_dict, validate_algorithm_dict, get_request_data)
+    build_stage_algorithm_dict,
+    build_stage_output_dict,
+    build_stage_dict,
+    validate_algorithm_dict,
+    get_request_data,
+    validate_agreement_expiry,
+    get_agreement_block_time,
+)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -214,6 +221,12 @@ def consume():
             return msg, 401
 
         asset = DIDResolver(keeper.did_registry).resolve(did)
+
+        #########################
+        # Check expiry of service agreement
+        block_time = get_agreement_block_time(agreement_id)
+        validate_agreement_expiry(asset.get_service(ServiceTypes.ASSET_ACCESS), block_time)
+
         content_type = None
         url = data.get('url')
         if not url:
@@ -230,14 +243,18 @@ def consume():
                     f' url {download_url}')
         return build_download_response(request, requests_session, url, download_url, content_type)
 
+    except ServiceAgreementExpired as e:
+        logger.error(e, exc_info=1)
+        return jsonify(error=e), 401
+
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
         logger.error(msg, exc_info=1)
-        return msg, 401
+        return jsonify(error=msg), 401
 
     except (ValueError, Exception) as e:
         logger.error(f'Error- {str(e)}', exc_info=1)
-        return f'Error : {str(e)}', 500
+        return jsonify(error=e), 500
 
 
 @services.route('/compute', methods=['DELETE'])
@@ -301,7 +318,8 @@ def compute_delete_job():
 
         # Consumer signature
         signature = data.get('signature')
-        verify_signature(keeper_instance(), owner, signature, agreement_id)
+        original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        verify_signature(keeper_instance(), owner, signature, original_msg)
 
         body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.delete(
@@ -385,7 +403,8 @@ def compute_stop_job():
 
         # Consumer signature
         signature = data.get('signature')
-        verify_signature(keeper_instance(), owner, signature, agreement_id)
+        original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        verify_signature(keeper_instance(), owner, signature, original_msg)
 
         body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.put(
@@ -469,7 +488,8 @@ def compute_get_status_job():
 
         # Consumer signature
         signature = data.get('signature')
-        verify_signature(keeper_instance(), owner, signature, agreement_id)
+        original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        verify_signature(keeper_instance(), owner, signature, original_msg)
 
         body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
         response = requests_session.get(
@@ -568,7 +588,8 @@ def compute_start_job():
             return jsonify(error=msg), 400
 
         # Consumer signature
-        verify_signature(keeper, consumer_address, signature, agreement_id)
+        original_msg = f'{consumer_address}{agreement_id}'
+        verify_signature(keeper, consumer_address, signature, original_msg)
 
         #########################
         # ALGORITHM
@@ -594,6 +615,11 @@ def compute_start_job():
             'id': did,
             'url': asset_urls
         })
+
+        #########################
+        # Check expiry of service agreement
+        block_time = get_agreement_block_time(agreement_id)
+        validate_agreement_expiry(asset.get_service(ServiceTypes.CLOUD_COMPUTE), block_time)
 
         #########################
         # OUTPUT
@@ -628,6 +654,10 @@ def compute_start_job():
             response.status_code,
             headers={'content-type': 'application/json'}
         )
+
+    except ServiceAgreementExpired as e:
+        logger.error(e, exc_info=1)
+        return jsonify(error=e), 401
 
     except InvalidSignatureError as e:
         msg = f'Consumer signature failed verification: {e}'
