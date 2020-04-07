@@ -165,7 +165,7 @@ def check_auth_token(token):
     # :HACK: alert, this should be part of ocean-utils, ocean-keeper, or a stand-alone library
     sig, timestamp = parts
     auth_token_message = get_config().auth_token_message or "Ocean Protocol Authentication"
-    default_exp = 30 * 24 * 60 * 60
+    default_exp = 24 * 60 * 60
     expiration = int(get_config().auth_token_expiration or default_exp)
     if int(datetime.now().timestamp()) > (int(timestamp) + expiration):
         return '0x0'
