@@ -309,6 +309,7 @@ def compute_delete_job():
         owner = data.get('consumerAddress')
         job_id = data.get('jobId')
         body = dict()
+        body['providerAddress'] = provider_acc.address
         if owner is not None:
             body['owner'] = owner
         if job_id is not None:
@@ -321,7 +322,8 @@ def compute_delete_job():
         original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
         verify_signature(keeper_instance(), owner, signature, original_msg)
 
-        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
         response = requests_session.delete(
             get_compute_endpoint(),
             params=body,
@@ -394,6 +396,7 @@ def compute_stop_job():
         owner = data.get('consumerAddress')
         job_id = data.get('jobId')
         body = dict()
+        body['providerAddress'] = provider_acc.address
         if owner is not None:
             body['owner'] = owner
         if job_id is not None:
@@ -406,7 +409,8 @@ def compute_stop_job():
         original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
         verify_signature(keeper_instance(), owner, signature, original_msg)
 
-        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
         response = requests_session.put(
             get_compute_endpoint(),
             params=body,
@@ -479,6 +483,7 @@ def compute_get_status_job():
         owner = data.get('consumerAddress')
         job_id = data.get('jobId')
         body = dict()
+        body['providerAddress'] = provider_acc.address
         if owner is not None:
             body['owner'] = owner
         if job_id is not None:
@@ -491,7 +496,8 @@ def compute_get_status_job():
         original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
         verify_signature(keeper_instance(), owner, signature, original_msg)
 
-        body['providerSignature'] = keeper_instance().sign_hash(agreement_id, provider_acc)
+        msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
         response = requests_session.get(
             get_compute_endpoint(),
             params=body,
@@ -638,11 +644,13 @@ def compute_start_job():
         # workflow is ready, push it to operator
         logger.info('Sending: %s', workflow)
 
+        msg_to_sign = f'{provider_acc.address}{agreement_id}'
         payload = {
             'workflow': workflow,
-            'providerSignature': keeper.sign_hash(agreement_id, provider_acc),
+            'providerSignature': keeper.sign_hash(msg_to_sign, provider_acc),
             'agreementId': agreement_id,
             'owner': consumer_address,
+            'providerAddress': provider_acc.address
         }
         response = requests_session.post(
             get_compute_endpoint(),
