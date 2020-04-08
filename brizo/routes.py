@@ -319,7 +319,8 @@ def compute_delete_job():
 
         # Consumer signature
         signature = data.get('signature')
-        verify_signature(keeper_instance(), owner, signature, agreement_id)
+        original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        verify_signature(keeper_instance(), owner, signature, original_msg)
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
         body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
@@ -405,7 +406,8 @@ def compute_stop_job():
 
         # Consumer signature
         signature = data.get('signature')
-        verify_signature(keeper_instance(), owner, signature, agreement_id)
+        original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        verify_signature(keeper_instance(), owner, signature, original_msg)
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
         body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
@@ -491,7 +493,8 @@ def compute_get_status_job():
 
         # Consumer signature
         signature = data.get('signature')
-        verify_signature(keeper_instance(), owner, signature, agreement_id)
+        original_msg = f'{body.get("owner", "")}{body.get("jobId", "")}{body.get("agreementId", "")}'
+        verify_signature(keeper_instance(), owner, signature, original_msg)
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
         body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
@@ -591,7 +594,8 @@ def compute_start_job():
             return jsonify(error=msg), 400
 
         # Consumer signature
-        verify_signature(keeper, consumer_address, signature, agreement_id)
+        original_msg = f'{consumer_address}{agreement_id}'
+        verify_signature(keeper, consumer_address, signature, original_msg)
 
         #########################
         # ALGORITHM
