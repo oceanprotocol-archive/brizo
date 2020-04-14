@@ -170,9 +170,8 @@ def check_auth_token(token):
     if int(datetime.now().timestamp()) > (int(timestamp) + expiration):
         return '0x0'
 
-    keeper = keeper_instance()
     message = f'{auth_token_message}\n{timestamp}'
-    address = keeper.personal_ec_recover(message, sig)
+    address = Keeper.personal_ec_recover(message, sig)
     return w3.toChecksumAddress(address)
 
 

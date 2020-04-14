@@ -11,6 +11,7 @@ import uuid
 
 import pytest
 from eth_utils import add_0x_prefix
+from ocean_keeper import Keeper
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_utils.agreements.service_agreement import ServiceAgreement
 from ocean_utils.agreements.service_factory import ServiceFactory
@@ -203,7 +204,7 @@ def test_auth_token():
                                                                f'expected {pub_address}'
 
     try:
-        verify_signature(keeper_instance(), pub_address, token, doc_id)
+        verify_signature(Keeper, pub_address, token, doc_id)
     except InvalidSignatureError as e:
         assert False, f'invalid signature/auth-token {token}, {pub_address}, {doc_id}: {e}'
 
