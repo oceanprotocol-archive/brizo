@@ -5,6 +5,7 @@ import logging
 
 from eth_utils import remove_0x_prefix
 from flask import Blueprint, jsonify, request, Response
+from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.did import id_to_did
 from ocean_utils.did_resolver.did_resolver import DIDResolver
@@ -410,7 +411,8 @@ def compute_stop_job():
         verify_signature(keeper_instance(), owner, signature, original_msg)
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
-        body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
+        msg_hash = add_ethereum_prefix_and_hash_msg(msg_to_sign)
+        body['providerSignature'] = keeper_instance().sign_hash(msg_hash, provider_acc)
         response = requests_session.put(
             get_compute_endpoint(),
             params=body,
@@ -497,7 +499,8 @@ def compute_get_status_job():
         verify_signature(keeper_instance(), owner, signature, original_msg)
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
-        body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
+        msg_hash = add_ethereum_prefix_and_hash_msg(msg_to_sign)
+        body['providerSignature'] = keeper_instance().sign_hash(msg_hash, provider_acc)
         response = requests_session.get(
             get_compute_endpoint(),
             params=body,
@@ -645,9 +648,10 @@ def compute_start_job():
         logger.info('Sending: %s', workflow)
 
         msg_to_sign = f'{provider_acc.address}{agreement_id}'
+        msg_hash = add_ethereum_prefix_and_hash_msg(msg_to_sign)
         payload = {
             'workflow': workflow,
-            'providerSignature': keeper.sign_hash(msg_to_sign, provider_acc),
+            'providerSignature': keeper.sign_hash(msg_hash, provider_acc),
             'agreementId': agreement_id,
             'owner': consumer_address,
             'providerAddress': provider_acc.address
