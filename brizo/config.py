@@ -19,16 +19,16 @@ NAME_PARITY_URL = 'parity.url'
 NAME_OPERATOR_SERVICE_URL = 'operator_service.url'
 
 environ_names = {
-    NAME_KEEPER_URL: ['KEEPER_URL', 'Keeper URL'],
-    NAME_KEEPER_PATH: ['KEEPER_PATH', 'Path to the keeper contracts'],
+    NAME_KEEPER_URL: ['KEEPER_URL', 'Keeper URL', 'keeper-contracts'],
+    NAME_KEEPER_PATH: ['KEEPER_PATH', 'Path to the keeper contracts', 'keeper-contracts'],
     NAME_AUTH_TOKEN_MESSAGE: ['AUTH_TOKEN_MESSAGE',
-                              'Message to use for generating user auth token'],
+                              'Message to use for generating user auth token', 'resources'],
     NAME_AUTH_TOKEN_EXPIRATION: ['AUTH_TOKEN_EXPIRATION',
-                                 'Auth token expiration time expressed in seconds'],
-    NAME_SECRET_STORE_URL: ['SECRET_STORE_URL', 'Secret Store URL'],
-    NAME_AQUARIUS_URL: ['AQUARIUS_URL', 'Aquarius url (metadata store)'],
-    NAME_PARITY_URL: ['PARITY_URL', 'Parity URL'],
-    NAME_OPERATOR_SERVICE_URL: ['OPERATOR_SERVICE_URL', 'Operator service URL'],
+                                 'Auth token expiration time expressed in seconds', 'resources'],
+    NAME_SECRET_STORE_URL: ['SECRET_STORE_URL', 'Secret Store URL', 'keeper-contracts'],
+    NAME_AQUARIUS_URL: ['AQUARIUS_URL', 'Aquarius url (metadata store)', 'resources'],
+    NAME_PARITY_URL: ['PARITY_URL', 'Parity URL', 'keeper-contracts'],
+    NAME_OPERATOR_SERVICE_URL: ['OPERATOR_SERVICE_URL', 'Operator service URL', 'keeper-contracts'],
 }
 
 
@@ -79,7 +79,7 @@ class Config(configparser.ConfigParser):
             value = os.environ.get(environ_item[0])
             if value is not None:
                 self._logger.debug(f'Config: setting environ {option_name} = {value}')
-                self.set(self._section_name, option_name, value)
+                self.set(environ_item[2], option_name, value)
 
     @property
     def keeper_path(self):

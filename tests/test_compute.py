@@ -80,7 +80,8 @@ def test_compute(client):
     )
 
     # prepare consumer signature on agreement_id
-    agreement_id_hash = add_ethereum_prefix_and_hash_msg(agreement_id)    
+    msg = f'{cons_acc.address}{agreement_id}'
+    agreement_id_hash = add_ethereum_prefix_and_hash_msg(msg)
     signature = keeper.sign_hash(agreement_id_hash, cons_acc)
 
     # Start the compute job
@@ -104,7 +105,11 @@ def test_compute(client):
     assert response.status == '200 OK', f'start compute job failed: {response.data}'
     job_info = response.json[0]
     print(f'got response from starting compute job: {job_info}')
-    job_id = job_info.get('jobId')
+    job_id = job_info.get('jobId', '')
+
+    msg = f'{cons_acc.address}{job_id}{agreement_id}'
+    agreement_id_hash = add_ethereum_prefix_and_hash_msg(msg)
+    signature = keeper.sign_hash(agreement_id_hash, cons_acc)
 
     payload = dict({
         'signature': signature,
