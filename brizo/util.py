@@ -131,25 +131,24 @@ def is_access_granted(agreement_id, did, consumer_address, keeper):
     )
 
 
-def was_compute_triggered(agreement_id, did, computer_consumer_address, keeper):
+def validate_agreement_condition(agreement_id, did, consumer_address, keeper):
     event_logs = _get_agreement_actor_event(keeper, agreement_id).get_all_entries()
     if not event_logs:
         return False
 
-    agreement_consumer = event_logs[0].args.actor
-
-    if agreement_consumer is None:
+    actors = [log.args.actor for log in event_logs]
+    if not actors:
         return False
 
-    if agreement_consumer != computer_consumer_address:
-        logger.warning(f'Invalid consumer address {computer_consumer_address} and/or '
+    if consumer_address not in actors:
+        logger.warning(f'Invalid consumer address {consumer_address} and/or '
                        f'service agreement id {agreement_id} (did {did})'
-                       f', agreement consumer is {agreement_consumer}')
+                       f', agreement actors are {actors}')
         return False
 
     document_id = did_to_id(did)
     return keeper.compute_execution_condition.was_compute_triggered(
-        document_id, computer_consumer_address
+        document_id, consumer_address
     )
 
 

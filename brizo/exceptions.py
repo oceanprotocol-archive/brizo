@@ -6,3 +6,7 @@ class InvalidSignatureError(Exception):
 
 class ServiceAgreementExpired(Exception):
     """ Indicates the service agreement has already expired."""
+
+
+class ServiceAgreementUnauthorized(Exception):
+    """ Triggered when consumer is unauthorized to access the service."""

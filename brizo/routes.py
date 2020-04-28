@@ -12,7 +12,7 @@ from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
 from secret_store_client.client import RPCError
 
-from brizo.exceptions import InvalidSignatureError, ServiceAgreementExpired
+from brizo.exceptions import InvalidSignatureError, ServiceAgreementExpired, ServiceAgreementUnauthorized
 from brizo.log import setup_logging
 from brizo.myapp import app
 from brizo.util import (
@@ -36,7 +36,7 @@ from brizo.util import (
     get_request_data,
     validate_agreement_expiry,
     get_agreement_block_time,
-)
+    validate_agreement_condition)
 
 setup_logging()
 services = Blueprint('services', __name__)
@@ -357,21 +357,25 @@ def compute_stop_job():
     parameters:
       - name: signature
         in: query
-        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        description: Signature of (consumerAddress+jobId+serviceAgreementId) to verify the consumer of
+            this agreement/compute job. The signature uses ethereum based signing method
+            (see https://github.com/ethereum/EIPs/pull/683)
         type: string
       - name: serviceAgreementId
         in: query
-        description: The ID of the service agreement.
+        description: The ID of the service agreement, must exist on-chain. If not provided, all
+            currently running compute jobs will be stopped for the specified consumerAddress
         required: true
         type: string
       - name: consumerAddress
         in: query
-        description: The consumer address.
+        description: The consumer ethereum address.
         required: true
         type: string
       - name: jobId
         in: query
-        description: JobId.
+        description: The ID of the compute job. If not provided, all running compute jobs of
+            the specified consumerAddress/serviceAgreementId are suspended
         type: string
     responses:
       200:
@@ -379,9 +383,9 @@ def compute_stop_job():
       400:
         description: One of the required attributes is missing.
       401:
-        description: Invalid asset data.
+        description: Consumer signature is invalid or failed verification.
       500:
-        description: Error
+        description: General server error
     """
     data = get_request_data(request)
     required_attributes = [
@@ -445,31 +449,36 @@ def compute_get_status_job():
     parameters:
       - name: signature
         in: query
-        description: Signature of the documentId to verify that the consumer has rights to download the asset.
+        description: Signature of (consumerAddress+jobId+serviceAgreementId) to verify the consumer of
+            this agreement/compute job. The signature uses ethereum based signing method
+            (see https://github.com/ethereum/EIPs/pull/683)
         type: string
       - name: serviceAgreementId
         in: query
-        description: The ID of the service agreement.
+        description: The ID of the service agreement, must exist on-chain. If not provided, the status of all
+            currently running and old compute jobs for the specified consumerAddress will be returned.
         required: true
         type: string
       - name: consumerAddress
         in: query
-        description: The consumer address.
+        description: The consumer ethereum address.
         required: true
         type: string
       - name: jobId
         in: query
-        description: JobId.
+        description: The ID of the compute job. If not provided, all running compute jobs of
+            the specified consumerAddress/serviceAgreementId are suspended
         type: string
+
     responses:
       200:
         description: Call to the operator-service was successful.
       400:
         description: One of the required attributes is missing.
       401:
-        description: Invalid asset data.
+        description: Consumer signature is invalid or failed verification.
       500:
-        description: Error
+        description: General server error
     """
     data = get_request_data(request)
     required_attributes = [
@@ -533,11 +542,14 @@ def compute_start_job():
     parameters:
       - name: signature
         in: query
-        description: Signature of the documentId to verify that the consumer has rights to run the compute service..
+        description: Signature of (consumerAddress+jobId+serviceAgreementId) to verify the consumer of
+            this agreement/compute job. The signature uses ethereum based signing method
+            (see https://github.com/ethereum/EIPs/pull/683)
         type: string
       - name: serviceAgreementId
         in: query
-        description: The ID of the service agreement on-chain
+        description: The ID of the service agreement, must exist on-chain. If not provided, the status of all
+            currently running and old compute jobs for the specified consumerAddress will be returned.
         required: true
         type: string
       - name: consumerAddress
@@ -545,9 +557,10 @@ def compute_start_job():
         description: The consumer ethereum address.
         required: true
         type: string
+
       - name: algorithmDid
         in: query
-        description: hex str the did of the algorithm to be executed
+        description: The DID of the algorithm Asset to be executed
         required: false
         type: string
       - name: algorithmMeta
@@ -566,9 +579,9 @@ def compute_start_job():
       400:
         description: One of the required attributes is missing.
       401:
-        description: Invalid asset data.
+        description: Consumer signature is invalid or failed verification, or Service Agreement is invalid
       500:
-        description: Error
+        description: General server error
     """
     data = get_request_data(request)
     required_attributes = [
@@ -600,6 +613,20 @@ def compute_start_job():
         original_msg = f'{consumer_address}{agreement_id}'
         verify_signature(keeper, consumer_address, signature, original_msg)
 
+        # Get Asset/DDO
+        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
+        did = id_to_did(asset_id)
+        asset = DIDResolver(keeper.did_registry).resolve(did)
+
+        # Validate agreement condition
+        if not validate_agreement_condition(agreement_id, did, consumer_address, keeper):
+            raise ServiceAgreementUnauthorized(
+                f'Consumer {consumer_address} is not authorized under service agreement {agreement_id}.'
+                f'It is possible that the transaction has not been validated yet. Please ensure that '
+                f'the serviceAgreementId is valid and that the ComputeExecutionCondition has been '
+                f'fulfilled before invoking this service endpoint.'
+            )
+
         #########################
         # ALGORITHM
         if algorithm_meta:
@@ -612,9 +639,6 @@ def compute_start_job():
 
         #########################
         # INPUT
-        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
-        did = id_to_did(asset_id)
-        asset = DIDResolver(keeper.did_registry).resolve(did)
         asset_urls = get_asset_urls(asset, provider_acc, app.config['CONFIG_FILE'])
         if not asset_urls:
             return jsonify(error=f'cannot get url(s) in input did {did}.'), 400
@@ -667,7 +691,7 @@ def compute_start_job():
             headers={'content-type': 'application/json'}
         )
 
-    except ServiceAgreementExpired as e:
+    except (ServiceAgreementUnauthorized, ServiceAgreementExpired) as e:
         logger.error(e, exc_info=1)
         return jsonify(error=e), 401
 
