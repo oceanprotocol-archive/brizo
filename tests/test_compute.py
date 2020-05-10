@@ -15,6 +15,8 @@ from tests.test_helpers import (
     place_order,
     get_algorithm_ddo,
     get_dataset_ddo_with_compute_service,
+    get_dataset_ddo_with_compute_service_no_rawalgo,
+    get_dataset_ddo_with_compute_service_specific_algo_dids,
     get_publisher_account,
     get_consumer_account,
     lock_reward,
@@ -28,7 +30,7 @@ def dummy_callback(*_):
     pass
 
 
-def test_compute(client):
+def test_compute_norawalgo_allowed(client):
     aqua = Aquarius('http://localhost:5000')
     for did in aqua.list_assets():
         aqua.retire_asset_ddo(did)
@@ -39,17 +41,26 @@ def test_compute(client):
     keeper = keeper_instance()
 
     # publish a dataset asset
-    dataset_ddo_w_compute_service = get_dataset_ddo_with_compute_service(pub_acc, providers=[pub_acc.address])
+    dataset_ddo_w_compute_service = get_dataset_ddo_with_compute_service_no_rawalgo(
+        pub_acc, providers=[pub_acc.address])
 
-    # publish an algorithm asset (asset with metadata of type `algorithm`)
-    alg_ddo = get_algorithm_ddo(cons_acc, providers=[pub_acc.address])
     # CHECKPOINT 1
-
+    algorithmMeta = {
+        "rawcode": "console.log('Hello world'!)",
+        "format": 'docker-image',
+        "version": '0.1',
+        "container": {
+            "entrypoint": 'node $ALGO',
+            "image": 'node',
+            "tag": '10'
+        }
+    }
     # prepare parameter values for the compute endpoint
     # signature, serviceAgreementId, consumerAddress, and algorithmDid or algorithmMeta
 
     # initialize an agreement
-    agreement_id = place_order(pub_acc, dataset_ddo_w_compute_service, cons_acc, ServiceTypes.CLOUD_COMPUTE)
+    agreement_id = place_order(
+        pub_acc, dataset_ddo_w_compute_service, cons_acc, ServiceTypes.CLOUD_COMPUTE)
     # CHECKPOINT 2
 
     event = keeper.agreement_manager.subscribe_agreement_created(
@@ -61,14 +72,16 @@ def test_compute(client):
     if consumer_balance < 50:
         keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
 
-    sa = ServiceAgreement.from_ddo(ServiceTypes.CLOUD_COMPUTE, dataset_ddo_w_compute_service)
+    sa = ServiceAgreement.from_ddo(
+        ServiceTypes.CLOUD_COMPUTE, dataset_ddo_w_compute_service)
     lock_reward(agreement_id, sa, cons_acc)
     event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
         agreement_id, 15, None, (), wait=True, from_block=0
     )
     assert event, "Lock reward condition fulfilled event is not found, check the keeper node's logs"
 
-    grant_compute(agreement_id, dataset_ddo_w_compute_service.asset_id, cons_acc, pub_acc)
+    grant_compute(
+        agreement_id, dataset_ddo_w_compute_service.asset_id, cons_acc, pub_acc)
     event = keeper.compute_execution_condition.subscribe_condition_fulfilled(
         agreement_id, 15, None, (), wait=True, from_block=0
     )
@@ -86,7 +99,169 @@ def test_compute(client):
 
     # Start the compute job
     payload = dict({
-        'signature': signature, 
+        'signature': signature,
+        'serviceAgreementId': agreement_id,
+        'consumerAddress': cons_acc.address,
+        'algorithmDid': None,
+        'algorithmMeta': algorithmMeta,
+        'output': build_stage_output_dict(
+            dict(), dataset_ddo_w_compute_service, cons_acc.address, pub_acc
+        )
+    })
+
+    endpoint = BaseURLs.ASSETS_URL + '/compute'
+    response = client.post(
+        endpoint,
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert response.status == '400 BAD REQUEST', f'start compute job failed: {response.status} , { response.data}'
+
+
+def test_compute_specific_algo_dids(client):
+    aqua = Aquarius('http://localhost:5000')
+    for did in aqua.list_assets():
+        aqua.retire_asset_ddo(did)
+
+    pub_acc = get_publisher_account()
+    cons_acc = get_consumer_account()
+
+    keeper = keeper_instance()
+
+    # publish a dataset asset
+    dataset_ddo_w_compute_service = get_dataset_ddo_with_compute_service_specific_algo_dids(
+        pub_acc, providers=[pub_acc.address])
+
+    # publish an algorithm asset (asset with metadata of type `algorithm`)
+    alg_ddo = get_algorithm_ddo(cons_acc, providers=[pub_acc.address])
+    # CHECKPOINT 1
+
+    # prepare parameter values for the compute endpoint
+    # signature, serviceAgreementId, consumerAddress, and algorithmDid or algorithmMeta
+
+    # initialize an agreement
+    agreement_id = place_order(
+        pub_acc, dataset_ddo_w_compute_service, cons_acc, ServiceTypes.CLOUD_COMPUTE)
+    # CHECKPOINT 2
+
+    event = keeper.agreement_manager.subscribe_agreement_created(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event, "Agreement event is not found, check the keeper node's logs"
+
+    consumer_balance = keeper.token.get_token_balance(cons_acc.address)
+    if consumer_balance < 50:
+        keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
+
+    sa = ServiceAgreement.from_ddo(
+        ServiceTypes.CLOUD_COMPUTE, dataset_ddo_w_compute_service)
+    lock_reward(agreement_id, sa, cons_acc)
+    event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event, "Lock reward condition fulfilled event is not found, check the keeper node's logs"
+
+    grant_compute(
+        agreement_id, dataset_ddo_w_compute_service.asset_id, cons_acc, pub_acc)
+    event = keeper.compute_execution_condition.subscribe_condition_fulfilled(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event or keeper.compute_execution_condition.was_compute_triggered(
+        dataset_ddo_w_compute_service.asset_id, cons_acc.address
+    ), (
+        f'Failed to compute: agreement_id={agreement_id}, '
+        f'did={dataset_ddo_w_compute_service.did}, consumer={cons_acc.address}'
+    )
+
+    # prepare consumer signature on agreement_id
+    msg = f'{cons_acc.address}{agreement_id}'
+    agreement_id_hash = add_ethereum_prefix_and_hash_msg(msg)
+    signature = keeper.sign_hash(agreement_id_hash, cons_acc)
+
+    # Start the compute job
+    payload = dict({
+        'signature': signature,
+        'serviceAgreementId': agreement_id,
+        'consumerAddress': cons_acc.address,
+        'algorithmDid': alg_ddo.did,
+        'algorithmMeta': {},
+        'output': build_stage_output_dict(
+            dict(), dataset_ddo_w_compute_service, cons_acc.address, pub_acc
+        )
+    })
+
+    endpoint = BaseURLs.ASSETS_URL + '/compute'
+    response = client.post(
+        endpoint,
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert response.status == '400 BAD REQUEST', f'start compute job failed: {response.status} , { response.data}'
+
+
+def test_compute(client):
+    aqua = Aquarius('http://localhost:5000')
+    for did in aqua.list_assets():
+        aqua.retire_asset_ddo(did)
+
+    pub_acc = get_publisher_account()
+    cons_acc = get_consumer_account()
+
+    keeper = keeper_instance()
+
+    # publish a dataset asset
+    dataset_ddo_w_compute_service = get_dataset_ddo_with_compute_service(
+        pub_acc, providers=[pub_acc.address])
+
+    # publish an algorithm asset (asset with metadata of type `algorithm`)
+    alg_ddo = get_algorithm_ddo(cons_acc, providers=[pub_acc.address])
+    # CHECKPOINT 1
+
+    # prepare parameter values for the compute endpoint
+    # signature, serviceAgreementId, consumerAddress, and algorithmDid or algorithmMeta
+
+    # initialize an agreement
+    agreement_id = place_order(
+        pub_acc, dataset_ddo_w_compute_service, cons_acc, ServiceTypes.CLOUD_COMPUTE)
+    # CHECKPOINT 2
+
+    event = keeper.agreement_manager.subscribe_agreement_created(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event, "Agreement event is not found, check the keeper node's logs"
+
+    consumer_balance = keeper.token.get_token_balance(cons_acc.address)
+    if consumer_balance < 50:
+        keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
+
+    sa = ServiceAgreement.from_ddo(
+        ServiceTypes.CLOUD_COMPUTE, dataset_ddo_w_compute_service)
+    lock_reward(agreement_id, sa, cons_acc)
+    event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event, "Lock reward condition fulfilled event is not found, check the keeper node's logs"
+
+    grant_compute(
+        agreement_id, dataset_ddo_w_compute_service.asset_id, cons_acc, pub_acc)
+    event = keeper.compute_execution_condition.subscribe_condition_fulfilled(
+        agreement_id, 15, None, (), wait=True, from_block=0
+    )
+    assert event or keeper.compute_execution_condition.was_compute_triggered(
+        dataset_ddo_w_compute_service.asset_id, cons_acc.address
+    ), (
+        f'Failed to compute: agreement_id={agreement_id}, '
+        f'did={dataset_ddo_w_compute_service.did}, consumer={cons_acc.address}'
+    )
+
+    # prepare consumer signature on agreement_id
+    msg = f'{cons_acc.address}{agreement_id}'
+    agreement_id_hash = add_ethereum_prefix_and_hash_msg(msg)
+    signature = keeper.sign_hash(agreement_id_hash, cons_acc)
+
+    # Start the compute job
+    payload = dict({
+        'signature': signature,
         'serviceAgreementId': agreement_id,
         'consumerAddress': cons_acc.address,
         'algorithmDid': alg_ddo.did,

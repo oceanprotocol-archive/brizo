@@ -600,6 +600,29 @@ def compute_start_job():
         original_msg = f'{consumer_address}{agreement_id}'
         verify_signature(keeper, consumer_address, signature, original_msg)
 
+        ########################
+        # ASSET
+        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
+        did = id_to_did(asset_id)
+        asset = DIDResolver(keeper.did_registry).resolve(did)
+        compute_service = asset.get_service(ServiceTypes.CLOUD_COMPUTE)
+        if compute_service is None:
+            return jsonify(error=f'This DID has no compute service {did}.'), 400
+        logger.error(f'compute.main: %s',json.dumps(compute_service.main))
+        #########################
+        # Check privacy
+        if 'privacy' in compute_service.main:
+            privacy_options = compute_service.main['privacy']
+            if algorithm_meta:
+                if 'allowRawAlgorithm' in privacy_options:
+                    if privacy_options['allowRawAlgorithm'] == False:
+                        return jsonify(error=f'cannot run raw algo on this did {did}.'), 400
+            if algorithm_did:
+                if 'trustedAlgorithms' in privacy_options:
+                    if len(privacy_options['trustedAlgorithms'])>0:
+                        if algorithm_did not in privacy_options['trustedAlgorithms']:
+                            return jsonify(error=f'cannot run raw algo on this did {did}.'), 400
+        
         #########################
         # ALGORITHM
         if algorithm_meta:
@@ -612,9 +635,6 @@ def compute_start_job():
 
         #########################
         # INPUT
-        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
-        did = id_to_did(asset_id)
-        asset = DIDResolver(keeper.did_registry).resolve(did)
         asset_urls = get_asset_urls(asset, provider_acc, app.config['CONFIG_FILE'])
         if not asset_urls:
             return jsonify(error=f'cannot get url(s) in input did {did}.'), 400
