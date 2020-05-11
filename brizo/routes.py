@@ -238,10 +238,10 @@ def consume():
 
         asset = DIDResolver(keeper.did_registry).resolve(did)
 
-        if agreement_id != did:
+        #if agreement_id != did:
             # Check expiry of service agreement
-            block_time = get_agreement_block_time(agreement_id)
-            validate_agreement_expiry(asset.get_service(ServiceTypes.ASSET_ACCESS), block_time)
+            #block_time = get_agreement_block_time(agreement_id)
+            #validate_agreement_expiry(asset.get_service(ServiceTypes.ASSET_ACCESS), block_time)
 
         content_type = None
         url = data.get('url')
