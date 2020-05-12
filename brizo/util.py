@@ -258,6 +258,8 @@ def get_agreement_block_time(agreement_id):
 
 def validate_agreement_expiry(service_agreement, start_time):
     timeout = int(service_agreement.attributes['main'].get('timeout', 3600 * 24))
+    if timeout == 0:
+        return True
     expiry_time = start_time + timeout
     current_time = datetime.now().timestamp()
     if current_time > expiry_time:
