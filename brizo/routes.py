@@ -619,19 +619,17 @@ def compute_start_job():
         compute_service = asset.get_service(ServiceTypes.CLOUD_COMPUTE)
         if compute_service is None:
             return jsonify(error=f'This DID has no compute service {did}.'), 400
+
         #########################
         # Check privacy
-        if 'privacy' in compute_service.main:
-            privacy_options = compute_service.main['privacy']
-            if algorithm_meta:
-                if 'allowRawAlgorithm' in privacy_options:
-                    if privacy_options['allowRawAlgorithm'] == False:
-                        return jsonify(error=f'cannot run raw algo on this did {did}.'), 400
-            if algorithm_did:
-                if 'trustedAlgorithms' in privacy_options:
-                    if len(privacy_options['trustedAlgorithms']) > 0:
-                        if algorithm_did not in privacy_options['trustedAlgorithms']:
-                            return jsonify(error=f'cannot run raw algo on this did {did}.'), 400
+        privacy_options = compute_service.main.get('privacy', {})
+        if algorithm_meta and privacy_options.get('allowRawAlgorithm', True) is False:
+            return jsonify(error=f'cannot run raw algorithm on this did {did}.'), 400
+
+        trusted_algorithms = privacy_options.get('trustedAlgorithms', [])
+        if algorithm_did and trusted_algorithms and algorithm_did not in trusted_algorithms:
+            return jsonify(error=f'cannot run raw algorithm on this did {did}.'), 400
+
         #########################
         # ALGORITHM
         if algorithm_meta:
