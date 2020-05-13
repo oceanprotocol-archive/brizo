@@ -28,7 +28,7 @@ environ_names = {
     NAME_SECRET_STORE_URL: ['SECRET_STORE_URL', 'Secret Store URL', 'keeper-contracts'],
     NAME_AQUARIUS_URL: ['AQUARIUS_URL', 'Aquarius url (metadata store)', 'resources'],
     NAME_PARITY_URL: ['PARITY_URL', 'Parity URL', 'keeper-contracts'],
-    NAME_OPERATOR_SERVICE_URL: ['OPERATOR_SERVICE_URL', 'Operator service URL', 'keeper-contracts'],
+    NAME_OPERATOR_SERVICE_URL: ['OPERATOR_SERVICE_URL', 'Operator service URL', 'resources'],
 }
 
 
@@ -109,7 +109,7 @@ class Config(configparser.ConfigParser):
     @property
     def operator_service_url(self):
         """URL of the operator service component. (e.g.): http://myoperatorservice:8050."""
-        return self.get(self._section_name, NAME_OPERATOR_SERVICE_URL, fallback=None)
+        return self.get('resources', NAME_OPERATOR_SERVICE_URL, fallback=None)
 
     @property
     def auth_token_message(self):
