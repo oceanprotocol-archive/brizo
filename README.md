@@ -169,10 +169,11 @@ The `[resources]` sections is used to configure:
 
 The `[osmosis]` section of the config file is where a provider puts their own 
 credentials for various third-party services, such as Azure Storage.
-At the time of writing, Brizo could support files with three kinds of URLs:
+Brizo could support files with the following kinds of URLs:
 
 - files in Azure Storage: files with "core.windows.net" in their URLs
 - files in Amazon S3 storage: files with "s3://" in their URLs
+- files on ipfs: files URLs starting with "ipfs://"
 - files in on-premise storage: all other files with resolvable URLs
 
 A publisher can choose to support any of the above or build their own custom driver. It depends 
@@ -224,6 +225,10 @@ If a publisher wants to store some files in Amazon S3 storage (and make them
 available from there), then there are no AWS-related config settings to set 
 in the config file. AWS credentials actually get stored elsewhere. See 
 [the Ocean tutorial about how to set up Amazon S3 storage](https://docs.oceanprotocol.com/tutorials/amazon-s3-for-brizo/).
+
+If a publisher wants to support files on IPFS storage, the only requirement is to 
+set the environment variable `IPFS_GATEWAY` which defaults to "https://gateway.ipfs.io"
+in the `osmosis-ipfs-driver`.
 
 If a publisher wants to store some files on-premise (and make them available 
 from there), then there are no special config settings to set in the config 
