@@ -44,7 +44,8 @@ def get_sample_algorithm_ddo():
 
 
 def get_sample_ddo_with_compute_service():
-    path = get_resource_path('ddo', 'ddo_with_compute_service.json')  # 'ddo_sa_sample.json')
+    # 'ddo_sa_sample.json')
+    path = get_resource_path('ddo', 'ddo_with_compute_service.json')
     assert path.exists(), f"{path} does not exist!"
     with open(path, 'r') as file_handle:
         metadata = file_handle.read()
@@ -89,19 +90,89 @@ def get_compute_service_descriptor(keeper, account, price, metadata):
     )
 
 
+def get_compute_service_descriptor_no_rawalgo(keeper, account, price, metadata):
+    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.CLOUD_COMPUTE]
+    compute_service_attributes = {
+        "main": {
+            "name": "dataAssetComputeServiceAgreement",
+            "creator": account.address,
+            "price": price,
+            "privacy": {
+                "allowRawAlgorithm": False,
+                "trustedAlgorithms": [],
+                "allowNetworkAccess": True
+            },
+            "timeout": 3600,
+            "datePublished": metadata[MetadataMain.KEY]['dateCreated']
+        }
+    }
+
+    return ServiceDescriptor.compute_service_descriptor(
+        compute_service_attributes,
+        f'http://localhost:8030{BaseURLs.ASSETS_URL}/compute',
+        keeper.template_manager.create_template_id(template_name)
+    )
+
+
+def get_compute_service_descriptor_specific_algo_dids(keeper, account, price, metadata):
+    template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[ServiceTypes.CLOUD_COMPUTE]
+    compute_service_attributes = {
+        "main": {
+            "name": "dataAssetComputeServiceAgreement",
+            "creator": account.address,
+            "price": price,
+            "privacy": {
+                "allowRawAlgorithm": True,
+                "trustedAlgorithms": ['did:op:123', 'did:op:1234'],
+                "allowNetworkAccess": True
+            },
+            "timeout": 3600,
+            "datePublished": metadata[MetadataMain.KEY]['dateCreated']
+        }
+    }
+
+    return ServiceDescriptor.compute_service_descriptor(
+        compute_service_attributes,
+        f'http://localhost:8030{BaseURLs.ASSETS_URL}/compute',
+        keeper.template_manager.create_template_id(template_name)
+    )
+
+
 def get_algorithm_ddo(account, providers=None):
     keeper = keeper_instance()
     metadata = get_sample_algorithm_ddo()['service'][0]['attributes']
     metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
-    service_descriptor = get_access_service_descriptor(keeper, account, metadata)
+    service_descriptor = get_access_service_descriptor(
+        keeper, account, metadata)
     return get_registered_ddo(account, metadata, service_descriptor, providers)
 
 
 def get_dataset_ddo_with_compute_service(account, providers=None):
     keeper = keeper_instance()
-    metadata = get_sample_ddo_with_compute_service()['service'][0]['attributes']
+    metadata = get_sample_ddo_with_compute_service()[
+        'service'][0]['attributes']
     metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
     service_descriptor = get_compute_service_descriptor(
+        keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
+    return get_registered_ddo(account, metadata, service_descriptor, providers)
+
+
+def get_dataset_ddo_with_compute_service_no_rawalgo(account, providers=None):
+    keeper = keeper_instance()
+    metadata = get_sample_ddo_with_compute_service()[
+        'service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_compute_service_descriptor_no_rawalgo(
+        keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
+    return get_registered_ddo(account, metadata, service_descriptor, providers)
+
+
+def get_dataset_ddo_with_compute_service_specific_algo_dids(account, providers=None):
+    keeper = keeper_instance()
+    metadata = get_sample_ddo_with_compute_service()[
+        'service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_compute_service_descriptor_specific_algo_dids(
         keeper, account, metadata[MetadataMain.KEY]['price'], metadata)
     return get_registered_ddo(account, metadata, service_descriptor, providers)
 
@@ -110,7 +181,8 @@ def get_dataset_ddo_with_access_service(account, providers=None):
     keeper = keeper_instance()
     metadata = get_sample_ddo()['service'][0]['attributes']
     metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
-    service_descriptor = get_access_service_descriptor(keeper, account, metadata)
+    service_descriptor = get_access_service_descriptor(
+        keeper, account, metadata)
     return get_registered_ddo(account, metadata, service_descriptor, providers)
 
 
@@ -124,7 +196,8 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     metadata_service_desc = ServiceDescriptor.metadata_service_descriptor(
         metadata, ddo_service_endpoint
     )
-    service_descriptors = list([ServiceDescriptor.authorization_service_descriptor('http://localhost:12001')])
+    service_descriptors = list(
+        [ServiceDescriptor.authorization_service_descriptor('http://localhost:12001')])
     service_descriptors.append(service_descriptor)
     service_type = service_descriptor[0]
 
@@ -145,12 +218,15 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
     stype_to_service = {s.type: s for s in services}
     _service = stype_to_service[service_type]
 
-    name_to_address = {cname: cinst.address for cname, cinst in keeper.contract_name_to_instance.items()}
-    _service.init_conditions_values(did, contract_name_to_address=name_to_address)
+    name_to_address = {cname: cinst.address for cname,
+                       cinst in keeper.contract_name_to_instance.items()}
+    _service.init_conditions_values(
+        did, contract_name_to_address=name_to_address)
     for service in services:
         ddo.add_service(service)
 
-    ddo.proof['signatureValue'] = keeper.sign_hash(did_to_id_bytes(did), account)
+    ddo.proof['signatureValue'] = keeper.sign_hash(
+        did_to_id_bytes(did), account)
 
     ddo.add_public_key(did, account.address)
 
@@ -201,7 +277,8 @@ def get_registered_ddo(account, metadata, service_descriptor, providers=None):
 
 
 def get_template_actor_types(keeper, template_id):
-    actor_type_ids = keeper.template_manager.get_template(template_id).actor_type_ids
+    actor_type_ids = keeper.template_manager.get_template(
+        template_id).actor_type_ids
     return [keeper.template_manager.get_template_actor_type_value(_id) for _id in actor_type_ids]
 
 
@@ -221,10 +298,13 @@ def place_order(publisher_account, ddo, consumer_account, service_type):
 
     template_name = keeper.template_manager.SERVICE_TO_TEMPLATE_NAME[service_type]
     template_id = keeper.template_manager.create_template_id(template_name)
-    actor_map = {'consumer': consumer_account.address, 'provider': publisher_address}
-    actors = [actor_map[_type] for _type in get_template_actor_types(keeper, template_id)]
+    actor_map = {'consumer': consumer_account.address,
+                 'provider': publisher_address}
+    actors = [actor_map[_type]
+              for _type in get_template_actor_types(keeper, template_id)]
 
-    assert keeper.template_manager.contract_concise.isTemplateIdApproved(template_id), f'template {template_id} is not approved.'
+    assert keeper.template_manager.contract_concise.isTemplateIdApproved(
+        template_id), f'template {template_id} is not approved.'
 
     keeper_instance().agreement_manager.create_agreement(
         agreement_id,
@@ -243,7 +323,8 @@ def place_order(publisher_account, ddo, consumer_account, service_type):
 def lock_reward(agreement_id, service_agreement, consumer_account):
     keeper = keeper_instance()
     price = service_agreement.get_price()
-    keeper.token.token_approve(keeper.lock_reward_condition.address, price, consumer_account)
+    keeper.token.token_approve(
+        keeper.lock_reward_condition.address, price, consumer_account)
     time.sleep(3)
     tx_hash = keeper.lock_reward_condition.fulfill(
         agreement_id, keeper.escrow_reward_condition.address, price, consumer_account)
@@ -291,7 +372,8 @@ def get_compute_job_info(client, endpoint, params):
 
     job_info = response.json if response.json else json.loads(response.data)
     if not job_info:
-        print(f'There is a problem with the job info response: {response.data}')
+        print(
+            f'There is a problem with the job info response: {response.data}')
         return None, None
 
     return job_info[0]
@@ -329,7 +411,8 @@ def _check_job_id(client, job_id, agreement_id, wait_time=20):
     # check results ddo
     ddo = DIDResolver(keeper.did_registry).resolve(did)
     assert ddo, f'Failed to resolve ddo for did {did}'
-    consumer_permission = keeper.did_registry.get_permission(did, cons_acc.address)
+    consumer_permission = keeper.did_registry.get_permission(
+        did, cons_acc.address)
     assert consumer_permission is True, \
         f'Consumer address {cons_acc.address} has no permissions on the results ' \
         f'did {did}. This is required, the consumer must be able to access the results'
