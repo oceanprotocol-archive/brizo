@@ -108,13 +108,15 @@ def publish():
     if 'signedDocumentId' in data and 'signature' not in data:
         data['signature'] = data['signedDocumentId']
 
-    msg, status = check_required_attributes(required_attributes, data, 'publish')
+    msg, status = check_required_attributes(
+        required_attributes, data, 'publish')
     if msg:
         return msg, status
 
     did = data.get('documentId')
     signature = data.get('signature')
-    document = json.dumps(json.loads(data.get('document')), separators=(',', ':'))
+    document = json.dumps(json.loads(
+        data.get('document')), separators=(',', ':'))
     publisher_address = data.get('publisherAddress')
 
     try:
@@ -196,7 +198,8 @@ def consume():
         'serviceAgreementId',
         'consumerAddress'
     ]
-    msg, status = check_required_attributes(required_attributes, data, 'consume')
+    msg, status = check_required_attributes(
+        required_attributes, data, 'consume')
     if msg:
         return msg, status
 
@@ -226,7 +229,8 @@ def consume():
         #########################
         # Check expiry of service agreement
         block_time = get_agreement_block_time(agreement_id)
-        validate_agreement_expiry(asset.get_service(ServiceTypes.ASSET_ACCESS), block_time)
+        validate_agreement_expiry(asset.get_service(
+            ServiceTypes.ASSET_ACCESS), block_time)
 
         content_type = None
         url = data.get('url')
@@ -301,7 +305,8 @@ def compute_delete_job():
         'signature',
         'consumerAddress'
     ]
-    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    msg, status = check_required_attributes(
+        required_attributes, data, 'compute')
     if msg:
         return jsonify(error=msg), status
 
@@ -324,7 +329,8 @@ def compute_delete_job():
         verify_signature(keeper_instance(), owner, signature, original_msg)
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
-        body['providerSignature'] = keeper_instance().sign_hash(msg_to_sign, provider_acc)
+        body['providerSignature'] = keeper_instance(
+        ).sign_hash(msg_to_sign, provider_acc)
         response = requests_session.delete(
             get_compute_endpoint(),
             params=body,
@@ -392,7 +398,8 @@ def compute_stop_job():
         'signature',
         'consumerAddress'
     ]
-    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    msg, status = check_required_attributes(
+        required_attributes, data, 'compute')
     if msg:
         return jsonify(error=msg), status
 
@@ -416,7 +423,8 @@ def compute_stop_job():
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
         msg_hash = add_ethereum_prefix_and_hash_msg(msg_to_sign)
-        body['providerSignature'] = keeper_instance().sign_hash(msg_hash, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(msg_hash,
+                                                                provider_acc)
         response = requests_session.put(
             get_compute_endpoint(),
             params=body,
@@ -485,7 +493,8 @@ def compute_get_status_job():
         'signature',
         'consumerAddress'
     ]
-    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    msg, status = check_required_attributes(
+        required_attributes, data, 'compute')
     if msg:
         return jsonify(error=msg), status
 
@@ -509,7 +518,8 @@ def compute_get_status_job():
 
         msg_to_sign = f'{provider_acc.address}{body.get("jobId", "")}{body.get("agreementId", "")}'
         msg_hash = add_ethereum_prefix_and_hash_msg(msg_to_sign)
-        body['providerSignature'] = keeper_instance().sign_hash(msg_hash, provider_acc)
+        body['providerSignature'] = keeper_instance().sign_hash(msg_hash,
+                                                                provider_acc)
         response = requests_session.get(
             get_compute_endpoint(),
             params=body,
@@ -590,7 +600,8 @@ def compute_start_job():
         'consumerAddress',
         'output'
     ]
-    msg, status = check_required_attributes(required_attributes, data, 'compute')
+    msg, status = check_required_attributes(
+        required_attributes, data, 'compute')
     if msg:
         return jsonify(error=msg), status
 
@@ -613,10 +624,24 @@ def compute_start_job():
         original_msg = f'{consumer_address}{agreement_id}'
         verify_signature(keeper, consumer_address, signature, original_msg)
 
-        # Get Asset/DDO
+        ########################
+        # ASSET
         asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
         did = id_to_did(asset_id)
         asset = DIDResolver(keeper.did_registry).resolve(did)
+        compute_service = asset.get_service(ServiceTypes.CLOUD_COMPUTE)
+        if compute_service is None:
+            return jsonify(error=f'This DID has no compute service {did}.'), 400
+
+        #########################
+        # Check privacy
+        privacy_options = compute_service.main.get('privacy', {})
+        if algorithm_meta and privacy_options.get('allowRawAlgorithm', True) is False:
+            return jsonify(error=f'cannot run raw algorithm on this did {did}.'), 400
+
+        trusted_algorithms = privacy_options.get('trustedAlgorithms', [])
+        if algorithm_did and trusted_algorithms and algorithm_did not in trusted_algorithms:
+            return jsonify(error=f'cannot run raw algorithm on this did {did}.'), 400
 
         # Validate agreement condition
         if not validate_agreement_condition(agreement_id, did, consumer_address, keeper):
@@ -630,16 +655,20 @@ def compute_start_job():
         #########################
         # ALGORITHM
         if algorithm_meta:
-            algorithm_meta = json.loads(algorithm_meta) if isinstance(algorithm_meta, str) else algorithm_meta
+            algorithm_meta = json.loads(algorithm_meta) if isinstance(
+                algorithm_meta, str) else algorithm_meta
 
-        algorithm_dict = build_stage_algorithm_dict(algorithm_did, algorithm_meta, provider_acc)
-        error_msg, status_code = validate_algorithm_dict(algorithm_dict, algorithm_did)
+        algorithm_dict = build_stage_algorithm_dict(
+            algorithm_did, algorithm_meta, provider_acc)
+        error_msg, status_code = validate_algorithm_dict(
+            algorithm_dict, algorithm_did)
         if error_msg:
             return jsonify(error=error_msg), status_code
 
         #########################
         # INPUT
-        asset_urls = get_asset_urls(asset, provider_acc, app.config['CONFIG_FILE'])
+        asset_urls = get_asset_urls(
+            asset, provider_acc, app.config['CONFIG_FILE'])
         if not asset_urls:
             return jsonify(error=f'cannot get url(s) in input did {did}.'), 400
 
@@ -652,13 +681,16 @@ def compute_start_job():
         #########################
         # Check expiry of service agreement
         block_time = get_agreement_block_time(agreement_id)
-        validate_agreement_expiry(asset.get_service(ServiceTypes.CLOUD_COMPUTE), block_time)
+        validate_agreement_expiry(asset.get_service(
+            ServiceTypes.CLOUD_COMPUTE), block_time)
 
         #########################
         # OUTPUT
         if output_def:
-            output_def = json.loads(output_def) if isinstance(output_def, str) else output_def
-        output_dict = build_stage_output_dict(output_def, asset, consumer_address, provider_acc)
+            output_def = json.loads(output_def) if isinstance(
+                output_def, str) else output_def
+        output_dict = build_stage_output_dict(
+            output_def, asset, consumer_address, provider_acc)
 
         #########################
         # STAGE
