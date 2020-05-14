@@ -243,10 +243,10 @@ def consume():
 
         #########################
         # Check expiry of service agreement
-        if agreement_id != did:
-            block_time = get_agreement_block_time(agreement_id)
-            validate_agreement_expiry(asset.get_service(
-                ServiceTypes.ASSET_ACCESS), block_time)
+        # if agreement_id != did:
+        #     block_time = get_agreement_block_time(agreement_id)
+        #     validate_agreement_expiry(asset.get_service(
+        #         ServiceTypes.ASSET_ACCESS), block_time)
 
         content_type = None
         url = data.get('url')
