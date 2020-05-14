@@ -7,7 +7,7 @@ from eth_utils import remove_0x_prefix
 from flask import Blueprint, jsonify, request, Response
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_utils.agreements.service_types import ServiceTypes
-from ocean_utils.did import id_to_did
+from ocean_utils.did import id_to_did, did_to_id
 from ocean_utils.did_resolver.did_resolver import DIDResolver
 from ocean_utils.http_requests.requests_session import get_requests_session
 from secret_store_client.client import RPCError
@@ -210,27 +210,43 @@ def consume():
         keeper = keeper_instance()
         agreement_id = data.get('serviceAgreementId')
         consumer_address = data.get('consumerAddress')
-        asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
-        did = id_to_did(asset_id)
 
-        if not is_access_granted(
-                agreement_id,
-                did,
-                consumer_address,
-                keeper):
-            msg = ('Checking access permissions failed. Either consumer address does not have '
-                   'permission to consume this asset or consumer address and/or service agreement '
-                   'id is invalid.')
-            logger.warning(msg)
+        msg_unauthorized = ''
+        if agreement_id.startswith('did:op:'):
+            # This is a hack to support a specific use case where the consumer has been
+            # granted access directly without using the service agreements flow.
+            did = agreement_id
+            # Check permissions in the DIDRegistry
+            if not keeper.did_registry.get_permission(did_to_id(did), consumer_address):
+                msg_unauthorized = f'Consumer address {consumer_address} is not authorized for DID {did}.'
+
+        else:
+            asset_id = keeper.agreement_manager.get_agreement(agreement_id).did
+            did = id_to_did(asset_id)
+
+            if not is_access_granted(
+                    agreement_id,
+                    did,
+                    consumer_address,
+                    keeper):
+                msg_unauthorized = (
+                    'Checking access permissions failed. Either consumer address does not have '
+                    'permission to consume this asset or consumer address and/or service agreement '
+                    'id is invalid.'
+                )
+
+        if msg_unauthorized:
+            logger.warning(msg_unauthorized)
             return msg, 401
 
         asset = DIDResolver(keeper.did_registry).resolve(did)
 
         #########################
         # Check expiry of service agreement
-        block_time = get_agreement_block_time(agreement_id)
-        validate_agreement_expiry(asset.get_service(
-            ServiceTypes.ASSET_ACCESS), block_time)
+        if agreement_id != did:
+            # Check expiry of service agreement
+            block_time = get_agreement_block_time(agreement_id)
+            validate_agreement_expiry(asset.get_service(ServiceTypes.ASSET_ACCESS), block_time)
 
         content_type = None
         url = data.get('url')
