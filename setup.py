@@ -22,7 +22,7 @@ install_requirements = [
     'ocean-keeper==0.3.4',
     'ocean-secret-store-client==0.0.2',
     'Flask==1.0.2',
-    'Flask-Cors==3.0.6',
+    'Flask-Cors==3.0.8',
     'Flask-RESTful==0.3.6',
     'flask-swagger==0.2.14',
     'flask-swagger-ui==3.6.0',
