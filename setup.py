@@ -28,7 +28,7 @@ install_requirements = [
     'flask-swagger-ui==3.6.0',
     'Jinja2>=2.10.1',
     'requests>=2.21.0',
-    'gunicorn==19.9.0',
+    'gunicorn==20.0.4',
     'osmosis-azure-driver==0.0.4',
     'osmosis-aws-driver==0.0.4',
     'osmosis-driver-interface==0.0.7',
