@@ -3,25 +3,49 @@
 
 import json
 import mimetypes
-import os
-import pathlib
+import time
+from copy import deepcopy
+from datetime import datetime
 from unittest.mock import Mock, MagicMock
+import uuid
 
-from eth_utils import remove_0x_prefix, add_0x_prefix
+import pytest
+from eth_utils import add_0x_prefix
+from ocean_keeper import Keeper
 from ocean_keeper.utils import add_ethereum_prefix_and_hash_msg
 from ocean_utils.agreements.service_agreement import ServiceAgreement
+from ocean_utils.agreements.service_factory import ServiceFactory
 from ocean_utils.agreements.service_types import ServiceTypes
 from ocean_utils.aquarius.aquarius import Aquarius
-from ocean_utils.ddo.ddo import DDO
-from ocean_utils.did import DID, did_to_id
 from ocean_utils.http_requests.requests_session import get_requests_session
 from werkzeug.utils import get_content_type
 
+from ocean_utils.did import DID, did_to_id
+
 from brizo.constants import BaseURLs
-from brizo.util import get_provider_account, keeper_instance, web3, get_config, generate_token, \
-    do_secret_store_encrypt, do_secret_store_decrypt, verify_signature, is_token_valid, check_auth_token, get_download_url, \
-    build_download_response
-from tests.conftest import get_publisher_account, get_consumer_account
+from brizo.exceptions import InvalidSignatureError, ServiceAgreementExpired
+from brizo.util import (
+    check_auth_token,
+    do_secret_store_decrypt,
+    generate_token,
+    get_config,
+    get_provider_account,
+    is_token_valid,
+    keeper_instance,
+    verify_signature,
+    web3,
+    build_download_response,
+    get_download_url,
+    get_latest_keeper_version,
+    validate_agreement_expiry)
+from tests.conftest import get_sample_ddo
+from tests.test_helpers import (
+    get_dataset_ddo_with_access_service,
+    lock_reward, place_order,
+    grant_access,
+    get_consumer_account,
+    get_publisher_account,
+    get_access_service_descriptor)
 
 PURCHASE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/access/initialize'
 SERVICE_ENDPOINT = BaseURLs.BASE_BRIZO_URL + '/services/consume'
@@ -31,120 +55,40 @@ def dummy_callback(*_):
     pass
 
 
-def get_registered_ddo(account, providers=None):
-    keeper = keeper_instance()
-    aqua = Aquarius('http://localhost:5000')
-    base = os.path.realpath(__file__).split(os.path.sep)[1:-1]
-    path = pathlib.Path(os.path.join(os.path.sep, *base, 'ddo', 'ddo_sa_sample.json'))
-    ddo = DDO(json_filename=path)
-    ddo._did = DID.did()
-    ddo_service_endpoint = aqua.get_service_endpoint(ddo.did)
-
-    metadata = ddo.metadata
-    metadata['base']['checksum'] = ddo.generate_checksum(ddo.did, metadata)
-    checksum = metadata['base']['checksum']
-    ddo.add_proof(checksum, account, keeper.sign_hash(checksum, account))
-
-    encrypted_files = do_secret_store_encrypt(
-        remove_0x_prefix(ddo.asset_id),
-        json.dumps(metadata['base']['files']),
-        account,
-        get_config()
-    )
-    _files = metadata['base']['files']
-    # only assign if the encryption worked
-    if encrypted_files:
-        index = 0
-        for file in metadata['base']['files']:
-            file['index'] = index
-            index = index + 1
-            del file['url']
-        metadata['base']['encryptedFiles'] = encrypted_files
-
-    keeper_instance().did_registry.register(
-        ddo.asset_id,
-        checksum=web3().sha3(text='new_asset'),
-        url=ddo_service_endpoint,
-        account=account,
-        providers=providers
-    )
-    aqua.publish_asset_ddo(ddo)
-    return ddo
-
-
-def place_order(publisher_account, service_definition_id, ddo, consumer_account):
-    keeper = keeper_instance()
-    agreement_id = ServiceAgreement.create_new_agreement_id()
-    agreement_template = keeper.escrow_access_secretstore_template
-    publisher_address = publisher_account.address
-    balance = keeper.token.get_token_balance(consumer_account.address)/(2**18)
-    if balance < 20:
-        keeper.dispenser.request_tokens(100, consumer_account)
-
-    service_agreement = ServiceAgreement.from_ddo(service_definition_id, ddo)
-    condition_ids = service_agreement.generate_agreement_condition_ids(
-        agreement_id, ddo.asset_id, consumer_account.address, publisher_address, keeper)
-    time_locks = service_agreement.conditions_timelocks
-    time_outs = service_agreement.conditions_timeouts
-    agreement_template.create_agreement(
-        agreement_id,
-        ddo.asset_id,
-        condition_ids,
-
-        time_locks,
-        time_outs,
-        consumer_account.address,
-        consumer_account
-    )
-
-    return agreement_id
-
-
-def lock_reward(agreement_id, service_agreement, consumer_account):
-    keeper = keeper_instance()
-    price = service_agreement.get_price()
-    keeper.token.token_approve(keeper.lock_reward_condition.address, price, consumer_account)
-    tx_hash = keeper.lock_reward_condition.fulfill(
-        agreement_id, keeper.escrow_reward_condition.address, price, consumer_account)
-    keeper.lock_reward_condition.get_tx_receipt(tx_hash)
-
-
-def grant_access(agreement_id, ddo, consumer_account, publisher_account):
-    keeper = keeper_instance()
-    tx_hash = keeper.access_secret_store_condition.fulfill(
-        agreement_id, ddo.asset_id, consumer_account.address, publisher_account
-    )
-    keeper.access_secret_store_condition.get_tx_receipt(tx_hash)
-
-
 def test_consume(client):
+    aqua = Aquarius('http://localhost:5000')
+    for did in aqua.list_assets():
+        aqua.retire_asset_ddo(did)
+
     endpoint = BaseURLs.ASSETS_URL + '/consume'
 
     pub_acc = get_publisher_account()
     cons_acc = get_consumer_account()
 
-    ddo = get_registered_ddo(pub_acc, providers=[pub_acc.address])
-    service = ddo.get_service(service_type=ServiceTypes.ASSET_ACCESS)
-    service_definition_id = service.service_definition_id
+    keeper = keeper_instance()
+    ddo = get_dataset_ddo_with_access_service(pub_acc, providers=[pub_acc.address])
 
     # initialize an agreement
-    agreement_id = place_order(pub_acc, service_definition_id, ddo, cons_acc)
+    agreement_id = place_order(pub_acc, ddo, cons_acc, ServiceTypes.ASSET_ACCESS)
     payload = dict({
         'serviceAgreementId': agreement_id,
         'consumerAddress': cons_acc.address
     })
 
-    keeper = keeper_instance()
     agr_id_hash = add_ethereum_prefix_and_hash_msg(agreement_id)
     signature = keeper.sign_hash(agr_id_hash, cons_acc)
     index = 0
 
-    event = keeper.escrow_access_secretstore_template.subscribe_agreement_created(
+    event = keeper.agreement_manager.subscribe_agreement_created(
         agreement_id, 15, None, (), wait=True, from_block=0
     )
     assert event, "Agreement event is not found, check the keeper node's logs"
 
-    sa = ServiceAgreement.from_ddo(service_definition_id, ddo)
+    consumer_balance = keeper.token.get_token_balance(cons_acc.address)
+    if consumer_balance < 50:
+        keeper.dispenser.request_tokens(50-consumer_balance, cons_acc)
+
+    sa = ServiceAgreement.from_ddo(ServiceTypes.ASSET_ACCESS, ddo)
     lock_reward(agreement_id, sa, cons_acc)
     event = keeper.lock_reward_condition.subscribe_condition_fulfilled(
         agreement_id, 15, None, (), wait=True, from_block=0
@@ -156,12 +100,13 @@ def test_consume(client):
         agreement_id, 15, None, (), wait=True, from_block=0
     )
     assert event or keeper.access_secret_store_condition.check_permissions(
-            ddo.asset_id, cons_acc.address
+        ddo.asset_id, cons_acc.address
     ), f'Failed to get access permission: agreement_id={agreement_id}, ' \
        f'did={ddo.did}, consumer={cons_acc.address}'
 
     # Consume using decrypted url
-    files_list = json.loads(do_secret_store_decrypt(did_to_id(ddo.did), ddo.encrypted_files, pub_acc, get_config()))
+    files_list = json.loads(
+        do_secret_store_decrypt(did_to_id(ddo.did), ddo.encrypted_files, pub_acc, get_config()))
     payload['url'] = files_list[index]['url']
     request_url = endpoint + '?' + '&'.join([f'{k}={v}' for k, v in payload.items()])
 
@@ -199,13 +144,13 @@ def test_empty_payload(client):
 
 def test_publish(client):
     endpoint = BaseURLs.ASSETS_URL + '/publish'
-    did = DID.did()
+    did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
     account = get_provider_account()
     test_urls = [
-        'url 0',
-        'url 1',
-        'url 2'
+        'url 00',
+        'url 11',
+        'url 22'
     ]
     keeper = keeper_instance()
     urls_json = json.dumps(test_urls)
@@ -233,7 +178,7 @@ def test_publish(client):
     # publish using auth token
     signature = generate_token(account)
     payload['signature'] = signature
-    did = DID.did()
+    did = DID.did({"0": str(uuid.uuid4())})
     asset_id = did_to_id(did)
     payload['documentId'] = add_0x_prefix(asset_id)
     post_response = client.post(
@@ -253,9 +198,19 @@ def test_auth_token():
     doc_id = "663516d306904651bbcf9fe45a00477c215c7303d8a24c5bad6005dd2f95e68e"
     assert is_token_valid(token), f'cannot recognize auth-token {token}'
     address = check_auth_token(token)
-    assert address and address.lower() == pub_address.lower(), f'address mismatch, got {address}, expected {pub_address}'
-    good = verify_signature(keeper_instance(), pub_address, token, doc_id)
-    assert good, f'invalid signature/auth-token {token}, {pub_address}, {doc_id}'
+    assert address and address.lower() == pub_address.lower(), f'address mismatch, got {address}, ' \
+                                                               f'' \
+                                                               f'' \
+                                                               f'expected {pub_address}'
+
+    try:
+        verify_signature(Keeper, pub_address, token, doc_id)
+    except InvalidSignatureError as e:
+        assert False, f'invalid signature/auth-token {token}, {pub_address}, {doc_id}: {e}'
+
+
+def test_exec_endpoint():
+    pass
 
 
 def test_download_ipfs_file(client):
@@ -280,12 +235,13 @@ def test_build_download_response():
     class Dummy:
         pass
 
-    response = Dummy()
-    response.content = b'asdsadf'
-    response.status_code = 200
+    mocked_response = Dummy()
+    mocked_response.content = b'asdsadf'
+    mocked_response.status_code = 200
+    mocked_response.headers = {}
 
     requests_session = Dummy()
-    requests_session.get = MagicMock(return_value=response)
+    requests_session.get = MagicMock(return_value=mocked_response)
 
     filename = '<<filename>>.xml'
     content_type = mimetypes.guess_type(filename)[0]
@@ -305,3 +261,49 @@ def test_build_download_response():
     response = build_download_response(request, requests_session, url, url, content_type)
     assert response.headers["content-type"] == content_type
     assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename+mimetypes.guess_extension(content_type)}'
+
+    mocked_response_with_attachment = deepcopy(mocked_response)
+    attachment_file_name = 'test.xml'
+    mocked_response_with_attachment.headers = {'content-disposition': f'attachment;filename={attachment_file_name}'}
+
+    requests_session_with_attachment = Dummy()
+    requests_session_with_attachment.get = MagicMock(return_value=mocked_response_with_attachment)
+
+    url = 'https://source-lllllll.cccc/not-a-filename'
+    response = build_download_response(request, requests_session_with_attachment, url, url, None)
+    assert response.headers["content-type"] == mimetypes.guess_type(attachment_file_name)[0]
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={attachment_file_name}'
+
+    mocked_response_with_content_type = deepcopy(mocked_response)
+    response_content_type = 'text/csv'
+    mocked_response_with_content_type.headers = {'content-type': response_content_type}
+
+    requests_session_with_content_type = Dummy()
+    requests_session_with_content_type.get = MagicMock(return_value=mocked_response_with_content_type)
+
+    filename = 'filename.txt'
+    url = f'https://source-lllllll.cccc/{filename}'
+    response = build_download_response(request, requests_session_with_content_type, url, url, None)
+    assert response.headers["content-type"] == response_content_type
+    assert response.headers.get_all('Content-Disposition')[0] == f'attachment;filename={filename}'
+
+
+def test_latest_keeper_version():
+    version = get_latest_keeper_version()
+    assert version.startswith('v') and len(version.split('.')) == 3, ''
+
+
+def test_agreement_expiry():
+    pub_acc = get_publisher_account()
+    keeper = keeper_instance()
+    metadata = get_sample_ddo()['service'][0]['attributes']
+    metadata['main']['files'][0]['checksum'] = str(uuid.uuid4())
+    service_descriptor = get_access_service_descriptor(keeper, pub_acc, metadata)
+    service_descriptor[1]['attributes']['main']['timeout'] = 2
+    agreement = ServiceFactory.build_service(service_descriptor)
+    start_time = datetime.now().timestamp()
+    not_expired = validate_agreement_expiry(agreement, start_time)
+    assert not_expired, 'Agreement should not be expired at this point.'
+    time.sleep(3)
+    with pytest.raises(ServiceAgreementExpired):
+        validate_agreement_expiry(agreement, start_time)

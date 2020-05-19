@@ -17,20 +17,20 @@ with open('CHANGELOG.md') as history_file:
 # Installed by pip install ocean-brizo
 # or pip install -e .
 install_requirements = [
-    # Install squid-py and all its dependencies first
-    'ocean-utils==0.1.0',  # gets PyYAML, coloredlogs, web3
-    'ocean-keeper==0.1.3',
-    'ocean-secret-store-client==0.0.1',
+    # Install ocean-keeper and ocean-utils first
+    'ocean-utils==0.3.7',  # gets PyYAML, coloredlogs, web3
+    'ocean-keeper==0.3.4',
+    'ocean-secret-store-client==0.0.2',
     'Flask==1.0.2',
-    'Flask-Cors==3.0.6',
-    'Flask-RESTful==0.3.6',
-    'flask-swagger==0.2.13',
+    'Flask-Cors==3.0.8',
+    'Flask-RESTful==0.3.8',
+    'flask-swagger==0.2.14',
     'flask-swagger-ui==3.6.0',
     'Jinja2>=2.10.1',
     'requests>=2.21.0',
-    'gunicorn==19.9.0',
+    'gunicorn==20.0.4',
     'osmosis-azure-driver==0.0.4',
-    'osmosis-aws-driver==0.0.2',
+    'osmosis-aws-driver==0.0.4',
     'osmosis-driver-interface==0.0.7',
     'osmosis-on-premise-driver==0.0.6',
     'osmosis-ipfs-driver==0.0.1',
@@ -49,6 +49,7 @@ test_requirements = [
     'pytest',
     'pytest-watch',
     'tox',
+    'plecos'
 ]
 
 # Possibly required by developers of ocean-brizo:
@@ -87,6 +88,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/oceanprotocol/brizo',
-    version='0.4.5',
+    version='0.9.7',
     zip_safe=False,
 )

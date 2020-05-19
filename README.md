@@ -42,6 +42,15 @@ allowing them to provide extended data services (e.g. storage and compute).
 Brizo, as part of the Publisher ecosystem, includes the credentials to interact 
 with the infrastructure (initially cloud, but could be on-premise).
 
+The main features available in Brizo:
+* Data access - using the `/services/consume` endpoint. The data set file(s) are streamed 
+back to the user without exposing the actual URL
+* Compute-to-data - using the `/services/compute` endpoint. The compute algorithm 
+is executed remotely use the compute provider's Service Operator endpoint.
+
+Details of the main features can be found in the 
+[Brizo API documentation ](https://docs.oceanprotocol.com/references/brizo/)
+
 ## Running Locally, for Dev and Test
 
 If you want to contribute to the development of Brizo, then you could do the following. (If you want to run a Brizo in production, then you will have to do something else.)
@@ -53,17 +62,30 @@ git clone git@github.com:oceanprotocol/brizo.git
 cd brizo/
 ```
 
+Before running it locally we recommend to set up virtual environment:
+
+```bash
+virtualenv venv -p python3.6
+source venv/bin/activate 
+```
+
+And install all the requirements:
+
+```
+pip install -r requirements_dev.txt
+```
+
 Then run some things that Brizo expects to be running:
 
 ```bash
 git clone git@github.com:oceanprotocol/barge.git
 cd barge
-bash start_ocean.sh --no-brizo --no-pleuston --local-spree-node
+bash start_ocean.sh --no-brizo --no-commons
 ```
 
 Barge is the repository where all the Ocean Docker Compose files are located. 
-We are running the script `start_ocean.sh`: the easy way to have Ocean projects 
-up and running. We run without Brizo or Pleuston instances.
+We are running the script `start_ocean.sh --no-brizo`: the easy way to have Ocean projects 
+up and running. We run without a Brizo instance.
 
 To learn more about Barge, visit [the Barge repository](https://github.com/oceanprotocol/barge).
 
@@ -77,13 +99,22 @@ pip install -r requirements_dev.txt
 export FLASK_APP=brizo/run.py
 export CONFIG_FILE=config.ini
 ./scripts/wait_for_migration_and_extract_keeper_artifacts.sh
+export PROVIDER_ADDRESS="your ethereum address goes here"
+# Set one of the following
+export PROVIDER_KEY="the private key"
+export PROVIDER_ENCRYPTED_KEY="The encrypted key json from the keyfile"
+export PROVIDER_KEYFILE="your ethereum address goes here"
+# and set the password if using either PROVIDER_KEYFILE or PROVIDER_ENCRYPTED_KEY
+export PROVIDER_PASSWORD="password to allow decrypting the encrypted key"
+
 flask run --port=8030
 ```
 
 That will use HTTP (i.e. not SSL/TLS).
 
-The proper way to run the Flask application is using an application server such as Gunicorn. This allow you to run using SSL/TLS.
-You can generate some certificates for testing by doing:
+The proper way to run the Flask application is using an application 
+server such as Gunicorn. This allow you to run using SSL/TLS. You 
+can generate some certificates for testing by doing:
 
 ```bash
 openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
@@ -118,7 +149,7 @@ There is also some [Brizo API documentation in the official Ocean docs](https://
 To get configuration settings, Brizo first checks to see if there is a non-empty 
 environment variable named CONFIG_FILE. It there is, it will look in a config file 
 at that path. Otherwise it will look in a config file named `config.ini`. Note 
-that some settings in the config file can be overriden by setting certain 
+that some settings in the config file can be overridden by setting certain 
 environment variables; there are more details below.
 
 See the [example config.ini file in this repo](config.ini). You will see that 
@@ -126,21 +157,27 @@ there are three sections: `[keeper-contracts]`, `[resources]` and `[osmosis]`.
 
 ### The [keeper-contracts] and [resources] Sections
 
-The `[keeper-contracts]` section is used to setup connection to the keeper nodes and load keeper-contracts artifacts.
-The `[resources]` sections is used to configure Aquarius and Brizo services. 
+The `[keeper-contracts]` section is used to setup connection to the keeper nodes 
+and load keeper-contracts artifacts.
+
+The `[resources]` sections is used to configure:
+* Default Metadata store (Aquarius) URI
+* Default Brizo URI
+* Operator Service URI for for requesting compute services
 
 ### The [osmosis] Section
 
-The `[osmosis]` section of the config file is where a publisher puts their own credentials for various third-party services, such as Azure Storage.
-At the time of writing, Brizo could support files with three kinds of URLs:
+The `[osmosis]` section of the config file is where a provider puts their own 
+credentials for various third-party services, such as Azure Storage.
+Brizo could support files with the following kinds of URLs:
 
 - files in Azure Storage: files with "core.windows.net" in their URLs
 - files in Amazon S3 storage: files with "s3://" in their URLs
+- files on ipfs: files URLs starting with "ipfs://"
 - files in on-premise storage: all other files with resolvable URLs
 
-Initial work has also been done to support Azure Compute but it's not officially supported yet.
-
-A publisher can choose to support none, one, two or all of the above. It depends on which cloud providers they use.
+A publisher can choose to support any of the above or build their own custom driver. It depends 
+on which cloud providers they use.
 
 If a publisher wants to store some files in Azure Storage (and make them available 
 from there), then they must get and set the following config settings in the [osmosis] 
@@ -165,7 +202,9 @@ azure.share.input = compute
 azure.share.output = output
 ```
 
-You can override any of those config file settings by setting one or more of the following environment variables. You will want to do that if you're running Brizo in a container.
+You can override any of those config file settings by setting one or more of the 
+following environment variables. You will want to do that if you're running Brizo 
+in a container.
 
 ```text
 AZURE_ACCOUNT_NAME
@@ -187,10 +226,24 @@ available from there), then there are no AWS-related config settings to set
 in the config file. AWS credentials actually get stored elsewhere. See 
 [the Ocean tutorial about how to set up Amazon S3 storage](https://docs.oceanprotocol.com/tutorials/amazon-s3-for-brizo/).
 
+If a publisher wants to support files on IPFS storage, the only requirement is to 
+set the environment variable `IPFS_GATEWAY` which defaults to "https://gateway.ipfs.io"
+in the `osmosis-ipfs-driver`.
+
 If a publisher wants to store some files on-premise (and make them available 
 from there), then there are no special config settings to set in the config 
 file. The only requirement is that the file URLs must be resolvable by Brizo. 
 See [the Ocean tutorial about how to set up on-premise storage](https://docs.oceanprotocol.com/tutorials/on-premise-for-brizo/).
+
+## Compute-to-Data setup
+Do the following to support the Compute to data feature:
+* Set the Operator Service URI using one of the following:
+  * In config.ini under `operator_service.url` in the `resources` section
+  * Environment variable `OPERATOR_SERVICE_URL`
+* Add the Provider ethereum address to the Operator Service list of providers. The 
+Operator Service only accepts requests signed by known providers
+* Setup the Operator Service, Operator Engine and the Kubernetes infrastructure, 
+more details here [Operator Service](https://github.com/oceanprotocol/operator-service) 
 
 ## Dependencies
 
@@ -211,7 +264,8 @@ and the [python-style-guide](https://github.com/oceanprotocol/dev-ocean/blob/mas
 
 ## Testing
 
-Automatic tests are setup via Travis, executing `tox`.
+Automatic tests are setup via Travis (in .travis.yaml config file), 
+executing `tox` (see the tox.ini file).
 Our tests use the pytest framework.
 
 ## Debugging
@@ -219,7 +273,7 @@ Our tests use the pytest framework.
 To debug Brizo using PyCharm, follow the next instructions:
 
 1. Clone [barge](https://github.com/oceanprotocol/barge) repository.
-2. Run barge omitting `brizo`. (i.e.:`bash start_ocean.sh --no-brizo --no-pleuston --local-nile-node`)
+2. Run barge omitting `brizo`. (i.e.:`bash start_ocean.sh --no-brizo --no-commons --local-nile-node`)
 3. In PyCharm, go to _Settings > Project Settings > Python Debugger_, and select the option _Gevent Compatible_
 4. Configure a new debugger configuration: _Run > Edit Configurations..._, there click on _Add New Configuration_
 5. Configure as shown in the next image:
@@ -241,12 +295,12 @@ To debug Brizo using PyCharm, follow the next instructions:
     ```
 
    The option `OBJC_DISABLE_INITIALIZE_FORK_SAFETY` is needed if you run in last versions of MacOS.
-7. Now you can configure your breakpoints and debug brizo or squid-py.
+7. Now you can configure your breakpoints and debug brizo.
 
 ## New Version
 
 The `bumpversion.sh` script helps to bump the project version. You can execute 
-the script using as first argument {major|minor|patch} to bump accordingly the version.
+the script using as first argument {major|minor|patch} to bump the version accordingly.
 
 ## License
 

@@ -1,9 +1,29 @@
 History
 =======
 
+0.6.0 (October 9th, 2019)
+------------------------
+* Add execute endpoint
+
+0.5.2 (September 17th, 2019)
+----------------------------
+* Fix access token issue
+
+0.5.1 (September 11th, 2019)
+----------------------------
+* Fix signature issue
+
+0.5.0 (September 6th, 2019)
+--------------------------
+* Update ocean-utils to work with the new ddos structure.
+
 0.4.4 (Sep 16, 2019)
 ------------------------
 * Support `ipfs` files by using the osmosis-ipfs-driver
+
+0.4.1 (September 2nd, 2019)
+---------------------------
+* Upgrade the keeper contracts to v0.11.1
 
 0.4.0 (Sep 10, 2019)
 ------------------------
@@ -13,7 +33,15 @@ separate stand-alone tool
 libraries that were split out of squid-py (ocean-utils and ocean-keeper)
 * Remove support for the `initialize` endpoint
 
-0.3.12 (Jun 21st, 2019)
+0.3.14 (July 16th ,2019)
+-------------------------
+* Fix error when running on Pacific network.
+
+0.3.13 (July 3rd ,2019)
+-------------------------
+* Update squid-py version with improved events handling.
+
+0.3.12 (Jun 21nd, 2019)
 ------------------------
 * Not dispenser when pacific network.
 * Squid-py 0.6.13
