@@ -21,7 +21,7 @@ install_requirements = [
     'ocean-utils==0.3.7',  # gets PyYAML, coloredlogs, web3
     'ocean-keeper==0.3.4',
     'ocean-secret-store-client==0.0.2',
-    'Flask==1.0.2',
+    'Flask==1.1.2',
     'Flask-Cors==3.0.8',
     'Flask-RESTful==0.3.8',
     'flask-swagger==0.2.14',
