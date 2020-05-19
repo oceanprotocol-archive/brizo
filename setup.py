@@ -19,7 +19,7 @@ with open('CHANGELOG.md') as history_file:
 install_requirements = [
     # Install ocean-keeper and ocean-utils first
     'ocean-utils==0.3.7',  # gets PyYAML, coloredlogs, web3
-    'ocean-keeper==0.3.4',
+    'ocean-keeper==0.3.5',
     'ocean-secret-store-client==0.0.2',
     'Flask==1.1.2',
     'Flask-Cors==3.0.8',
