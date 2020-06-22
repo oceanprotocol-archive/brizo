@@ -688,10 +688,22 @@ def compute_start_job():
         if not asset_urls:
             return jsonify(error=f'cannot get url(s) in input did {did}.'), 400
 
+        categories = []
+
+        # ! will gather categories and unify them across ALL DIDS
+        try:
+          for category in asset.as_dictionary()["service"]:
+            attrs = category["attributes"]
+            extra = attrs["additionalInformation"]
+            categories.extend(extra["categories"])
+        except Exception:
+          pass
+
         input_dict = dict({
             'index': 0,
             'id': did,
-            'url': asset_urls
+            'url': asset_urls,
+            'data_categories': categories,
         })
 
         #########################
