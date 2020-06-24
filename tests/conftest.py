@@ -38,8 +38,8 @@ def setup_all():
 
 
 def get_sample_ddo():
-    path = get_resource_path('ddo', 'ddo_sa_sample.json')
+    path = get_resource_path("ddo", "ddo_sa_sample.json")
     assert path.exists(), f"{path} does not exist!"
-    with open(path, 'r') as file_handle:
+    with open(path, "r") as file_handle:
         metadata = file_handle.read()
     return json.loads(metadata)
