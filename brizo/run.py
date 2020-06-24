@@ -13,62 +13,64 @@ from brizo.myapp import app
 from brizo.routes import services
 from brizo.util import keeper_instance, get_provider_account, get_latest_keeper_version
 
-config = Config(filename=app.config['CONFIG_FILE'])
-brizo_url = config.get(ConfigSections.RESOURCES, 'brizo.url')
+config = Config(filename=app.config["CONFIG_FILE"])
+brizo_url = config.get(ConfigSections.RESOURCES, "brizo.url")
 
 
 def get_version():
     conf = configparser.ConfigParser()
-    conf.read('.bumpversion.cfg')
-    return conf['bumpversion']['current_version']
+    conf.read(".bumpversion.cfg")
+    return conf["bumpversion"]["current_version"]
 
 
 @app.route("/")
 def version():
     keeper = keeper_instance()
     info = dict()
-    info['software'] = Metadata.TITLE
-    info['version'] = get_version()
-    info['keeper-url'] = config.keeper_url
-    info['network'] = keeper.network_name
-    info['contracts'] = dict()
-    info['contracts']['AccessSecretStoreCondition'] = keeper.access_secret_store_condition.address
-    info['contracts']['AgreementStoreManager'] = keeper.agreement_manager.address
-    info['contracts']['ConditionStoreManager'] = keeper.condition_manager.address
-    info['contracts']['DIDRegistry'] = keeper.did_registry.address
-    if keeper.network_name != 'pacific':
-        info['contracts']['Dispenser'] = keeper.dispenser.address
-    info['contracts']['EscrowReward'] = keeper.escrow_reward_condition.address
-    info['contracts']['LockRewardCondition'] = keeper.lock_reward_condition.address
-    info['contracts']['OceanToken'] = keeper.token.address
-    info['contracts']['TemplateStoreManager'] = keeper.template_manager.address
-    info['contracts']['ComputeExecutionCondition'] = keeper.compute_execution_condition.address
-    info['keeper-version'] = get_latest_keeper_version()
-    info['provider-address'] = get_provider_account().address
+    info["software"] = Metadata.TITLE
+    info["version"] = get_version()
+    info["keeper-url"] = config.keeper_url
+    info["network"] = keeper.network_name
+    info["contracts"] = dict()
+    info["contracts"][
+        "AccessSecretStoreCondition"
+    ] = keeper.access_secret_store_condition.address
+    info["contracts"]["AgreementStoreManager"] = keeper.agreement_manager.address
+    info["contracts"]["ConditionStoreManager"] = keeper.condition_manager.address
+    info["contracts"]["DIDRegistry"] = keeper.did_registry.address
+    if keeper.network_name != "pacific":
+        info["contracts"]["Dispenser"] = keeper.dispenser.address
+    info["contracts"]["EscrowReward"] = keeper.escrow_reward_condition.address
+    info["contracts"]["LockRewardCondition"] = keeper.lock_reward_condition.address
+    info["contracts"]["OceanToken"] = keeper.token.address
+    info["contracts"]["TemplateStoreManager"] = keeper.template_manager.address
+    info["contracts"][
+        "ComputeExecutionCondition"
+    ] = keeper.compute_execution_condition.address
+    info["keeper-version"] = get_latest_keeper_version()
+    info["provider-address"] = get_provider_account().address
     return jsonify(info)
 
 
 @app.route("/spec")
 def spec():
     swag = swagger(app)
-    swag['info']['version'] = get_version()
-    swag['info']['title'] = Metadata.TITLE
-    swag['info']['description'] = Metadata.DESCRIPTION
+    swag["info"]["version"] = get_version()
+    swag["info"]["title"] = Metadata.TITLE
+    swag["info"]["description"] = Metadata.DESCRIPTION
     return jsonify(swag)
 
 
 # Call factory function to create our blueprint
 swaggerui_blueprint = get_swaggerui_blueprint(
     BaseURLs.SWAGGER_URL,
-    brizo_url + '/spec',
-    config={  # Swagger UI config overrides
-        'app_name': "Test application"
-    },
+    brizo_url + "/spec",
+    config={"app_name": "Test application"},  # Swagger UI config overrides
 )
 
 # Register blueprint at URL
 app.register_blueprint(swaggerui_blueprint, url_prefix=BaseURLs.SWAGGER_URL)
 app.register_blueprint(services, url_prefix=BaseURLs.ASSETS_URL)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(port=8030)
