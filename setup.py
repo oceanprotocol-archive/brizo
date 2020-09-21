@@ -31,7 +31,7 @@ install_requirements = [
     'gunicorn==20.0.4',
     'osmosis-azure-driver==0.0.4',
     'osmosis-aws-driver==0.0.4',
-    'osmosis-driver-interface==0.0.7',
+    'osmosis-driver-interface==0.1.0',
     'osmosis-on-premise-driver==0.0.6',
     'osmosis-ipfs-driver==0.0.1',
     'Werkzeug>=0.15.3',
