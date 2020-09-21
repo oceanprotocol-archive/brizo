@@ -29,7 +29,7 @@ install_requirements = [
     'Jinja2>=2.10.1',
     'requests>=2.21.0',
     'gunicorn==20.0.4',
-    'osmosis-azure-driver==0.0.4',
+    'osmosis-azure-driver==0.1.0',
     'osmosis-aws-driver==0.0.4',
     'osmosis-driver-interface==0.0.7',
     'osmosis-on-premise-driver==0.0.6',
